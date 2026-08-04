@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GruposRouteImport } from './routes/grupos'
+import { Route as ServicioSlugRouteImport } from './routes/servicio.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GruposRoute = GruposRouteImport.update({
+  id: '/grupos',
+  path: '/grupos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicioSlugRoute = ServicioSlugRouteImport.update({
+  id: '/servicio/$slug',
+  path: '/servicio/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/grupos': typeof GruposRoute
+  '/servicio/$slug': typeof ServicioSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/grupos': typeof GruposRoute
+  '/servicio/$slug': typeof ServicioSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/grupos': typeof GruposRoute
+  '/servicio/$slug': typeof ServicioSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/grupos' | '/servicio/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/grupos' | '/servicio/$slug'
+  id: '__root__' | '/' | '/grupos' | '/servicio/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GruposRoute: typeof GruposRoute
+  ServicioSlugRoute: typeof ServicioSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +68,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/grupos': {
+      id: '/grupos'
+      path: '/grupos'
+      fullPath: '/grupos'
+      preLoaderRoute: typeof GruposRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/servicio/$slug': {
+      id: '/servicio/$slug'
+      path: '/servicio/$slug'
+      fullPath: '/servicio/$slug'
+      preLoaderRoute: typeof ServicioSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GruposRoute: GruposRoute,
+  ServicioSlugRoute: ServicioSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
