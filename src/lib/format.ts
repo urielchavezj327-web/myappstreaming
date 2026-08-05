@@ -32,8 +32,13 @@ export function durationRank(months: number | null) {
 export function formatPrice(price: number | null) {
   if (price === null) return "A consultar";
   const value = Number(price);
-  return `$${value % 1 === 0 ? value.toFixed(0) : value.toFixed(2)}`;
+  const decimals = value % 1 === 0 ? 0 : 2;
+  return `$${new Intl.NumberFormat("es-MX", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value)}`;
 }
+
 
 export function whatsappLink(phone: string, message: string) {
   const digits = phone.replace(/\D/g, "");
