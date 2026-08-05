@@ -127,8 +127,10 @@ export type StockOffer = {
     kind: string;
     phone: string | null;
     parentGroup: string | null;
+    variant: string | null;
   };
 };
+
 
 export const getServiceDetail = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ slug: z.string() }).parse(input))
