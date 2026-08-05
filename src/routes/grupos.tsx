@@ -36,15 +36,15 @@ function GroupsPage() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main className="mx-auto max-w-6xl space-y-14 px-5 py-14">
+      <main className="mx-auto max-w-6xl space-y-12 px-4 py-11 sm:px-5 sm:py-14">
         <div>
-          <h1 className="text-3xl sm:text-4xl">Grupos y vendedores</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            {internal.length} grupos internos y {free.length} anuncios de venta libre.
+          <h1 className="text-[2rem] sm:text-4xl">Grupos y vendedores</h1>
+          <p className="mt-3 text-[13px] text-muted-foreground">
+            {internal.length} grupos internos y {free.length} vendedores de venta libre.
           </p>
         </div>
         <GroupList title="Grupos donde estoy dentro" rows={internal} />
-        <GroupList title="Grupo de Venta Libre" rows={free} contact />
+        <GroupList title="Vendedores de Venta Libre" rows={free} contact />
       </main>
       <SiteFooter />
     </div>
@@ -63,32 +63,41 @@ function GroupList({
   if (rows.length === 0) return null;
   return (
     <section>
-      <h2 className="border-b border-border pb-3 text-xl">{title}</h2>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {rows.map((g) => (
-          <div key={g.slug} className="rounded-xl border border-border bg-surface p-4">
-            {g.parentGroup ? (
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                {g.parentGroup}
-              </p>
-            ) : null}
-            <h3 className="mt-1 text-base font-semibold">{g.name}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {g.phone ?? "Sin número publicado"} · {g.offers} ofertas
-            </p>
-            {contact && g.phone ? (
-              <a
-                href={whatsappLink(g.phone, "Hola, vengo del comparador de precios.")}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                WhatsApp
-              </a>
-            ) : null}
-          </div>
-        ))}
+      <h2 className="border-b border-border pb-3 text-lg sm:text-xl">{title}</h2>
+      <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+        {rows.map((g) => {
+          // Regla permanente: grupo/teléfono solo en venta libre.
+          const meta: string[] = [];
+          if (contact) meta.push(g.phone ?? "Sin número publicado");
+          if (g.variant) meta.push(g.variant);
+          meta.push(`${g.offers} ofertas`);
+          return (
+            <div
+              key={g.slug}
+              className="rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-surface-2"
+            >
+              {contact && g.parentGroup ? (
+                <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  {g.parentGroup}
+                </p>
+              ) : null}
+              <h3 className="mt-1 text-[15px] font-semibold tracking-tight">{g.name}</h3>
+              <p className="mt-1 text-[11px] text-muted-foreground">{meta.join(" · ")}</p>
+              {contact && g.phone ? (
+                <a
+                  href={whatsappLink(g.phone, "Hola, vengo del comparador de precios.")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex rounded-xl bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
+                >
+                  WhatsApp
+                </a>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
+

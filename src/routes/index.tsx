@@ -24,6 +24,8 @@ export const Route = createFileRoute("/")({
         content:
           "Todos los grupos y vendedores en un panel: precios ordenados de menor a mayor por app, duración y tipo de producto.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   loader: () => getCatalog(),
@@ -69,30 +71,43 @@ function Index() {
       <SiteHeader />
 
       <section className="grid-bg border-b border-border">
-        <div className="mx-auto max-w-6xl px-5 py-16">
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+        <div className="mx-auto max-w-6xl px-4 py-11 sm:px-5 sm:py-16">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
             Panel de precios
           </p>
-          <h1 className="mt-4 max-w-2xl text-4xl leading-[1.05] sm:text-5xl">
+          <h1 className="mt-4 max-w-2xl text-[2rem] leading-[1.05] sm:text-5xl">
             Todo el stock de tus grupos, comparado en un solo lugar.
           </h1>
-          <p className="mt-4 max-w-xl text-sm text-muted-foreground">
-            {totals.offers} precios de {totals.services} servicios, ordenados del más barato al más
-            caro y separados por duración y tipo de producto.
+          <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-muted-foreground sm:text-sm">
+            Inteligencia de precios en tiempo real: cada servicio, cada vendedor y cada duración
+            frente a frente, para que nunca pagues de más.
           </p>
 
-          <div className="mt-8 max-w-xl">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar Netflix, Spotify, acta de nacimiento…"
-              className="h-12 w-full rounded-xl border border-input bg-surface px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-border-strong"
-            />
+          <div className="mt-7 max-w-xl">
+            <div className="relative">
+              <span
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              >
+                ⌕
+              </span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar Netflix, Spotify, acta de nacimiento…"
+                className="h-12 w-full rounded-2xl border border-input bg-surface/80 pl-10 pr-4 text-sm outline-none ring-0 transition-all placeholder:text-muted-foreground focus:border-border-strong focus:bg-surface-2"
+              />
+            </div>
+            <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
+              <span className="tabular-nums">{totals.offers} ofertas</span>
+              <span className="h-1 w-1 rounded-full bg-border-strong" aria-hidden />
+              <span className="tabular-nums">{totals.services} servicios</span>
+            </div>
           </div>
         </div>
       </section>
 
-      <main className="mx-auto max-w-6xl px-5 py-12">
+      <main className="mx-auto max-w-6xl px-4 py-9 sm:px-5 sm:py-12">
         {searching ? (
           <>
             <h2 className="text-sm font-semibold text-muted-foreground">
@@ -106,21 +121,32 @@ function Index() {
           </>
         ) : (
           <>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c.slug}
-                  onClick={() => setActive(c.slug)}
-                  className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                    c.slug === (current?.slug ?? "")
-                      ? "border-border-strong bg-primary text-primary-foreground"
-                      : "border-border bg-surface text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {c.name}
-                  <span className="ml-2 text-xs opacity-60">{c.services.length}</span>
-                </button>
-              ))}
+            <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0">
+              <div className="flex w-max min-w-full flex-nowrap gap-2">
+                {categories.map((c) => {
+                  const isActive = c.slug === (current?.slug ?? "");
+                  return (
+                    <button
+                      key={c.slug}
+                      onClick={() => setActive(c.slug)}
+                      className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] transition-all duration-200 active:scale-[0.97] ${
+                        isActive
+                          ? "border-transparent bg-primary text-primary-foreground shadow-[0_8px_24px_-12px_rgba(255,255,255,0.6)]"
+                          : "border-border bg-surface text-muted-foreground hover:border-border-strong hover:text-foreground"
+                      }`}
+                    >
+                      {c.name}
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                          isActive ? "bg-black/10" : "bg-surface-2"
+                        }`}
+                      >
+                        {c.services.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {current ? <CategoryBlock services={current.services} /> : null}
@@ -143,15 +169,15 @@ function CategoryBlock({ services }: { services: CatalogService[] }) {
   }
 
   return (
-    <div className="mt-8 space-y-10">
+    <div className="mt-7 space-y-9">
       {[...groups.entries()].map(([label, list]) => (
         <section key={label || "general"}>
           {label ? (
-            <h2 className="mb-4 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <h2 className="mb-3 text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               {label}
             </h2>
           ) : null}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((s) => (
               <ServiceCard key={s.slug} service={s} />
             ))}
@@ -174,23 +200,23 @@ function ServiceCard({
     <Link
       to="/servicio/$slug"
       params={{ slug: service.slug }}
-      className="group relative overflow-hidden rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-surface-2"
+      className="group relative overflow-hidden rounded-2xl border border-border bg-surface p-4 transition-all duration-200 hover:border-border-strong hover:bg-surface-2 active:scale-[0.99]"
     >
       <span
-        className="absolute inset-x-0 top-0 h-[3px]"
+        className="absolute inset-x-0 top-0 h-[2px] opacity-80 transition-opacity group-hover:opacity-100"
         style={{ backgroundColor: accent }}
         aria-hidden
       />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold">{service.name}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-[15px] font-semibold tracking-tight">{service.name}</h3>
+          <p className="mt-1 truncate text-[11px] text-muted-foreground">
             {showCategory ? `${service.categoryName} · ` : ""}
             {service.offers} oferta{service.offers === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Desde</p>
+        <div className="shrink-0 text-right">
+          <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Desde</p>
           <p className="text-lg font-semibold tabular-nums">{formatPrice(service.minPrice)}</p>
         </div>
       </div>

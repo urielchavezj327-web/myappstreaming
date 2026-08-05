@@ -70,11 +70,12 @@ export const getCatalog = createServerFn({ method: "GET" }).handler(async () => 
   }>) {
     const cur = agg.get(row.service_id) ?? { offers: 0, min: null };
     cur.offers += 1;
-    if (row.available && row.price !== null) {
+    if (row.price !== null) {
       cur.min = cur.min === null ? Number(row.price) : Math.min(cur.min, Number(row.price));
     }
     agg.set(row.service_id, cur);
   }
+
 
   const byCategory = new Map<string, CatalogService[]>();
   for (const s of (services.data ?? []) as Array<{
@@ -126,8 +127,10 @@ export type StockOffer = {
     kind: string;
     phone: string | null;
     parentGroup: string | null;
+    variant: string | null;
   };
 };
+
 
 export const getServiceDetail = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ slug: z.string() }).parse(input))
@@ -151,7 +154,7 @@ export const getServiceDetail = createServerFn({ method: "GET" })
 
     const [cat, groups, stock] = await Promise.all([
       supabase.from("categories").select("slug,name").eq("id", service.category_id).maybeSingle(),
-      supabase.from("groups").select("id,slug,name,kind,phone,parent_group"),
+      supabase.from("groups").select("id,slug,name,kind,phone,parent_group,notes"),
       supabase
         .from("stock_items")
         .select("id,group_id,product_type,months,price,detail,available")
@@ -166,6 +169,7 @@ export const getServiceDetail = createServerFn({ method: "GET" })
         kind: string;
         phone: string | null;
         parent_group: string | null;
+        notes: string | null;
       }>).map((g) => [g.id, g]),
     );
 
@@ -192,11 +196,15 @@ export const getServiceDetail = createServerFn({ method: "GET" })
             slug: g.slug,
             name: g.name,
             kind: g.kind,
-            phone: g.phone,
+            // Regla permanente: el teléfono solo existe para venta libre.
+            phone: g.kind === "venta_libre" ? g.phone : null,
+
             parentGroup: g.parent_group,
+            variant: g.notes,
           },
         };
       })
+
       .filter((o): o is StockOffer => o !== null);
 
     return {

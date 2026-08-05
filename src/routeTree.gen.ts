@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgregarRouteImport } from './routes/agregar'
 import { Route as GruposRouteImport } from './routes/grupos'
 import { Route as ServicioSlugRouteImport } from './routes/servicio.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgregarRoute = AgregarRouteImport.update({
+  id: '/agregar',
+  path: '/agregar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GruposRoute = GruposRouteImport.update({
@@ -31,30 +37,34 @@ const ServicioSlugRoute = ServicioSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agregar': typeof AgregarRoute
   '/grupos': typeof GruposRoute
   '/servicio/$slug': typeof ServicioSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agregar': typeof AgregarRoute
   '/grupos': typeof GruposRoute
   '/servicio/$slug': typeof ServicioSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agregar': typeof AgregarRoute
   '/grupos': typeof GruposRoute
   '/servicio/$slug': typeof ServicioSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/grupos' | '/servicio/$slug'
+  fullPaths: '/' | '/agregar' | '/grupos' | '/servicio/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/grupos' | '/servicio/$slug'
-  id: '__root__' | '/' | '/grupos' | '/servicio/$slug'
+  to: '/' | '/agregar' | '/grupos' | '/servicio/$slug'
+  id: '__root__' | '/' | '/agregar' | '/grupos' | '/servicio/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgregarRoute: typeof AgregarRoute
   GruposRoute: typeof GruposRoute
   ServicioSlugRoute: typeof ServicioSlugRoute
 }
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agregar': {
+      id: '/agregar'
+      path: '/agregar'
+      fullPath: '/agregar'
+      preLoaderRoute: typeof AgregarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/grupos': {
@@ -87,19 +104,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgregarRoute: AgregarRoute,
   GruposRoute: GruposRoute,
   ServicioSlugRoute: ServicioSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

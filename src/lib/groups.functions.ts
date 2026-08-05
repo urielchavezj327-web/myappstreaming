@@ -7,6 +7,7 @@ export type GroupRow = {
   kind: string;
   phone: string | null;
   parentGroup: string | null;
+  variant: string | null;
   offers: number;
 };
 
@@ -29,7 +30,7 @@ export const getGroups = createServerFn({ method: "GET" }).handler(async () => {
   const [groups, stock] = await Promise.all([
     supabase
       .from("groups")
-      .select("id,slug,name,kind,phone,parent_group,sort_order")
+      .select("id,slug,name,kind,phone,parent_group,notes,sort_order")
       .order("sort_order"),
     supabase.from("stock_items").select("group_id"),
   ]);
@@ -46,14 +47,18 @@ export const getGroups = createServerFn({ method: "GET" }).handler(async () => {
     kind: string;
     phone: string | null;
     parent_group: string | null;
+    notes: string | null;
   }>).map((g) => ({
     slug: g.slug,
     name: g.name,
     kind: g.kind,
-    phone: g.phone,
+    // Regla permanente: el teléfono solo existe para venta libre.
+    phone: g.kind === "venta_libre" ? g.phone : null,
     parentGroup: g.parent_group,
+    variant: g.notes,
     offers: counts.get(g.id) ?? 0,
   }));
 
   return { groups: rows };
 });
+
