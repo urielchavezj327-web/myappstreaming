@@ -206,31 +206,43 @@ function OfferRow({
   best: boolean;
   freeMarket: boolean;
 }) {
+  // Regla permanente: el grupo, el teléfono y el aviso "Sin número publicado"
+  // solo se muestran en venta libre. En grupos internos nunca aplican.
+  const meta: string[] = [];
+  if (freeMarket) {
+    if (offer.group.parentGroup) meta.push(offer.group.parentGroup);
+    meta.push(offer.group.phone ?? "Sin número publicado");
+    if (offer.group.variant) meta.push(offer.group.variant);
+  } else if (offer.group.variant) {
+    meta.push(offer.group.variant);
+  }
+  if (offer.detail) meta.push(offer.detail);
+
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 last:border-b-0">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-surface px-4 py-3 transition-colors last:border-b-0 hover:bg-surface-2">
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">{offer.group.name}</span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[14px] font-medium tracking-tight">{offer.group.name}</span>
           {best ? (
-            <span className="rounded-full bg-success px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-success-foreground">
+            <span className="rounded-full bg-success/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-success">
               Mejor precio
             </span>
           ) : null}
           {!offer.available ? (
-            <span className="rounded-full border border-border-strong px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="rounded-full border border-border-strong px-2 py-0.5 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
               Agotado
             </span>
           ) : null}
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {freeMarket && offer.group.parentGroup ? `${offer.group.parentGroup} · ` : ""}
-          {offer.group.phone ?? "Sin número publicado"}
-          {offer.detail ? ` · ${offer.detail}` : ""}
-        </p>
+        {meta.length > 0 ? (
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            {meta.join(" · ")}
+          </p>
+        ) : null}
       </div>
 
-      <div className="flex items-center gap-4">
-        <span className="text-lg font-semibold tabular-nums">{formatPrice(offer.price)}</span>
+      <div className="flex shrink-0 items-center gap-3">
+        <span className="text-[17px] font-semibold tabular-nums">{formatPrice(offer.price)}</span>
         {freeMarket && offer.group.phone ? (
           <a
             href={whatsappLink(
@@ -239,7 +251,7 @@ function OfferRow({
             )}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
           >
             WhatsApp
           </a>
@@ -248,3 +260,4 @@ function OfferRow({
     </li>
   );
 }
+
