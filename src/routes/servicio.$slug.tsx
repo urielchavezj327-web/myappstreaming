@@ -84,16 +84,17 @@ function ServicePage() {
         </div>
       </section>
 
-      <main className="mx-auto max-w-6xl space-y-14 px-5 py-12">
+      <main className="mx-auto max-w-6xl space-y-12 px-4 py-10 sm:px-5 sm:py-12">
         <OfferSection title="Grupos donde estoy dentro" offers={internal} accent={accent} />
         <OfferSection
-          title="Grupo de Venta Libre"
+          title="Vendedores de Venta Libre"
           subtitle="Contacta directo al vendedor por WhatsApp"
           offers={free}
           accent={accent}
           freeMarket
         />
       </main>
+
 
       <SiteFooter />
     </div>
