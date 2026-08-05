@@ -154,7 +154,7 @@ export const getServiceDetail = createServerFn({ method: "GET" })
 
     const [cat, groups, stock] = await Promise.all([
       supabase.from("categories").select("slug,name").eq("id", service.category_id).maybeSingle(),
-      supabase.from("groups").select("id,slug,name,kind,phone,parent_group"),
+      supabase.from("groups").select("id,slug,name,kind,phone,parent_group,notes"),
       supabase
         .from("stock_items")
         .select("id,group_id,product_type,months,price,detail,available")
@@ -169,6 +169,7 @@ export const getServiceDetail = createServerFn({ method: "GET" })
         kind: string;
         phone: string | null;
         parent_group: string | null;
+        notes: string | null;
       }>).map((g) => [g.id, g]),
     );
 
@@ -197,9 +198,11 @@ export const getServiceDetail = createServerFn({ method: "GET" })
             kind: g.kind,
             phone: g.phone,
             parentGroup: g.parent_group,
+            variant: g.notes,
           },
         };
       })
+
       .filter((o): o is StockOffer => o !== null);
 
     return {
