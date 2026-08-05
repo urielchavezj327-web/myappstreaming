@@ -196,7 +196,9 @@ export const getServiceDetail = createServerFn({ method: "GET" })
             slug: g.slug,
             name: g.name,
             kind: g.kind,
-            phone: g.phone,
+            // Regla permanente: el teléfono solo existe para venta libre.
+            phone: g.kind === "venta_libre" ? g.phone : null,
+
             parentGroup: g.parent_group,
             variant: g.notes,
           },
