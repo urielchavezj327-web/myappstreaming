@@ -70,11 +70,12 @@ export const getCatalog = createServerFn({ method: "GET" }).handler(async () => 
   }>) {
     const cur = agg.get(row.service_id) ?? { offers: 0, min: null };
     cur.offers += 1;
-    if (row.available && row.price !== null) {
+    if (row.price !== null) {
       cur.min = cur.min === null ? Number(row.price) : Math.min(cur.min, Number(row.price));
     }
     agg.set(row.service_id, cur);
   }
+
 
   const byCategory = new Map<string, CatalogService[]>();
   for (const s of (services.data ?? []) as Array<{
