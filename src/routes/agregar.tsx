@@ -495,25 +495,48 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
         </div>
       </form>
 
-      <RecentOffers offers={recent} onChanged={refresh} />
+      <RecentOffers
+        offers={recent}
+        onChanged={refresh}
+        query={offerQuery}
+        onQuery={setOfferQuery}
+      />
     </div>
   );
 }
 
-function RecentOffers({ offers, onChanged }: { offers: AdminOffer[]; onChanged: () => void }) {
+function RecentOffers({
+  offers,
+  onChanged,
+  query,
+  onQuery,
+}: {
+  offers: AdminOffer[];
+  onChanged: () => void;
+  query: string;
+  onQuery: (v: string) => void;
+}) {
   const update = useServerFn(updateOffer);
   const remove = useServerFn(deleteOffer);
   const [editing, setEditing] = useState<string | null>(null);
   const [price, setPrice] = useState("");
   const [available, setAvailable] = useState(true);
 
-  if (offers.length === 0) return null;
-
   return (
     <section>
       <h2 className="border-b border-border pb-3 text-base font-semibold tracking-tight">
-        Últimas ofertas cargadas
+        Buscar y editar ofertas
       </h2>
+      <input
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+        placeholder="Busca por servicio o vendedor…"
+        className={`${inputCls} mt-4`}
+      />
+      {offers.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">Sin ofertas para esa búsqueda.</p>
+      ) : null}
+
       <ul className="mt-4 overflow-hidden rounded-2xl border border-border">
         {offers.map((o) => (
           <li key={o.id} className="border-b border-border bg-surface px-4 py-3 last:border-b-0">
