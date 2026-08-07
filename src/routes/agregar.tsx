@@ -7,14 +7,15 @@ import {
   deleteOffer,
   getAdminOptions,
   getAdminState,
-  listRecentOffers,
   lockAdmin,
   saveStock,
+  searchAdminOffers,
   unlockAdmin,
   updateOffer,
   type AdminOffer,
   type AdminOptions,
 } from "@/lib/admin.functions";
+
 import { PRODUCT_LABELS, durationLabel, formatPrice, productLabel } from "@/lib/format";
 
 export const Route = createFileRoute("/agregar")({
@@ -151,12 +152,13 @@ function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
 
 function AdminPanel({ onLock }: { onLock: () => void }) {
   const loadOptions = useServerFn(getAdminOptions);
-  const loadOffers = useServerFn(listRecentOffers);
+  const loadOffers = useServerFn(searchAdminOffers);
   const save = useServerFn(saveStock);
   const lock = useServerFn(lockAdmin);
 
   const [options, setOptions] = useState<AdminOptions | null>(null);
   const [recent, setRecent] = useState<AdminOffer[]>([]);
+  const [offerQuery, setOfferQuery] = useState("");
   const [sellerMode, setSellerMode] = useState<"existing" | "new">("existing");
   const [groupId, setGroupId] = useState("");
   const [name, setName] = useState("");
@@ -167,7 +169,10 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const refresh = () => loadOffers().then((r) => setRecent(r.offers)).catch(() => {});
+  const refresh = () =>
+    loadOffers({ data: { q: offerQuery } })
+      .then((r: { offers: AdminOffer[] }) => setRecent(r.offers))
+      .catch(() => {});
 
   useEffect(() => {
     loadOptions().then((o) => {
@@ -175,9 +180,19 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
       const firstCat = o.categories[0]?.id ?? "";
       setRows([emptyRow(firstCat)]);
     });
-    refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      loadOffers({ data: { q: offerQuery } })
+        .then((r: { offers: AdminOffer[] }) => setRecent(r.offers))
+        .catch(() => {});
+    }, 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerQuery]);
+
 
   const servicesByCat = useMemo(() => {
     const map = new Map<string, AdminOptions["services"]>();
@@ -480,25 +495,48 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
         </div>
       </form>
 
-      <RecentOffers offers={recent} onChanged={refresh} />
+      <RecentOffers
+        offers={recent}
+        onChanged={refresh}
+        query={offerQuery}
+        onQuery={setOfferQuery}
+      />
     </div>
   );
 }
 
-function RecentOffers({ offers, onChanged }: { offers: AdminOffer[]; onChanged: () => void }) {
+function RecentOffers({
+  offers,
+  onChanged,
+  query,
+  onQuery,
+}: {
+  offers: AdminOffer[];
+  onChanged: () => void;
+  query: string;
+  onQuery: (v: string) => void;
+}) {
   const update = useServerFn(updateOffer);
   const remove = useServerFn(deleteOffer);
   const [editing, setEditing] = useState<string | null>(null);
   const [price, setPrice] = useState("");
   const [available, setAvailable] = useState(true);
 
-  if (offers.length === 0) return null;
-
   return (
     <section>
       <h2 className="border-b border-border pb-3 text-base font-semibold tracking-tight">
-        Últimas ofertas cargadas
+        Buscar y editar ofertas
       </h2>
+      <input
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+        placeholder="Busca por servicio o vendedor…"
+        className={`${inputCls} mt-4`}
+      />
+      {offers.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">Sin ofertas para esa búsqueda.</p>
+      ) : null}
+
       <ul className="mt-4 overflow-hidden rounded-2xl border border-border">
         {offers.map((o) => (
           <li key={o.id} className="border-b border-border bg-surface px-4 py-3 last:border-b-0">

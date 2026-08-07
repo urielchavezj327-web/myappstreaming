@@ -173,19 +173,42 @@ export type AdminOffer = {
   available: boolean;
 };
 
-export const listRecentOffers = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ offers: AdminOffer[] }> => {
+export const searchAdminOffers = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ q: z.string().max(80) }).parse(input))
+  .handler(async ({ data }): Promise<{ offers: AdminOffer[] }> => {
     await requireUnlocked();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+
+    const term = data.q.trim();
+    let serviceIds: string[] = [];
+    let groupIds: string[] = [];
+
+    if (term.length >= 2) {
+      const [svc, grp] = await Promise.all([
+        supabaseAdmin.from("services").select("id").ilike("name", `%${term}%`).limit(20),
+        supabaseAdmin.from("groups").select("id").ilike("name", `%${term}%`).limit(20),
+      ]);
+      serviceIds = (svc.data ?? []).map((s) => s.id);
+      groupIds = (grp.data ?? []).map((g) => g.id);
+      if (serviceIds.length === 0 && groupIds.length === 0) return { offers: [] };
+    }
+
+    let query = supabaseAdmin
       .from("stock_items")
-      .select(
-        "id,product_type,months,price,detail,available,services(name),groups(name)",
-      )
+      .select("id,product_type,months,price,detail,available,services(name),groups(name)")
       .order("created_at", { ascending: false })
-      .limit(60);
+      .limit(80);
+
+    if (term.length >= 2) {
+      const filters: string[] = [];
+      if (serviceIds.length) filters.push(`service_id.in.(${serviceIds.join(",")})`);
+      if (groupIds.length) filters.push(`group_id.in.(${groupIds.join(",")})`);
+      query = query.or(filters.join(","));
+    }
+
+    const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    const offers = (data ?? []).map((row) => {
+    const offers = (rows ?? []).map((row) => {
       const r = row as unknown as {
         id: string;
         product_type: string;
@@ -208,8 +231,53 @@ export const listRecentOffers = createServerFn({ method: "GET" }).handler(
       };
     });
     return { offers };
-  },
-);
+  });
+
+export const updateSeller = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        name: z.string().trim().min(1).max(80),
+        phone: z.string().trim().max(40).nullable(),
+        parentGroup: z.string().trim().max(80).nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const current = await supabaseAdmin
+      .from("groups")
+      .select("kind")
+      .eq("id", data.id)
+      .maybeSingle();
+    const isFree = current.data?.kind === "venta_libre";
+    const { error } = await supabaseAdmin
+      .from("groups")
+      .update({
+        name: data.name,
+        // Regla permanente: el teléfono y el grupo solo aplican a venta libre.
+        phone: isFree ? (data.phone || null) : null,
+        parent_group: isFree ? (data.parentGroup || null) : null,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const deleteSeller = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const del = await supabaseAdmin.from("stock_items").delete().eq("group_id", data.id);
+    if (del.error) throw new Error(del.error.message);
+    const { error } = await supabaseAdmin.from("groups").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 
 export const updateOffer = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>

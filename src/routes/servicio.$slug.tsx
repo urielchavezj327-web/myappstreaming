@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 
 import { getServiceDetail, type StockOffer } from "@/lib/catalog.functions";
-import { durationLabel, durationRank, formatPrice, productLabel, whatsappLink } from "@/lib/format";
+import { OfferSection } from "@/components/offer-list";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 
 type Detail = {
@@ -36,6 +36,8 @@ export const Route = createFileRoute("/servicio/$slug")({
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary" },
       ],
     };
   },
@@ -60,8 +62,12 @@ function ServicePage() {
       <SiteHeader />
 
       <section className="border-b border-border" style={{ backgroundColor: `${accent}12` }}>
-        <div className="mx-auto max-w-6xl px-5 py-12">
-          <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-5 sm:py-12">
+          <Link
+            to="/"
+            search={{ cat: service.category, q: "" }}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
             ← Volver al catálogo
           </Link>
           <div className="mt-5 flex items-center gap-4">
@@ -71,13 +77,13 @@ function ServicePage() {
               aria-hidden
             />
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {service.categoryName}
               </p>
-              <h1 className="mt-1 text-3xl sm:text-4xl">{service.name}</h1>
+              <h1 className="mt-1 text-[1.9rem] sm:text-4xl">{service.name}</h1>
             </div>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="mt-4 text-[12px] text-muted-foreground">
             {offers.length} oferta{offers.length === 1 ? "" : "s"} · {internal.length} en grupos
             internos · {free.length} de venta libre
           </p>
@@ -85,7 +91,7 @@ function ServicePage() {
       </section>
 
       <main className="mx-auto max-w-6xl space-y-12 px-4 py-10 sm:px-5 sm:py-12">
-        <OfferSection title="Grupos donde estoy dentro" offers={internal} accent={accent} />
+        <OfferSection title="Mis Grupos" offers={internal} accent={accent} />
         <OfferSection
           title="Vendedores de Venta Libre"
           subtitle="Contacta directo al vendedor por WhatsApp"
@@ -95,169 +101,7 @@ function ServicePage() {
         />
       </main>
 
-
       <SiteFooter />
     </div>
   );
 }
-
-function OfferSection({
-  title,
-  subtitle,
-  offers,
-  accent,
-  freeMarket = false,
-}: {
-  title: string;
-  subtitle?: string;
-  offers: StockOffer[];
-  accent: string;
-  freeMarket?: boolean;
-}) {
-  if (offers.length === 0) return null;
-
-  const byType = new Map<string, StockOffer[]>();
-  for (const o of offers) {
-    const list = byType.get(o.productType) ?? [];
-    list.push(o);
-    byType.set(o.productType, list);
-  }
-
-  const typeOrder = [
-    "perfil",
-    "completa",
-    "individual",
-    "familiar",
-    "invitacion",
-    "lote",
-    "tramite",
-    "otro",
-  ];
-  const types = [...byType.keys()].sort(
-    (a, b) =>
-      (typeOrder.indexOf(a) === -1 ? 50 : typeOrder.indexOf(a)) -
-      (typeOrder.indexOf(b) === -1 ? 50 : typeOrder.indexOf(b)),
-  );
-
-  return (
-    <section>
-      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
-        <h2 className="text-xl">{title}</h2>
-        {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
-      </div>
-
-      <div className="mt-6 space-y-10">
-        {types.map((type) => {
-          const list = byType.get(type) ?? [];
-          const byDuration = new Map<number, StockOffer[]>();
-          for (const o of list) {
-            const rank = durationRank(o.months);
-            const arr = byDuration.get(rank) ?? [];
-            arr.push(o);
-            byDuration.set(rank, arr);
-          }
-          const durations = [...byDuration.keys()].sort((a, b) => a - b);
-
-          return (
-            <div key={type}>
-              <h3 className="text-sm font-semibold" style={{ color: accent }}>
-                {productLabel(type)}
-              </h3>
-              <div className="mt-4 space-y-6">
-                {durations.map((rank) => {
-                  const rows = (byDuration.get(rank) ?? []).slice().sort((a, b) => {
-                    if (a.price === null) return 1;
-                    if (b.price === null) return -1;
-                    return a.price - b.price;
-                  });
-                  return (
-                    <div key={rank}>
-                      <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                        {durationLabel(rows[0]?.months ?? null)}
-                      </p>
-                      <ul className="overflow-hidden rounded-xl border border-border">
-                        {rows.map((o, i) => (
-                          <OfferRow
-                            key={o.id}
-                            offer={o}
-                            best={i === 0 && o.price !== null}
-                            freeMarket={freeMarket}
-                          />
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function OfferRow({
-  offer,
-  best,
-  freeMarket,
-}: {
-  offer: StockOffer;
-  best: boolean;
-  freeMarket: boolean;
-}) {
-  // Regla permanente: el grupo, el teléfono y el aviso "Sin número publicado"
-  // solo se muestran en venta libre. En grupos internos nunca aplican.
-  const meta: string[] = [];
-  if (freeMarket) {
-    if (offer.group.parentGroup) meta.push(offer.group.parentGroup);
-    meta.push(offer.group.phone ?? "Sin número publicado");
-    if (offer.group.variant) meta.push(offer.group.variant);
-  } else if (offer.group.variant) {
-    meta.push(offer.group.variant);
-  }
-  if (offer.detail) meta.push(offer.detail);
-
-  return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-surface px-4 py-3 transition-colors last:border-b-0 hover:bg-surface-2">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[14px] font-medium tracking-tight">{offer.group.name}</span>
-          {best ? (
-            <span className="rounded-full bg-success/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-success">
-              Mejor precio
-            </span>
-          ) : null}
-          {!offer.available ? (
-            <span className="rounded-full border border-border-strong px-2 py-0.5 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-              Agotado
-            </span>
-          ) : null}
-        </div>
-        {meta.length > 0 ? (
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            {meta.join(" · ")}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex shrink-0 items-center gap-3">
-        <span className="text-[17px] font-semibold tabular-nums">{formatPrice(offer.price)}</span>
-        {freeMarket && offer.group.phone ? (
-          <a
-            href={whatsappLink(
-              offer.group.phone,
-              `Hola, vi tu oferta de ${productLabel(offer.productType)} (${durationLabel(offer.months)}). ¿Sigue disponible?`,
-            )}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
-          >
-            WhatsApp
-          </a>
-        ) : null}
-      </div>
-    </li>
-  );
-}
-
