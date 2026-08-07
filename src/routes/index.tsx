@@ -1,15 +1,26 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   getCatalog,
+  searchStock,
   type CatalogCategory,
   type CatalogService,
+  type SearchSellerResult,
+  type SearchServiceResult,
 } from "@/lib/catalog.functions";
 import { formatPrice } from "@/lib/format";
+import { OfferGroups } from "@/components/offer-list";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 
+type IndexSearch = { cat: string; q: string };
+
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): IndexSearch => ({
+    cat: typeof search["cat"] === "string" ? search["cat"] : "",
+    q: typeof search["q"] === "string" ? search["q"].slice(0, 80) : "",
+  }),
   head: () => ({
     meta: [
       { title: "Comparador de Stock — Precios de streaming y trámites" },
@@ -38,8 +49,49 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { categories } = Route.useLoaderData() as { categories: CatalogCategory[] };
-  const [query, setQuery] = useState("");
-  const [active, setActive] = useState<string>(categories[0]?.slug ?? "streaming");
+  const { cat, q } = Route.useSearch();
+  const navigate = useNavigate({ from: "/" });
+  const runSearch = useServerFn(searchStock);
+
+  const [draft, setDraft] = useState(q);
+  const [results, setResults] = useState<{
+    services: SearchServiceResult[];
+    sellers: SearchSellerResult[];
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => setDraft(q), [q]);
+
+  const searching = q.trim().length > 1;
+
+  useEffect(() => {
+    if (!searching) {
+      setResults(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    runSearch({ data: { q } })
+      .then((r) => {
+        if (!cancelled) setResults(r);
+      })
+      .catch(() => {
+        if (!cancelled) setResults({ services: [], sellers: [] });
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [q, searching, runSearch]);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (draft !== q) navigate({ search: (prev) => ({ ...prev, q: draft }), replace: true });
+    }, 320);
+    return () => clearTimeout(id);
+  }, [draft, q, navigate]);
 
   const totals = useMemo(() => {
     const services = categories.flatMap((c) => c.services);
@@ -49,22 +101,7 @@ function Index() {
     };
   }, [categories]);
 
-  const searching = query.trim().length > 1;
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!searching) return [];
-    return categories
-      .flatMap((c) => c.services)
-      .filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.categoryName.toLowerCase().includes(q) ||
-          (s.subcategoryName ?? "").toLowerCase().includes(q),
-      )
-      .slice(0, 40);
-  }, [categories, query, searching]);
-
-  const current = categories.find((c) => c.slug === active) ?? categories[0];
+  const current = categories.find((c) => c.slug === cat) ?? categories[0];
 
   return (
     <div className="min-h-screen">
@@ -92,9 +129,9 @@ function Index() {
                 ⌕
               </span>
               <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar Netflix, Spotify, acta de nacimiento…"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Buscar ViX, Spotify, acta, o un número de vendedor…"
                 className="h-12 w-full rounded-2xl border border-input bg-surface/80 pl-10 pr-4 text-sm outline-none ring-0 transition-all placeholder:text-muted-foreground focus:border-border-strong focus:bg-surface-2"
               />
             </div>
@@ -109,16 +146,7 @@ function Index() {
 
       <main className="mx-auto max-w-6xl px-4 py-9 sm:px-5 sm:py-12">
         {searching ? (
-          <>
-            <h2 className="text-sm font-semibold text-muted-foreground">
-              {results.length} resultado{results.length === 1 ? "" : "s"} para “{query}”
-            </h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {results.map((s) => (
-                <ServiceCard key={s.slug} service={s} showCategory />
-              ))}
-            </div>
-          </>
+          <SearchResults results={results} loading={loading} query={q} />
         ) : (
           <>
             <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0">
@@ -128,7 +156,9 @@ function Index() {
                   return (
                     <button
                       key={c.slug}
-                      onClick={() => setActive(c.slug)}
+                      onClick={() =>
+                        navigate({ search: (prev) => ({ ...prev, cat: c.slug }), replace: true })
+                      }
                       className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] transition-all duration-200 active:scale-[0.97] ${
                         isActive
                           ? "border-transparent bg-primary text-primary-foreground shadow-[0_8px_24px_-12px_rgba(255,255,255,0.6)]"
@@ -155,6 +185,77 @@ function Index() {
       </main>
 
       <SiteFooter />
+    </div>
+  );
+}
+
+function SearchResults({
+  results,
+  loading,
+  query,
+}: {
+  results: { services: SearchServiceResult[]; sellers: SearchSellerResult[] } | null;
+  loading: boolean;
+  query: string;
+}) {
+  if (loading && !results) {
+    return <p className="text-sm text-muted-foreground">Buscando “{query}”…</p>;
+  }
+  const services = results?.services ?? [];
+  const sellers = results?.sellers ?? [];
+  if (services.length === 0 && sellers.length === 0) {
+    return <p className="text-sm text-muted-foreground">Sin resultados para “{query}”.</p>;
+  }
+
+  return (
+    <div className="space-y-12">
+      {services.map((s) => (
+        <section key={s.slug}>
+          <div className="flex items-baseline justify-between gap-3 border-b border-border pb-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {s.categoryName}
+              </p>
+              <h2 className="mt-0.5 truncate text-lg sm:text-xl">{s.name}</h2>
+            </div>
+            <Link
+              to="/servicio/$slug"
+              params={{ slug: s.slug }}
+              className="shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              Ver ficha →
+            </Link>
+          </div>
+          <div className="mt-5">
+            <OfferGroups offers={s.offers} accent={s.color ?? "#8b8b8b"} />
+          </div>
+        </section>
+      ))}
+
+      {sellers.map((v) => (
+        <section key={v.slug}>
+          <div className="border-b border-border pb-3">
+            {v.parentGroup ? (
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {v.parentGroup}
+              </p>
+            ) : null}
+            <h2 className="mt-0.5 text-lg sm:text-xl">{v.name}</h2>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {v.kind === "venta_libre" ? (v.phone ?? "Sin número publicado") : "Grupo interno"} ·{" "}
+              {v.offers.length} ofertas
+            </p>
+          </div>
+          <div className="mt-5">
+            <OfferGroups
+              offers={v.offers}
+              accent="#8b8b8b"
+              freeMarket={v.kind === "venta_libre"}
+              showService
+            />
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
@@ -188,13 +289,7 @@ function CategoryBlock({ services }: { services: CatalogService[] }) {
   );
 }
 
-function ServiceCard({
-  service,
-  showCategory = false,
-}: {
-  service: CatalogService;
-  showCategory?: boolean;
-}) {
+function ServiceCard({ service }: { service: CatalogService }) {
   const accent = service.color ?? "#8b8b8b";
   return (
     <Link
@@ -211,7 +306,6 @@ function ServiceCard({
         <div className="min-w-0">
           <h3 className="truncate text-[15px] font-semibold tracking-tight">{service.name}</h3>
           <p className="mt-1 truncate text-[11px] text-muted-foreground">
-            {showCategory ? `${service.categoryName} · ` : ""}
             {service.offers} oferta{service.offers === 1 ? "" : "s"}
           </p>
         </div>
