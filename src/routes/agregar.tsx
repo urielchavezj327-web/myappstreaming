@@ -7,14 +7,15 @@ import {
   deleteOffer,
   getAdminOptions,
   getAdminState,
-  listRecentOffers,
   lockAdmin,
   saveStock,
+  searchAdminOffers,
   unlockAdmin,
   updateOffer,
   type AdminOffer,
   type AdminOptions,
 } from "@/lib/admin.functions";
+
 import { PRODUCT_LABELS, durationLabel, formatPrice, productLabel } from "@/lib/format";
 
 export const Route = createFileRoute("/agregar")({
