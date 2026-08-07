@@ -88,7 +88,7 @@ function Index() {
 
   useEffect(() => {
     const id = setTimeout(() => {
-      if (draft !== q) navigate({ search: (prev) => ({ ...prev, q: draft }), replace: true });
+      if (draft !== q) navigate({ search: (prev: IndexSearch) => ({ ...prev, q: draft }), replace: true });
     }, 320);
     return () => clearTimeout(id);
   }, [draft, q, navigate]);
@@ -157,7 +157,7 @@ function Index() {
                     <button
                       key={c.slug}
                       onClick={() =>
-                        navigate({ search: (prev) => ({ ...prev, cat: c.slug }), replace: true })
+                        navigate({ search: (prev: IndexSearch) => ({ ...prev, cat: c.slug }), replace: true })
                       }
                       className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] transition-all duration-200 active:scale-[0.97] ${
                         isActive
