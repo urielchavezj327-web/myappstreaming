@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 
+import { pageAll } from "@/lib/catalog.functions";
+
 export type GroupRow = {
+  id: string;
   slug: string;
   name: string;
   kind: string;
@@ -28,27 +31,34 @@ export const getGroups = createServerFn({ method: "GET" }).handler(async () => {
   });
 
   const [groups, stock] = await Promise.all([
-    supabase
-      .from("groups")
-      .select("id,slug,name,kind,phone,parent_group,notes,sort_order")
-      .order("sort_order"),
-    supabase.from("stock_items").select("group_id"),
+    pageAll<{
+      id: string;
+      slug: string;
+      name: string;
+      kind: string;
+      phone: string | null;
+      parent_group: string | null;
+      notes: string | null;
+    }>((from, to) =>
+      supabase
+        .from("groups")
+        .select("id,slug,name,kind,phone,parent_group,notes,sort_order")
+        .order("sort_order")
+        .range(from, to),
+    ),
+    // PostgREST corta en 1000 filas: hay que paginar para contar todas las ofertas.
+    pageAll<{ group_id: string }>((from, to) =>
+      supabase.from("stock_items").select("group_id").range(from, to),
+    ),
   ]);
 
   const counts = new Map<string, number>();
-  for (const row of (stock.data ?? []) as Array<{ group_id: string }>) {
+  for (const row of stock) {
     counts.set(row.group_id, (counts.get(row.group_id) ?? 0) + 1);
   }
 
-  const rows: GroupRow[] = ((groups.data ?? []) as Array<{
-    id: string;
-    slug: string;
-    name: string;
-    kind: string;
-    phone: string | null;
-    parent_group: string | null;
-    notes: string | null;
-  }>).map((g) => ({
+  const rows: GroupRow[] = groups.map((g) => ({
+    id: g.id,
     slug: g.slug,
     name: g.name,
     kind: g.kind,
@@ -61,4 +71,3 @@ export const getGroups = createServerFn({ method: "GET" }).handler(async () => {
 
   return { groups: rows };
 });
-
