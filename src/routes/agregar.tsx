@@ -152,12 +152,13 @@ function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
 
 function AdminPanel({ onLock }: { onLock: () => void }) {
   const loadOptions = useServerFn(getAdminOptions);
-  const loadOffers = useServerFn(listRecentOffers);
+  const loadOffers = useServerFn(searchAdminOffers);
   const save = useServerFn(saveStock);
   const lock = useServerFn(lockAdmin);
 
   const [options, setOptions] = useState<AdminOptions | null>(null);
   const [recent, setRecent] = useState<AdminOffer[]>([]);
+  const [offerQuery, setOfferQuery] = useState("");
   const [sellerMode, setSellerMode] = useState<"existing" | "new">("existing");
   const [groupId, setGroupId] = useState("");
   const [name, setName] = useState("");
@@ -168,7 +169,10 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const refresh = () => loadOffers().then((r) => setRecent(r.offers)).catch(() => {});
+  const refresh = () =>
+    loadOffers({ data: { q: offerQuery } })
+      .then((r: { offers: AdminOffer[] }) => setRecent(r.offers))
+      .catch(() => {});
 
   useEffect(() => {
     loadOptions().then((o) => {
@@ -176,9 +180,19 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
       const firstCat = o.categories[0]?.id ?? "";
       setRows([emptyRow(firstCat)]);
     });
-    refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      loadOffers({ data: { q: offerQuery } })
+        .then((r: { offers: AdminOffer[] }) => setRecent(r.offers))
+        .catch(() => {});
+    }, 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerQuery]);
+
 
   const servicesByCat = useMemo(() => {
     const map = new Map<string, AdminOptions["services"]>();
