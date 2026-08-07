@@ -43,7 +43,7 @@ function GroupsPage() {
             {internal.length} grupos internos y {free.length} vendedores de venta libre.
           </p>
         </div>
-        <GroupList title="Grupos donde estoy dentro" rows={internal} />
+        <GroupList title="Mis Grupos" rows={internal} />
         <GroupList title="Vendedores de Venta Libre" rows={free} contact />
       </main>
       <SiteFooter />
