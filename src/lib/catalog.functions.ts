@@ -55,6 +55,11 @@ export type CatalogCategory = {
 
 type StockAggRow = { service_id: string; price: number | null };
 
+// Las subcategorías de "Otros" se muestran como UNA sola tarjeta agrupada
+// (ejemplo: Páginas para Adultos), con su propia ficha de detalle.
+const BUNDLED_CATEGORIES = new Set(["otros"]);
+export const BUNDLE_PREFIX = "col-";
+
 export const getCatalog = createServerFn({ method: "GET" }).handler(async () => {
   const supabase = publicClient();
   const [cats, subs, services, stock] = await Promise.all([
@@ -86,6 +91,8 @@ export const getCatalog = createServerFn({ method: "GET" }).handler(async () => 
   }
 
   const byCategory = new Map<string, CatalogService[]>();
+  const bundles = new Map<string, CatalogService>();
+
   for (const s of (services.data ?? []) as Array<{
     id: string;
     slug: string;
@@ -98,6 +105,38 @@ export const getCatalog = createServerFn({ method: "GET" }).handler(async () => 
     if (!cat) continue;
     const sub = s.subcategory_id ? subById.get(s.subcategory_id) : undefined;
     const stats = agg.get(s.id) ?? { offers: 0, min: null };
+
+    if (sub && BUNDLED_CATEGORIES.has(cat.slug)) {
+      const key = `${cat.slug}:${sub.slug}`;
+      const existing = bundles.get(key);
+      if (existing) {
+        existing.offers += stats.offers;
+        existing.minPrice =
+          stats.min === null
+            ? existing.minPrice
+            : existing.minPrice === null
+              ? stats.min
+              : Math.min(existing.minPrice, stats.min);
+      } else {
+        const card: CatalogService = {
+          slug: `${BUNDLE_PREFIX}${sub.slug}`,
+          name: sub.name,
+          color: s.color,
+          category: cat.slug,
+          categoryName: cat.name,
+          subcategory: null,
+          subcategoryName: null,
+          offers: stats.offers,
+          minPrice: stats.min,
+        };
+        bundles.set(key, card);
+        const list = byCategory.get(cat.slug) ?? [];
+        list.push(card);
+        byCategory.set(cat.slug, list);
+      }
+      continue;
+    }
+
     const list = byCategory.get(cat.slug) ?? [];
     list.push({
       slug: s.slug,
@@ -130,6 +169,11 @@ export type StockOffer = {
   detail: string | null;
   available: boolean;
   serviceName?: string;
+  serviceSlug?: string;
+  serviceOrder?: number;
+  categorySlug?: string;
+  categoryName?: string;
+  categoryOrder?: number;
   group: {
     slug: string;
     name: string;
@@ -186,23 +230,78 @@ export const getServiceDetail = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ slug: z.string() }).parse(input))
   .handler(async ({ data }) => {
     const supabase = publicClient();
-    const svc = await supabase
-      .from("services")
-      .select("id,slug,name,color,category_id,subcategory_id")
-      .eq("slug", data.slug)
-      .maybeSingle();
+    const isBundle = data.slug.startsWith(BUNDLE_PREFIX);
 
-    if (!svc.data) return null;
-    const service = svc.data as {
-      id: string;
+    let serviceIds: string[] = [];
+    let serviceNameById = new Map<string, string>();
+    let header: {
       slug: string;
       name: string;
       color: string | null;
-      category_id: string;
+      category: string;
+      categoryName: string;
     };
 
-    const [cat, groups, stock] = await Promise.all([
-      supabase.from("categories").select("slug,name").eq("id", service.category_id).maybeSingle(),
+    if (isBundle) {
+      const subSlug = data.slug.slice(BUNDLE_PREFIX.length);
+      const sub = await supabase
+        .from("subcategories")
+        .select("id,slug,name,category_id")
+        .eq("slug", subSlug)
+        .maybeSingle();
+      if (!sub.data) return null;
+      const subRow = sub.data as { id: string; name: string; category_id: string };
+      const [cat, svcs] = await Promise.all([
+        supabase.from("categories").select("slug,name").eq("id", subRow.category_id).maybeSingle(),
+        supabase
+          .from("services")
+          .select("id,name,color,sort_order")
+          .eq("subcategory_id", subRow.id)
+          .order("sort_order"),
+      ]);
+      const rows = (svcs.data ?? []) as Array<{ id: string; name: string; color: string | null }>;
+      serviceIds = rows.map((r) => r.id);
+      serviceNameById = new Map(rows.map((r) => [r.id, r.name]));
+      header = {
+        slug: data.slug,
+        name: subRow.name,
+        color: rows[0]?.color ?? null,
+        category: (cat.data as { slug: string } | null)?.slug ?? "otros",
+        categoryName: (cat.data as { name: string } | null)?.name ?? "Otros",
+      };
+    } else {
+      const svc = await supabase
+        .from("services")
+        .select("id,slug,name,color,category_id")
+        .eq("slug", data.slug)
+        .maybeSingle();
+      if (!svc.data) return null;
+      const service = svc.data as {
+        id: string;
+        slug: string;
+        name: string;
+        color: string | null;
+        category_id: string;
+      };
+      const cat = await supabase
+        .from("categories")
+        .select("slug,name")
+        .eq("id", service.category_id)
+        .maybeSingle();
+      serviceIds = [service.id];
+      serviceNameById = new Map([[service.id, service.name]]);
+      header = {
+        slug: service.slug,
+        name: service.name,
+        color: service.color,
+        category: (cat.data as { slug: string } | null)?.slug ?? "otros",
+        categoryName: (cat.data as { name: string } | null)?.name ?? "Otros",
+      };
+    }
+
+    if (serviceIds.length === 0) return { service: header, offers: [], bundle: isBundle };
+
+    const [groups, stock] = await Promise.all([
       pageAll<GroupRowDb>((from, to) =>
         supabase.from("groups").select("id,slug,name,kind,phone,parent_group,notes").range(from, to),
       ),
@@ -210,7 +309,7 @@ export const getServiceDetail = createServerFn({ method: "GET" })
         supabase
           .from("stock_items")
           .select("id,group_id,service_id,product_type,months,price,detail,available")
-          .eq("service_id", service.id)
+          .in("service_id", serviceIds)
           .range(from, to),
       ),
     ]);
@@ -219,20 +318,12 @@ export const getServiceDetail = createServerFn({ method: "GET" })
     const offers: StockOffer[] = stock
       .map((row) => {
         const g = groupById.get(row.group_id);
-        return g ? toOffer(row, g) : null;
+        if (!g) return null;
+        return toOffer(row, g, isBundle ? serviceNameById.get(row.service_id) : undefined);
       })
       .filter((o): o is StockOffer => o !== null);
 
-    return {
-      service: {
-        slug: service.slug,
-        name: service.name,
-        color: service.color,
-        category: (cat.data as { slug: string; name: string } | null)?.slug ?? "otros",
-        categoryName: (cat.data as { slug: string; name: string } | null)?.name ?? "Otros",
-      },
-      offers,
-    };
+    return { service: header, offers, bundle: isBundle };
   });
 
 export type SearchServiceResult = {
@@ -261,19 +352,45 @@ const normalize = (value: string) =>
 
 const digitsOf = (value: string) => value.replace(/\D/g, "");
 
+const PRODUCT_TEXT: Record<string, string> = {
+  perfil: "perfil",
+  completa: "cuenta completa full",
+  individual: "individual",
+  familiar: "familiar",
+  invitacion: "invitacion",
+  lote: "lote",
+  tramite: "tramite",
+  panel: "panel",
+  otro: "servicio",
+};
+
+function durationText(months: number | null) {
+  if (months === null) return "unico";
+  if (months === 0) return "permanente";
+  if (months === 1) return "1 mes mensual";
+  if (months === 12) return "12 anual 1 ano";
+  if (months === 24) return "24 2 anos";
+  return `${months} meses`;
+}
+
 export const searchStock = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ q: z.string().max(80) }).parse(input))
   .handler(
     async ({
       data,
     }): Promise<{ services: SearchServiceResult[]; sellers: SearchSellerResult[] }> => {
-      const q = normalize(data.q);
-      if (q.length < 2) return { services: [], sellers: [] };
-      const supabase = publicClient();
+      const raw = normalize(data.q);
+      if (raw.length < 2) return { services: [], sellers: [] };
+      const tokens = raw.split(/\s+/).filter((t) => t.length > 0);
+      if (tokens.length === 0) return { services: [], sellers: [] };
 
-      const [catsRes, servicesRes, groups] = await Promise.all([
-        supabase.from("categories").select("id,name"),
-        supabase.from("services").select("id,slug,name,color,category_id").order("sort_order"),
+      const supabase = publicClient();
+      const [catsRes, servicesRes, groups, stock] = await Promise.all([
+        supabase.from("categories").select("id,slug,name,sort_order").order("sort_order"),
+        supabase
+          .from("services")
+          .select("id,slug,name,color,sort_order,category_id")
+          .order("sort_order"),
         pageAll<GroupRowDb>((from, to) =>
           supabase
             .from("groups")
@@ -281,81 +398,130 @@ export const searchStock = createServerFn({ method: "GET" })
             .order("sort_order")
             .range(from, to),
         ),
+        pageAll<StockRowDb>((from, to) =>
+          supabase
+            .from("stock_items")
+            .select("id,group_id,service_id,product_type,months,price,detail,available")
+            .range(from, to),
+        ),
       ]);
 
-      const catById = new Map(
-        ((catsRes.data ?? []) as Array<{ id: string; name: string }>).map((c) => [c.id, c.name]),
-      );
+      const catRows = (catsRes.data ?? []) as Array<{
+        id: string;
+        slug: string;
+        name: string;
+        sort_order: number;
+      }>;
+      const catById = new Map(catRows.map((c) => [c.id, c]));
       const allServices = (servicesRes.data ?? []) as Array<{
         id: string;
         slug: string;
         name: string;
         color: string | null;
+        sort_order: number;
         category_id: string;
       }>;
-
-      const qDigits = digitsOf(data.q);
-      const matchedServices = allServices.filter((s) => normalize(s.name).includes(q));
-      const matchedGroups = groups.filter(
-        (g) =>
-          normalize(g.name).includes(q) ||
-          normalize(g.parent_group ?? "").includes(q) ||
-          (qDigits.length >= 6 && digitsOf(g.phone ?? "").includes(qDigits)),
-      );
-
-      const serviceIds = matchedServices.map((s) => s.id);
-      const groupIds = matchedGroups.map((g) => g.id);
-      if (serviceIds.length === 0 && groupIds.length === 0) return { services: [], sellers: [] };
-
-      const [byService, byGroup] = await Promise.all([
-        serviceIds.length
-          ? pageAll<StockRowDb>((from, to) =>
-              supabase
-                .from("stock_items")
-                .select("id,group_id,service_id,product_type,months,price,detail,available")
-                .in("service_id", serviceIds.slice(0, 20))
-                .range(from, to),
-            )
-          : Promise.resolve([]),
-        groupIds.length
-          ? pageAll<StockRowDb>((from, to) =>
-              supabase
-                .from("stock_items")
-                .select("id,group_id,service_id,product_type,months,price,detail,available")
-                .in("group_id", groupIds.slice(0, 20))
-                .range(from, to),
-            )
-          : Promise.resolve([]),
-      ]);
-
-      const groupById = new Map(groups.map((g) => [g.id, g]));
       const serviceById = new Map(allServices.map((s) => [s.id, s]));
+      const groupById = new Map(groups.map((g) => [g.id, g]));
 
-      const services: SearchServiceResult[] = matchedServices.slice(0, 20).map((s) => ({
-        slug: s.slug,
-        name: s.name,
-        color: s.color,
-        categoryName: catById.get(s.category_id) ?? "",
-        offers: byService
-          .filter((r) => r.service_id === s.id)
-          .map((r) => {
-            const g = groupById.get(r.group_id);
-            return g ? toOffer(r, g) : null;
-          })
-          .filter((o): o is StockOffer => o !== null),
-      }));
+      // Cada palabra se evalúa por separado: servicio + vendedor/grupo +
+      // duración + tipo + descripción deben cumplirse todas a la vez.
+      const matchesGroupToken = (g: GroupRowDb, token: string) => {
+        const tokenDigits = digitsOf(token);
+        if (tokenDigits.length >= 4 && digitsOf(g.phone ?? "").includes(tokenDigits)) return true;
+        return (
+          normalize(g.name).includes(token) || normalize(g.parent_group ?? "").includes(token)
+        );
+      };
 
-      const sellers: SearchSellerResult[] = matchedGroups.slice(0, 20).map((g) => ({
-        slug: g.slug,
-        name: g.name,
-        kind: g.kind,
-        phone: g.kind === "venta_libre" ? g.phone : null,
-        parentGroup: g.parent_group,
-        offers: byGroup
-          .filter((r) => r.group_id === g.id)
-          .map((r) => toOffer(r, g, serviceById.get(r.service_id)?.name ?? "—")),
-      }));
+      const groupTokenHit = tokens.some((t) => groups.some((g) => matchesGroupToken(g, t)));
 
-      return { services, sellers };
+      const matched: StockOffer[] = [];
+      for (const row of stock) {
+        const g = groupById.get(row.group_id);
+        const s = serviceById.get(row.service_id);
+        if (!g || !s) continue;
+        const cat = catById.get(s.category_id);
+        const haystack = normalize(
+          [
+            s.name,
+            g.name,
+            g.parent_group ?? "",
+            g.notes ?? "",
+            row.detail ?? "",
+            PRODUCT_TEXT[row.product_type] ?? row.product_type,
+            durationText(row.months),
+            cat?.name ?? "",
+          ].join(" "),
+        );
+        const ok = tokens.every(
+          (t) => haystack.includes(t) || matchesGroupToken(g, t),
+        );
+        if (!ok) continue;
+        const offer = toOffer(row, g, s.name);
+        offer.serviceSlug = s.slug;
+        offer.serviceOrder = s.sort_order;
+        offer.categorySlug = cat?.slug ?? "otros";
+        offer.categoryName = cat?.name ?? "Otros";
+        offer.categoryOrder = cat?.sort_order ?? 99;
+        matched.push(offer);
+      }
+
+      if (matched.length === 0) return { services: [], sellers: [] };
+
+      if (groupTokenHit) {
+        // Resultados por vendedor, ordenados por categoría y por la posición
+        // fija del servicio dentro de esa categoría.
+        const bySeller = new Map<string, StockOffer[]>();
+        for (const o of matched) {
+          const list = bySeller.get(o.group.slug) ?? [];
+          list.push(o);
+          bySeller.set(o.group.slug, list);
+        }
+        const sellers: SearchSellerResult[] = [...bySeller.entries()]
+          .slice(0, 20)
+          .map(([slug, offers]) => {
+            const g = offers[0]!.group;
+            return {
+              slug,
+              name: g.name,
+              kind: g.kind,
+              phone: g.phone,
+              parentGroup: g.parentGroup,
+              offers,
+            };
+          });
+        return { services: [], sellers };
+      }
+
+      const byService = new Map<string, StockOffer[]>();
+      for (const o of matched) {
+        const key = o.serviceSlug ?? "";
+        const list = byService.get(key) ?? [];
+        list.push(o);
+        byService.set(key, list);
+      }
+      const services: SearchServiceResult[] = [...byService.entries()]
+        .sort((a, b) => {
+          const sa = a[1][0]!;
+          const sb = b[1][0]!;
+          return (
+            (sa.categoryOrder ?? 99) - (sb.categoryOrder ?? 99) ||
+            (sa.serviceOrder ?? 99) - (sb.serviceOrder ?? 99)
+          );
+        })
+        .slice(0, 20)
+        .map(([slug, offers]) => {
+          const svc = allServices.find((s) => s.slug === slug);
+          return {
+            slug,
+            name: offers[0]!.serviceName ?? slug,
+            color: svc?.color ?? null,
+            categoryName: offers[0]!.categoryName ?? "",
+            offers,
+          };
+        });
+
+      return { services, sellers: [] };
     },
   );
