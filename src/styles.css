@@ -5,24 +5,25 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Comparador de Stock — sistema de diseño
- * Paleta neutra sobre negro carbón. Los acentos de marca vienen de la base de
- * datos (columna services.color) y se aplican como estilos inline puntuales.
+ * Uri — sistema de diseño
+ * Grafito neutro, superficies de vidrio, acentos de marca desde la base de
+ * datos (services.color) aplicados como estilos inline puntuales.
  */
 
 @theme inline {
   --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-2xl: calc(var(--radius) + 10px);
+  --radius-3xl: calc(var(--radius) + 18px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -33,6 +34,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -46,31 +48,38 @@
 }
 
 :root {
-  --radius: 0.875rem;
-  --background: oklch(0.14 0.004 285);
-  --foreground: oklch(0.97 0.002 285);
-  --surface: oklch(0.18 0.004 285);
-  --surface-2: oklch(0.22 0.005 285);
-  --card: oklch(0.18 0.004 285);
-  --card-foreground: oklch(0.97 0.002 285);
-  --popover: oklch(0.18 0.004 285);
-  --popover-foreground: oklch(0.97 0.002 285);
-  --primary: oklch(0.97 0.002 285);
-  --primary-foreground: oklch(0.16 0.004 285);
+  --radius: 1rem;
+  --background: oklch(0.125 0.003 285);
+  --foreground: oklch(0.98 0.002 285);
+  --surface: oklch(0.175 0.004 285);
+  --surface-2: oklch(0.215 0.005 285);
+  --surface-3: oklch(0.26 0.005 285);
+  --card: oklch(0.175 0.004 285);
+  --card-foreground: oklch(0.98 0.002 285);
+  --popover: oklch(0.185 0.004 285);
+  --popover-foreground: oklch(0.98 0.002 285);
+  --primary: oklch(0.98 0.002 285);
+  --primary-foreground: oklch(0.15 0.004 285);
   --secondary: oklch(0.26 0.005 285);
-  --secondary-foreground: oklch(0.97 0.002 285);
+  --secondary-foreground: oklch(0.98 0.002 285);
   --muted: oklch(0.24 0.005 285);
-  --muted-foreground: oklch(0.68 0.006 285);
+  --muted-foreground: oklch(0.7 0.006 285);
+  --faint: oklch(0.56 0.006 285);
   --accent: oklch(0.28 0.006 285);
-  --accent-foreground: oklch(0.97 0.002 285);
-  --destructive: oklch(0.62 0.19 25);
+  --accent-foreground: oklch(0.98 0.002 285);
+  --destructive: oklch(0.64 0.19 25);
   --destructive-foreground: oklch(0.98 0.002 285);
-  --success: oklch(0.75 0.14 155);
+  --success: oklch(0.78 0.15 155);
   --success-foreground: oklch(0.16 0.004 285);
-  --border: oklch(1 0 0 / 9%);
-  --border-strong: oklch(1 0 0 / 18%);
-  --input: oklch(1 0 0 / 14%);
+  --border: oklch(1 0 0 / 8%);
+  --border-strong: oklch(1 0 0 / 16%);
+  --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.72 0.006 285);
+
+  --shadow-soft: 0 1px 0 0 oklch(1 0 0 / 6%) inset, 0 10px 30px -18px oklch(0 0 0 / 90%);
+  --shadow-lift:
+    0 1px 0 0 oklch(1 0 0 / 8%) inset, 0 24px 60px -28px oklch(0 0 0 / 95%),
+    0 4px 14px -8px oklch(0 0 0 / 70%);
 }
 
 @layer base {
@@ -80,6 +89,7 @@
 
   html {
     color-scheme: dark;
+    scroll-behavior: auto;
   }
 
   body {
@@ -87,6 +97,7 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   h1,
@@ -94,16 +105,110 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
+    font-weight: 600;
   }
+
+  ::selection {
+    background: oklch(1 0 0 / 16%);
+  }
+}
+
+/* Escala tipográfica */
+@utility t-display {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 5vw, 2.6rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+
+@utility t-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+@utility t-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+@utility t-meta {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+@utility glass {
+  background:
+    linear-gradient(180deg, oklch(1 0 0 / 5%), oklch(1 0 0 / 1.5%)),
+    var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+}
+
+@utility elev {
+  box-shadow: var(--shadow-lift);
+}
+
+@utility aurora {
+  background-image:
+    radial-gradient(60% 60% at 12% -12%, oklch(0.42 0.012 285 / 60%), transparent 62%),
+    radial-gradient(45% 45% at 92% 0%, oklch(0.34 0.01 285 / 55%), transparent 60%),
+    linear-gradient(to bottom, oklch(1 0 0 / 3.5%), transparent 45%);
 }
 
 @utility grid-bg {
   background-image:
-    radial-gradient(circle at 15% -10%, oklch(0.3 0.01 285 / 55%), transparent 55%),
+    radial-gradient(circle at 15% -10%, oklch(0.32 0.01 285 / 55%), transparent 55%),
     linear-gradient(to bottom, oklch(1 0 0 / 3%), transparent 40%);
 }
 
 @utility hairline {
   border: 1px solid var(--color-border);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface-2);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 7%), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility rise {
+  animation: rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
