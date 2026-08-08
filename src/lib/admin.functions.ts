@@ -173,65 +173,102 @@ export type AdminOffer = {
   available: boolean;
 };
 
+const normalize = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const PRODUCT_TEXT: Record<string, string> = {
+  perfil: "perfil",
+  completa: "cuenta completa full",
+  individual: "individual",
+  familiar: "familiar",
+  invitacion: "invitacion",
+  lote: "lote",
+  tramite: "tramite",
+  panel: "panel",
+  otro: "servicio",
+};
+
+function durationText(months: number | null) {
+  if (months === null) return "unico";
+  if (months === 0) return "permanente";
+  if (months === 1) return "1 mes mensual";
+  if (months === 12) return "12 anual 1 ano";
+  if (months === 24) return "24 2 anos";
+  return `${months} meses`;
+}
+
 export const searchAdminOffers = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ q: z.string().max(80) }).parse(input))
   .handler(async ({ data }): Promise<{ offers: AdminOffer[] }> => {
     await requireUnlocked();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const term = data.q.trim();
-    let serviceIds: string[] = [];
-    let groupIds: string[] = [];
+    const tokens = normalize(data.q)
+      .split(/\s+/)
+      .filter((t) => t.length > 0);
 
-    if (term.length >= 2) {
-      const [svc, grp] = await Promise.all([
-        supabaseAdmin.from("services").select("id").ilike("name", `%${term}%`).limit(20),
-        supabaseAdmin.from("groups").select("id").ilike("name", `%${term}%`).limit(20),
-      ]);
-      serviceIds = (svc.data ?? []).map((s) => s.id);
-      groupIds = (grp.data ?? []).map((g) => g.id);
-      if (serviceIds.length === 0 && groupIds.length === 0) return { offers: [] };
+    type Row = {
+      id: string;
+      product_type: string;
+      months: number | null;
+      price: number | null;
+      detail: string | null;
+      available: boolean;
+      created_at: string;
+      services: { name: string } | null;
+      groups: { name: string; parent_group: string | null; phone: string | null } | null;
+    };
+
+    const rows: Row[] = [];
+    const size = 1000;
+    for (let from = 0; ; from += size) {
+      const { data: page, error } = await supabaseAdmin
+        .from("stock_items")
+        .select(
+          "id,product_type,months,price,detail,available,created_at,services(name),groups(name,parent_group,phone)",
+        )
+        .order("created_at", { ascending: false })
+        .range(from, from + size - 1);
+      if (error) throw new Error(error.message);
+      const chunk = (page ?? []) as unknown as Row[];
+      rows.push(...chunk);
+      if (chunk.length < size) break;
     }
 
-    let query = supabaseAdmin
-      .from("stock_items")
-      .select("id,product_type,months,price,detail,available,services(name),groups(name)")
-      .order("created_at", { ascending: false })
-      .limit(80);
-
-    if (term.length >= 2) {
-      const filters: string[] = [];
-      if (serviceIds.length) filters.push(`service_id.in.(${serviceIds.join(",")})`);
-      if (groupIds.length) filters.push(`group_id.in.(${groupIds.join(",")})`);
-      query = query.or(filters.join(","));
-    }
-
-    const { data: rows, error } = await query;
-    if (error) throw new Error(error.message);
-    const offers = (rows ?? []).map((row) => {
-      const r = row as unknown as {
-        id: string;
-        product_type: string;
-        months: number | null;
-        price: number | null;
-        detail: string | null;
-        available: boolean;
-        services: { name: string } | null;
-        groups: { name: string } | null;
-      };
-      return {
-        id: r.id,
-        serviceName: r.services?.name ?? "—",
-        groupName: r.groups?.name ?? "—",
-        productType: r.product_type,
-        months: r.months,
-        price: r.price === null ? null : Number(r.price),
-        detail: r.detail,
-        available: r.available,
-      };
+    // Cada palabra se evalúa por separado (servicio + vendedor + duración + tipo).
+    const filtered = rows.filter((r) => {
+      if (tokens.length === 0) return true;
+      const haystack = normalize(
+        [
+          r.services?.name ?? "",
+          r.groups?.name ?? "",
+          r.groups?.parent_group ?? "",
+          (r.groups?.phone ?? "").replace(/\D/g, ""),
+          r.detail ?? "",
+          PRODUCT_TEXT[r.product_type] ?? r.product_type,
+          durationText(r.months),
+        ].join(" "),
+      );
+      return tokens.every((t) => haystack.includes(t));
     });
+
+    const offers = filtered.slice(0, 80).map((r) => ({
+      id: r.id,
+      serviceName: r.services?.name ?? "—",
+      groupName: r.groups?.name ?? "—",
+      productType: r.product_type,
+      months: r.months,
+      price: r.price === null ? null : Number(r.price),
+      detail: r.detail,
+      available: r.available,
+    }));
     return { offers };
   });
+
 
 export const updateSeller = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
