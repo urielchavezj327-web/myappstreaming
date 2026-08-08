@@ -124,12 +124,42 @@ export const saveStock = createServerFn({ method: "POST" })
       groupId = data.seller.groupId;
     } else {
       const seller = data.seller;
-      const { data: maxRow } = await supabaseAdmin
+      const parent = seller.kind === "venta_libre" ? seller.parentGroup || null : null;
+
+      // Regla permanente: un vendedor nuevo se inserta junto a los demás
+      // vendedores de su mismo grupo padre, nunca al final de /grupos.
+      let nextOrder: number;
+      const { data: siblings } = await supabaseAdmin
         .from("groups")
         .select("sort_order")
+        .eq("parent_group", parent ?? "")
         .order("sort_order", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      const siblingMax = parent ? (siblings?.[0]?.sort_order as number | undefined) : undefined;
+
+      if (siblingMax !== undefined) {
+        nextOrder = siblingMax + 1;
+        const { data: after } = await supabaseAdmin
+          .from("groups")
+          .select("id,sort_order")
+          .gte("sort_order", nextOrder)
+          .order("sort_order", { ascending: false });
+        for (const row of after ?? []) {
+          await supabaseAdmin
+            .from("groups")
+            .update({ sort_order: (row.sort_order as number) + 1 })
+            .eq("id", row.id);
+        }
+      } else {
+        const { data: maxRow } = await supabaseAdmin
+          .from("groups")
+          .select("sort_order")
+          .order("sort_order", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        nextOrder = ((maxRow?.sort_order as number | undefined) ?? 0) + 1;
+      }
+
       const inserted = await supabaseAdmin
         .from("groups")
         .insert({
@@ -138,9 +168,10 @@ export const saveStock = createServerFn({ method: "POST" })
           kind: seller.kind,
           // Regla permanente: el teléfono solo se guarda para venta libre.
           phone: seller.kind === "venta_libre" ? (seller.phone || null) : null,
-          parent_group: seller.kind === "venta_libre" ? (seller.parentGroup || null) : null,
-          sort_order: ((maxRow?.sort_order as number | undefined) ?? 0) + 1,
+          parent_group: parent,
+          sort_order: nextOrder,
         })
+
         .select("id")
         .single();
       if (inserted.error) throw new Error(inserted.error.message);
