@@ -380,9 +380,12 @@ export const searchStock = createServerFn({ method: "GET" })
       data,
     }): Promise<{ services: SearchServiceResult[]; sellers: SearchSellerResult[] }> => {
       const raw = normalize(data.q);
-      if (raw.length < 2) return { services: [], sellers: [] };
-      const tokens = raw.split(/\s+/).filter((t) => t.length > 0);
-      if (tokens.length === 0) return { services: [], sellers: [] };
+      // Búsqueda por teléfono: ignora espacios, guiones y lada (+52).
+      const phoneQ = phoneQueryDigits(data.q);
+      if (!phoneQ && raw.length < 2) return { services: [], sellers: [] };
+      const tokens = phoneQ ? [] : raw.split(/\s+/).filter((t) => t.length > 0);
+      if (!phoneQ && tokens.length === 0) return { services: [], sellers: [] };
+
 
       const supabase = publicClient();
       const [catsRes, servicesRes, groups, stock] = await Promise.all([
