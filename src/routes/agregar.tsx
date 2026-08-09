@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { Lock, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+
 
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import {
