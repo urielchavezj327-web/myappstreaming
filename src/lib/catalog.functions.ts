@@ -434,13 +434,15 @@ export const searchStock = createServerFn({ method: "GET" })
       // duración + tipo + descripción deben cumplirse todas a la vez.
       const matchesGroupToken = (g: GroupRowDb, token: string) => {
         const tokenDigits = digitsOf(token);
-        if (tokenDigits.length >= 4 && digitsOf(g.phone ?? "").includes(tokenDigits)) return true;
+        if (tokenDigits.length >= 4 && phoneMatches(g.phone, tokenDigits)) return true;
         return (
           normalize(g.name).includes(token) || normalize(g.parent_group ?? "").includes(token)
         );
       };
 
-      const groupTokenHit = tokens.some((t) => groups.some((g) => matchesGroupToken(g, t)));
+      const groupTokenHit = phoneQ
+        ? true
+        : tokens.some((t) => groups.some((g) => matchesGroupToken(g, t)));
 
       const matched: StockOffer[] = [];
       for (const row of stock) {
@@ -460,10 +462,11 @@ export const searchStock = createServerFn({ method: "GET" })
             cat?.name ?? "",
           ].join(" "),
         );
-        const ok = tokens.every(
-          (t) => haystack.includes(t) || matchesGroupToken(g, t),
-        );
+        const ok = phoneQ
+          ? phoneMatches(g.phone, phoneQ)
+          : tokens.every((t) => haystack.includes(t) || matchesGroupToken(g, t));
         if (!ok) continue;
+
         const offer = toOffer(row, g, s.name);
         offer.serviceSlug = s.slug;
         offer.serviceOrder = s.sort_order;
