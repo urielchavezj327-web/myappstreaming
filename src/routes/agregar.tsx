@@ -271,7 +271,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   return (
     <div className="mt-8 space-y-10">
       <form onSubmit={submit} className="space-y-8">
-        <section className="rounded-2xl border border-border bg-surface p-4">
+        <section className="glass rounded-2xl p-4 sm:p-5">
           <h2 className="text-base font-semibold tracking-tight">Vendedor</h2>
           <div className="mt-4 flex gap-2">
             {(["existing", "new"] as const).map((m) => (
@@ -391,7 +391,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
           </div>
 
           {rows.map((row, i) => (
-            <div key={i} className="rounded-2xl border border-border bg-surface p-4">
+            <div key={i} className="glass rounded-2xl p-4 sm:p-5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                   Oferta {i + 1}
@@ -572,9 +572,9 @@ function RecentOffers({
         <p className="mt-4 text-sm text-muted-foreground">Sin ofertas para esa búsqueda.</p>
       ) : null}
 
-      <ul className="mt-4 overflow-hidden rounded-2xl border border-border">
+      <ul className="glass mt-4 overflow-hidden rounded-2xl">
         {offers.map((o) => (
-          <li key={o.id} className="border-b border-border bg-surface px-4 py-3 last:border-b-0">
+          <li key={o.id} className="border-b border-border px-4 py-3 last:border-b-0">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-medium">{o.serviceName}</p>
