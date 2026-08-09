@@ -85,7 +85,8 @@ function AddStockPage() {
     <div className="min-h-screen">
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-5 sm:py-12">
-        <h1 className="text-[2rem] sm:text-4xl">Agregar stock</h1>
+        <p className="t-label text-faint">Panel privado</p>
+        <h1 className="t-display mt-2">Agregar stock</h1>
         <p className="mt-3 text-[13px] text-muted-foreground">
           Captura los datos del vendedor una sola vez y agrega todas sus ofertas en la misma carga.
         </p>
@@ -94,7 +95,13 @@ function AddStockPage() {
         ) : unlocked ? (
           <AdminPanel onLock={() => setUnlocked(false)} />
         ) : (
-          <PinGate onUnlocked={() => setUnlocked(true)} />
+          <>
+            <div className="mt-8 space-y-3" aria-hidden>
+              <div className="skeleton h-28 rounded-2xl" />
+              <div className="skeleton h-40 rounded-2xl" />
+            </div>
+            <PinModal onUnlocked={() => setUnlocked(true)} />
+          </>
         )}
       </main>
       <SiteFooter />
@@ -102,53 +109,61 @@ function AddStockPage() {
   );
 }
 
-function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
+function PinModal({ onUnlocked }: { onUnlocked: () => void }) {
   const unlock = useServerFn(unlockAdmin);
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   return (
-    <form
-      className="mt-8 max-w-xs"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setBusy(true);
-        setError(false);
-        try {
-          const res = await unlock({ data: { pin } });
-          if (res.ok) onUnlocked();
-          else setError(true);
-        } catch {
-          setError(true);
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <label className={labelCls} htmlFor="pin">
-        PIN de acceso
-      </label>
-      <input
-        id="pin"
-        type="password"
-        inputMode="numeric"
-        autoComplete="current-password"
-        value={pin}
-        onChange={(e) => setPin(e.target.value)}
-        className={inputCls}
-      />
-      {error ? <p className="mt-2 text-xs text-destructive">PIN incorrecto.</p> : null}
-      <button
-        type="submit"
-        disabled={busy || pin.length === 0}
-        className="mt-4 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+      <form
+        className="glass elev rise w-full max-w-[320px] rounded-3xl p-6"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError(false);
+          try {
+            const res = await unlock({ data: { pin } });
+            if (res.ok) onUnlocked();
+            else setError(true);
+          } catch {
+            setError(true);
+          } finally {
+            setBusy(false);
+          }
+        }}
       >
-        {busy ? "Verificando…" : "Entrar"}
-      </button>
-    </form>
+        <div className="mb-4 flex items-center gap-2">
+          <Lock className="h-4 w-4 text-faint" aria-hidden />
+          <h2 className="text-[15px] font-semibold tracking-tight">Acceso restringido</h2>
+        </div>
+        <label className={labelCls} htmlFor="pin">
+          PIN
+        </label>
+        <input
+          id="pin"
+          type="password"
+          inputMode="numeric"
+          autoFocus
+          autoComplete="current-password"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          className={inputCls}
+        />
+        {error ? <p className="mt-2 text-xs text-destructive">PIN incorrecto.</p> : null}
+        <button
+          type="submit"
+          disabled={busy || pin.length === 0}
+          className="mt-4 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+        >
+          {busy ? "Verificando…" : "Entrar"}
+        </button>
+      </form>
+    </div>
   );
 }
+
 
 function AdminPanel({ onLock }: { onLock: () => void }) {
   const loadOptions = useServerFn(getAdminOptions);
