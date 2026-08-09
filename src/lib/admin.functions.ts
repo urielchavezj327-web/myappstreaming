@@ -8,11 +8,14 @@ type AdminSession = { unlocked?: boolean };
 function sessionConfig() {
   return {
     password: process.env["SESSION_SECRET"]!,
-    name: "cs-admin",
-    maxAge: 60 * 60 * 24 * 14,
+    // Nombre nuevo: invalida cualquier sesión antigua de 14 días.
+    name: "cs-admin-v2",
+    // Sesión corta: el PIN se vuelve a pedir a las 2 horas.
+    maxAge: 60 * 60 * 2,
     cookie: { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/" },
   };
 }
+
 
 function pinMatches(input: string, expected: string) {
   const a = createHash("sha256").update(input, "utf8").digest();
