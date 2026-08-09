@@ -282,7 +282,9 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
 
     // Cada palabra se evalúa por separado (servicio + vendedor + duración + tipo).
     const filtered = rows.filter((r) => {
+      if (phoneQ) return phoneMatches(r.groups?.phone ?? null, phoneQ);
       if (tokens.length === 0) return true;
+
       const haystack = normalize(
         [
           r.services?.name ?? "",
