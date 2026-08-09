@@ -241,9 +241,13 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
     await requireUnlocked();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const tokens = normalize(data.q)
-      .split(/\s+/)
-      .filter((t) => t.length > 0);
+    const phoneQ = phoneQueryDigits(data.q);
+    const tokens = phoneQ
+      ? []
+      : normalize(data.q)
+          .split(/\s+/)
+          .filter((t) => t.length > 0);
+
 
     type Row = {
       id: string;
