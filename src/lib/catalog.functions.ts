@@ -2,6 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { phoneMatches, phoneQueryDigits } from "./phone";
+
+
 function publicClient() {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
   const url = process.env["SUPABASE_URL"]!;
