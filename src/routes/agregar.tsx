@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { Lock, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+
 
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import {
@@ -85,7 +87,8 @@ function AddStockPage() {
     <div className="min-h-screen">
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-5 sm:py-12">
-        <h1 className="text-[2rem] sm:text-4xl">Agregar stock</h1>
+        <p className="t-label text-faint">Panel privado</p>
+        <h1 className="t-display mt-2">Agregar stock</h1>
         <p className="mt-3 text-[13px] text-muted-foreground">
           Captura los datos del vendedor una sola vez y agrega todas sus ofertas en la misma carga.
         </p>
@@ -94,7 +97,13 @@ function AddStockPage() {
         ) : unlocked ? (
           <AdminPanel onLock={() => setUnlocked(false)} />
         ) : (
-          <PinGate onUnlocked={() => setUnlocked(true)} />
+          <>
+            <div className="mt-8 space-y-3" aria-hidden>
+              <div className="skeleton h-28 rounded-2xl" />
+              <div className="skeleton h-40 rounded-2xl" />
+            </div>
+            <PinModal onUnlocked={() => setUnlocked(true)} />
+          </>
         )}
       </main>
       <SiteFooter />
@@ -102,53 +111,61 @@ function AddStockPage() {
   );
 }
 
-function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
+function PinModal({ onUnlocked }: { onUnlocked: () => void }) {
   const unlock = useServerFn(unlockAdmin);
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   return (
-    <form
-      className="mt-8 max-w-xs"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setBusy(true);
-        setError(false);
-        try {
-          const res = await unlock({ data: { pin } });
-          if (res.ok) onUnlocked();
-          else setError(true);
-        } catch {
-          setError(true);
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <label className={labelCls} htmlFor="pin">
-        PIN de acceso
-      </label>
-      <input
-        id="pin"
-        type="password"
-        inputMode="numeric"
-        autoComplete="current-password"
-        value={pin}
-        onChange={(e) => setPin(e.target.value)}
-        className={inputCls}
-      />
-      {error ? <p className="mt-2 text-xs text-destructive">PIN incorrecto.</p> : null}
-      <button
-        type="submit"
-        disabled={busy || pin.length === 0}
-        className="mt-4 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+      <form
+        className="glass elev rise w-full max-w-[320px] rounded-3xl p-6"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError(false);
+          try {
+            const res = await unlock({ data: { pin } });
+            if (res.ok) onUnlocked();
+            else setError(true);
+          } catch {
+            setError(true);
+          } finally {
+            setBusy(false);
+          }
+        }}
       >
-        {busy ? "Verificando…" : "Entrar"}
-      </button>
-    </form>
+        <div className="mb-4 flex items-center gap-2">
+          <Lock className="h-4 w-4 text-faint" aria-hidden />
+          <h2 className="text-[15px] font-semibold tracking-tight">Acceso restringido</h2>
+        </div>
+        <label className={labelCls} htmlFor="pin">
+          PIN
+        </label>
+        <input
+          id="pin"
+          type="password"
+          inputMode="numeric"
+          autoFocus
+          autoComplete="current-password"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          className={inputCls}
+        />
+        {error ? <p className="mt-2 text-xs text-destructive">PIN incorrecto.</p> : null}
+        <button
+          type="submit"
+          disabled={busy || pin.length === 0}
+          className="mt-4 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+        >
+          {busy ? "Verificando…" : "Entrar"}
+        </button>
+      </form>
+    </div>
   );
 }
+
 
 function AdminPanel({ onLock }: { onLock: () => void }) {
   const loadOptions = useServerFn(getAdminOptions);
@@ -254,7 +271,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   return (
     <div className="mt-8 space-y-10">
       <form onSubmit={submit} className="space-y-8">
-        <section className="rounded-2xl border border-border bg-surface p-4">
+        <section className="glass rounded-2xl p-4 sm:p-5">
           <h2 className="text-base font-semibold tracking-tight">Vendedor</h2>
           <div className="mt-4 flex gap-2">
             {(["existing", "new"] as const).map((m) => (
@@ -374,7 +391,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
           </div>
 
           {rows.map((row, i) => (
-            <div key={i} className="rounded-2xl border border-border bg-surface p-4">
+            <div key={i} className="glass rounded-2xl p-4 sm:p-5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                   Oferta {i + 1}
@@ -527,19 +544,37 @@ function RecentOffers({
       <h2 className="border-b border-border pb-3 text-base font-semibold tracking-tight">
         Buscar y editar ofertas
       </h2>
-      <input
-        value={query}
-        onChange={(e) => onQuery(e.target.value)}
-        placeholder="Busca por servicio o vendedor…"
-        className={`${inputCls} mt-4`}
-      />
+      <div className="relative mt-4">
+        <Search
+          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-faint"
+          aria-hidden
+        />
+        <input
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          aria-label="Buscar ofertas"
+          placeholder="Busca por servicio, vendedor o número…"
+          className={`${inputCls} pl-11 pr-11`}
+        />
+        {query ? (
+          <button
+            type="button"
+            onClick={() => onQuery("")}
+            aria-label="Limpiar búsqueda"
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-faint transition-colors hover:bg-surface-2 hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        ) : null}
+      </div>
+
       {offers.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">Sin ofertas para esa búsqueda.</p>
       ) : null}
 
-      <ul className="mt-4 overflow-hidden rounded-2xl border border-border">
+      <ul className="glass mt-4 overflow-hidden rounded-2xl">
         {offers.map((o) => (
-          <li key={o.id} className="border-b border-border bg-surface px-4 py-3 last:border-b-0">
+          <li key={o.id} className="border-b border-border px-4 py-3 last:border-b-0">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-medium">{o.serviceName}</p>

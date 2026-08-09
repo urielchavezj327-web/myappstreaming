@@ -5,12 +5,12 @@ Orden de trabajo: primero datos y bugs (X–EE, GG–II), verificación, y al fi
 ## 1. Buscadores (X, Y, Z, CC)
 
 - Buscador de /agregar: añadir ícono de lupa a la izquierda y botón "X" para borrar el texto, idénticos a los de la portada.
-- Buscador de la portada: mantener la lupa (ya existe) y cambiar el placeholder a "Busca cualquier servicio, vendedor o número…".
+- Buscador de la portada: no existe la lupa crearla con buen diseño y cambiar el placeholder a "Busca cualquier servicio, vendedor o número…".
 - Teléfonos: normalizar tanto la consulta como el número guardado a solo dígitos, e ignorar el prefijo de país. Buscar "+52 55 2378 6815", "5523786815" o "52 55 2378 6815" debe dar el mismo resultado. Se aplica a los dos buscadores.
 
 ## 2. Título de sección (AA)
 
-Wordmark corto en inglés arriba del buscador de la portada, con tipografía propia (display, tracking amplio, tratamiento tipo logotipo, no etiqueta de sistema). Propuesta: **STOCK BOARD** con "STOCK" sólido y "BOARD" en trazo fino, para que tenga carácter sin sentirse marketinero.
+Wordmark corto en inglés arriba del buscador de la portada, con tipografía propia (display, tracking amplio, tratamiento tipo logotipo, no etiqueta de sistema). Propuesta: **STOCK BOARD** con "STOCK" sólido y "BOARD" en trazo fino, para que tenga carácter sin sentirse marketinero. Pero puedes poner algún otro título siempre y cuando sea atractivo, agradable corto y siendo original no necesariamente tiene que ser ese 
 
 ## 3. PIN en el sitio publicado (BB)
 

@@ -3,16 +3,22 @@ import { useSession } from "@tanstack/react-start/server";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
+import { phoneMatches, phoneQueryDigits } from "./phone";
+
+
 type AdminSession = { unlocked?: boolean };
 
 function sessionConfig() {
   return {
     password: process.env["SESSION_SECRET"]!,
-    name: "cs-admin",
-    maxAge: 60 * 60 * 24 * 14,
+    // Nombre nuevo: invalida cualquier sesión antigua de 14 días.
+    name: "cs-admin-v2",
+    // Sesión corta: el PIN se vuelve a pedir a las 2 horas.
+    maxAge: 60 * 60 * 2,
     cookie: { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/" },
   };
 }
+
 
 function pinMatches(input: string, expected: string) {
   const a = createHash("sha256").update(input, "utf8").digest();
@@ -238,9 +244,13 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
     await requireUnlocked();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const tokens = normalize(data.q)
-      .split(/\s+/)
-      .filter((t) => t.length > 0);
+    const phoneQ = phoneQueryDigits(data.q);
+    const tokens = phoneQ
+      ? []
+      : normalize(data.q)
+          .split(/\s+/)
+          .filter((t) => t.length > 0);
+
 
     type Row = {
       id: string;
@@ -272,7 +282,9 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
 
     // Cada palabra se evalúa por separado (servicio + vendedor + duración + tipo).
     const filtered = rows.filter((r) => {
+      if (phoneQ) return phoneMatches(r.groups?.phone ?? null, phoneQ);
       if (tokens.length === 0) return true;
+
       const haystack = normalize(
         [
           r.services?.name ?? "",

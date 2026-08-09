@@ -2,6 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { phoneMatches, phoneQueryDigits } from "./phone";
+
+
 function publicClient() {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
   const url = process.env["SUPABASE_URL"]!;
@@ -380,9 +383,12 @@ export const searchStock = createServerFn({ method: "GET" })
       data,
     }): Promise<{ services: SearchServiceResult[]; sellers: SearchSellerResult[] }> => {
       const raw = normalize(data.q);
-      if (raw.length < 2) return { services: [], sellers: [] };
-      const tokens = raw.split(/\s+/).filter((t) => t.length > 0);
-      if (tokens.length === 0) return { services: [], sellers: [] };
+      // Búsqueda por teléfono: ignora espacios, guiones y lada (+52).
+      const phoneQ = phoneQueryDigits(data.q);
+      if (!phoneQ && raw.length < 2) return { services: [], sellers: [] };
+      const tokens = phoneQ ? [] : raw.split(/\s+/).filter((t) => t.length > 0);
+      if (!phoneQ && tokens.length === 0) return { services: [], sellers: [] };
+
 
       const supabase = publicClient();
       const [catsRes, servicesRes, groups, stock] = await Promise.all([
@@ -428,13 +434,15 @@ export const searchStock = createServerFn({ method: "GET" })
       // duración + tipo + descripción deben cumplirse todas a la vez.
       const matchesGroupToken = (g: GroupRowDb, token: string) => {
         const tokenDigits = digitsOf(token);
-        if (tokenDigits.length >= 4 && digitsOf(g.phone ?? "").includes(tokenDigits)) return true;
+        if (tokenDigits.length >= 4 && phoneMatches(g.phone, tokenDigits)) return true;
         return (
           normalize(g.name).includes(token) || normalize(g.parent_group ?? "").includes(token)
         );
       };
 
-      const groupTokenHit = tokens.some((t) => groups.some((g) => matchesGroupToken(g, t)));
+      const groupTokenHit = phoneQ
+        ? true
+        : tokens.some((t) => groups.some((g) => matchesGroupToken(g, t)));
 
       const matched: StockOffer[] = [];
       for (const row of stock) {
@@ -454,10 +462,11 @@ export const searchStock = createServerFn({ method: "GET" })
             cat?.name ?? "",
           ].join(" "),
         );
-        const ok = tokens.every(
-          (t) => haystack.includes(t) || matchesGroupToken(g, t),
-        );
+        const ok = phoneQ
+          ? phoneMatches(g.phone, phoneQ)
+          : tokens.every((t) => haystack.includes(t) || matchesGroupToken(g, t));
         if (!ok) continue;
+
         const offer = toOffer(row, g, s.name);
         offer.serviceSlug = s.slug;
         offer.serviceOrder = s.sort_order;

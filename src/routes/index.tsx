@@ -114,6 +114,10 @@ function Index() {
 
       <section className="aurora border-b border-border">
         <div className="mx-auto max-w-6xl px-4 pb-8 pt-8 sm:px-6 sm:pb-10 sm:pt-12">
+          <h1 className="mb-6 font-display text-[2.1rem] font-semibold leading-none tracking-[0.14em] sm:text-[3rem]">
+            STOCK
+            <span className="text-faint"> BOARD</span>
+          </h1>
           <div className="relative">
             <Search
               className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-faint"
@@ -123,9 +127,10 @@ function Index() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               aria-label="Buscar servicios, vendedores o precios"
-              placeholder="Busca ViX 2 meses, Netflix MonShop, un teléfono…"
+              placeholder="Busca cualquier servicio, vendedor o número…"
               className="glass elev h-16 w-full rounded-3xl pl-14 pr-14 text-[16px] outline-none transition-all placeholder:text-faint focus:border-border-strong sm:text-[17px]"
             />
+
             {draft ? (
               <button
                 type="button"
