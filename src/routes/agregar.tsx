@@ -544,12 +544,30 @@ function RecentOffers({
       <h2 className="border-b border-border pb-3 text-base font-semibold tracking-tight">
         Buscar y editar ofertas
       </h2>
-      <input
-        value={query}
-        onChange={(e) => onQuery(e.target.value)}
-        placeholder="Busca por servicio o vendedor…"
-        className={`${inputCls} mt-4`}
-      />
+      <div className="relative mt-4">
+        <Search
+          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-faint"
+          aria-hidden
+        />
+        <input
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          aria-label="Buscar ofertas"
+          placeholder="Busca por servicio, vendedor o número…"
+          className={`${inputCls} pl-11 pr-11`}
+        />
+        {query ? (
+          <button
+            type="button"
+            onClick={() => onQuery("")}
+            aria-label="Limpiar búsqueda"
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-faint transition-colors hover:bg-surface-2 hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        ) : null}
+      </div>
+
       {offers.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">Sin ofertas para esa búsqueda.</p>
       ) : null}
