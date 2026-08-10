@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import {
@@ -389,13 +389,16 @@ function FilterChip({
 }
 
 function CategoryBlock({ services }: { services: CatalogService[] }) {
-  const groups = new Map<string, CatalogService[]>();
-  for (const s of services) {
-    const key = s.subcategoryName ?? "";
-    const list = groups.get(key) ?? [];
-    list.push(s);
-    groups.set(key, list);
-  }
+  const groups = useMemo(() => {
+    const map = new Map<string, CatalogService[]>();
+    for (const s of services) {
+      const key = s.subcategoryName ?? "";
+      const list = map.get(key) ?? [];
+      list.push(s);
+      map.set(key, list);
+    }
+    return map;
+  }, [services]);
 
   return (
     <div className="mt-8 space-y-10">
@@ -413,13 +416,13 @@ function CategoryBlock({ services }: { services: CatalogService[] }) {
   );
 }
 
-function ServiceCard({ service }: { service: CatalogService }) {
+const ServiceCard = memo(function ServiceCard({ service }: { service: CatalogService }) {
   const accent = service.color ?? "#9a9aa2";
   return (
     <Link
       to="/servicio/$slug"
       params={{ slug: service.slug }}
-      className="glass group relative overflow-hidden rounded-2xl p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_28px_60px_-30px_rgba(0,0,0,0.95)] active:scale-[0.99]"
+      className="glass card-cv group relative overflow-hidden rounded-2xl p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_28px_60px_-30px_rgba(0,0,0,0.95)] active:scale-[0.99]"
     >
       <span
         className="pointer-events-none absolute inset-x-0 top-0 h-24 opacity-25 transition-opacity duration-300 group-hover:opacity-45"
