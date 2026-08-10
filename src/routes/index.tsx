@@ -113,14 +113,17 @@ function Index() {
       <SiteHeader />
 
       <section className="aurora border-b border-border">
-        <div className="mx-auto max-w-6xl px-4 pb-8 pt-8 sm:px-6 sm:pb-10 sm:pt-12">
-          <h1 className="mb-6 font-display text-[2.1rem] font-semibold leading-none tracking-[0.14em] sm:text-[3rem]">
-            STOCK
-            <span className="text-faint"> BOARD</span>
+        <div className="mx-auto max-w-6xl px-4 pb-8 pt-10 sm:px-6 sm:pb-10 sm:pt-14">
+          <h1 className="mb-7 text-center font-display text-[2.3rem] leading-none sm:text-[3.4rem]">
+            <span className="font-semibold tracking-[0.02em]">Stock</span>
+            <span className="ml-[0.35em] font-light italic tracking-[0.16em] text-muted-foreground">
+              Index
+            </span>
           </h1>
-          <div className="relative">
+          <div className="relative mx-auto max-w-3xl">
             <Search
-              className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-faint"
+              className="pointer-events-none absolute left-5 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground sm:left-6 sm:h-7 sm:w-7"
+              strokeWidth={2}
               aria-hidden
             />
             <input
@@ -128,7 +131,7 @@ function Index() {
               onChange={(e) => setDraft(e.target.value)}
               aria-label="Buscar servicios, vendedores o precios"
               placeholder="Busca cualquier servicio, vendedor o número…"
-              className="glass elev h-16 w-full rounded-3xl pl-14 pr-14 text-[16px] outline-none transition-all placeholder:text-faint focus:border-border-strong sm:text-[17px]"
+              className="glass elev h-16 w-full rounded-3xl pl-16 pr-14 text-[16px] outline-none transition-all placeholder:text-faint focus:border-border-strong sm:pl-[4.25rem] sm:text-[17px]"
             />
 
             {draft ? (
@@ -143,12 +146,13 @@ function Index() {
             ) : null}
           </div>
 
-          <dl className="mt-6 grid grid-cols-3 gap-2.5 sm:max-w-xl">
+          <dl className="mx-auto mt-6 grid max-w-3xl grid-cols-3 gap-2.5">
             <Stat label="Ofertas" value={totals.offers} />
             <Stat label="Servicios" value={totals.services} />
             <Stat label="Categorías" value={totals.categories} />
           </dl>
         </div>
+
       </section>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
