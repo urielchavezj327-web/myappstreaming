@@ -450,4 +450,5 @@ const ServiceCard = memo(function ServiceCard({ service }: { service: CatalogSer
       </div>
     </Link>
   );
-}
+});
+
