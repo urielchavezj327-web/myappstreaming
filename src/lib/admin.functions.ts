@@ -232,9 +232,9 @@ const PRODUCT_TEXT: Record<string, string> = {
 function durationText(months: number | null) {
   if (months === null) return "unico";
   if (months === 0) return "permanente";
-  if (months === 1) return "1 mes mensual";
-  if (months === 12) return "12 anual 1 ano";
-  if (months === 24) return "24 2 anos";
+  if (months === 1) return "1 mes meses mensual";
+  if (months === 12) return "12 meses anual 1 ano";
+  if (months === 24) return "24 meses 2 anos";
   return `${months} meses`;
 }
 
