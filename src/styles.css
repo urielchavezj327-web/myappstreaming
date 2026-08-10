@@ -171,6 +171,13 @@
   border: 1px solid var(--color-border);
 }
 
+/* Evita pintar tarjetas fuera de pantalla en categorías largas. */
+@utility card-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 92px;
+}
+
+
 @utility no-scrollbar {
   scrollbar-width: none;
   &::-webkit-scrollbar {
