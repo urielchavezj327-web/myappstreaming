@@ -4,7 +4,7 @@ Trabajo mayormente de datos. Diseño solo se toca en el título de portada (Secc
 
 ## Verificado antes de planear
 
-- Grupos padre actuales: `Venta Libre Cherrycita` (10 vendedores) y `C/V Bloom Store` (4: Aura Vnts, Trámites MT, Vendedor A, Vendedor B) — se renombran, no se duplican.
+- Grupos padre actuales: `Venta Libre Cherrycita` (11 vendedores) verificar que pases todos los vendedores y no te falte ninguno  verifica tu conteo, porque de venta libre Cherrycita son 11 no 10 y `C/V Bloom Store` (4: Aura Vnts, Trámites MT, Vendedor A, Vendedor B) — se renombran, no se duplican.
 - `Trámites MT` = 56 6043 6293, 42 ofertas cargadas hoy.
 - Ninguno de los teléfonos nuevos de este mensaje existe todavía en la base: no hay duplicados que fusionar (salvo las dos publicaciones de +52 999 101 2929, que se cargan como un solo vendedor).
 - En "Otros" existen las fichas: Recargas telefónicas, Pagos de servicios con descuento, Compras online con descuento, Seguidores y redes sociales, Películas/Libros/PDF, Game Pass, Robux y Pavos, Números virtuales, Recuperación de cuentas, Discord Nitro, Free Fire, Paneles y Métodos, Bots para grupos, Boletos y viajes, Drama Box, Smart Fit y la subcategoría Páginas para Adultos (Brazzers, Pornhub). **No existe** ficha OnlyFans: se crea.
