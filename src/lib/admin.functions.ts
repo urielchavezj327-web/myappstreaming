@@ -208,7 +208,10 @@ export type AdminOffer = {
   price: number | null;
   detail: string | null;
   available: boolean;
+  categorySlug: string;
+  categoryName: string;
 };
+
 
 const normalize = (value: string) =>
   value
@@ -239,7 +242,9 @@ function durationText(months: number | null) {
 }
 
 export const searchAdminOffers = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => z.object({ q: z.string().max(80) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ q: z.string().max(80), cat: z.string().max(40).optional() }).parse(input),
+  )
   .handler(async ({ data }): Promise<{ offers: AdminOffer[] }> => {
     await requireUnlocked();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -260,7 +265,11 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
       detail: string | null;
       available: boolean;
       created_at: string;
-      services: { name: string } | null;
+      services: {
+        name: string;
+        sort_order: number | null;
+        categories: { slug: string; name: string; sort_order: number | null } | null;
+      } | null;
       groups: { name: string; parent_group: string | null; phone: string | null } | null;
     };
 
@@ -270,7 +279,7 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
       const { data: page, error } = await supabaseAdmin
         .from("stock_items")
         .select(
-          "id,product_type,months,price,detail,available,created_at,services(name),groups(name,parent_group,phone)",
+          "id,product_type,months,price,detail,available,created_at,services(name,sort_order,categories(slug,name,sort_order)),groups(name,parent_group,phone)",
         )
         .order("created_at", { ascending: false })
         .range(from, from + size - 1);
@@ -280,8 +289,11 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
       if (chunk.length < size) break;
     }
 
+    const cat = data.cat?.trim() ?? "";
+
     // Cada palabra se evalúa por separado (servicio + vendedor + duración + tipo).
     const filtered = rows.filter((r) => {
+      if (cat && (r.services?.categories?.slug ?? "") !== cat) return false;
       if (phoneQ) return phoneMatches(r.groups?.phone ?? null, phoneQ);
       if (tokens.length === 0) return true;
 
@@ -299,6 +311,15 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
       return tokens.every((t) => haystack.includes(t));
     });
 
+    // Orden por defecto igual al buscador de portada: por categoría y servicio.
+    filtered.sort(
+      (a, b) =>
+        (a.services?.categories?.sort_order ?? 99) - (b.services?.categories?.sort_order ?? 99) ||
+        (a.services?.sort_order ?? 99) - (b.services?.sort_order ?? 99) ||
+        (a.services?.name ?? "").localeCompare(b.services?.name ?? "") ||
+        (a.groups?.name ?? "").localeCompare(b.groups?.name ?? ""),
+    );
+
     const offers = filtered.slice(0, 80).map((r) => ({
       id: r.id,
       serviceName: r.services?.name ?? "—",
@@ -308,9 +329,12 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
       price: r.price === null ? null : Number(r.price),
       detail: r.detail,
       available: r.available,
+      categorySlug: r.services?.categories?.slug ?? "",
+      categoryName: r.services?.categories?.name ?? "Otros",
     }));
     return { offers };
   });
+
 
 
 export const updateSeller = createServerFn({ method: "POST" })
