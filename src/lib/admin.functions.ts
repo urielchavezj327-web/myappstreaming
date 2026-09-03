@@ -208,7 +208,10 @@ export type AdminOffer = {
   price: number | null;
   detail: string | null;
   available: boolean;
+  categorySlug: string;
+  categoryName: string;
 };
+
 
 const normalize = (value: string) =>
   value
