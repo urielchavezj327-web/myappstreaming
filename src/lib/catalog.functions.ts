@@ -346,49 +346,14 @@ export type SearchSellerResult = {
   offers: StockOffer[];
 };
 
-const normalize = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-
-const digitsOf = (value: string) => value.replace(/\D/g, "");
-
-const PRODUCT_TEXT: Record<string, string> = {
-  perfil: "perfil",
-  completa: "cuenta completa full",
-  individual: "individual",
-  familiar: "familiar",
-  invitacion: "invitacion",
-  lote: "lote",
-  tramite: "tramite",
-  panel: "panel",
-  otro: "servicio",
-};
-
-function durationText(months: number | null) {
-  if (months === null) return "unico";
-  if (months === 0) return "permanente";
-  if (months === 1) return "1 mes meses mensual";
-  if (months === 12) return "12 meses anual 1 ano";
-  if (months === 24) return "24 meses 2 anos";
-  return `${months} meses`;
-}
-
 export const searchStock = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ q: z.string().max(80) }).parse(input))
   .handler(
     async ({
       data,
     }): Promise<{ services: SearchServiceResult[]; sellers: SearchSellerResult[] }> => {
-      const raw = normalize(data.q);
-      // Búsqueda por teléfono: ignora espacios, guiones y lada (+52).
-      const phoneQ = phoneQueryDigits(data.q);
-      if (!phoneQ && raw.length < 2) return { services: [], sellers: [] };
-      const tokens = phoneQ ? [] : raw.split(/\s+/).filter((t) => t.length > 0);
-      if (!phoneQ && tokens.length === 0) return { services: [], sellers: [] };
-
+      const parsed = parseQuery(data.q);
+      if (parsed.empty) return { services: [], sellers: [] };
 
       const supabase = publicClient();
       const [catsRes, servicesRes, groups, stock] = await Promise.all([
@@ -430,19 +395,16 @@ export const searchStock = createServerFn({ method: "GET" })
       const serviceById = new Map(allServices.map((s) => [s.id, s]));
       const groupById = new Map(groups.map((g) => [g.id, g]));
 
-      // Cada palabra se evalúa por separado: servicio + vendedor/grupo +
-      // duración + tipo + descripción deben cumplirse todas a la vez.
-      const matchesGroupToken = (g: GroupRowDb, token: string) => {
-        const tokenDigits = digitsOf(token);
-        if (tokenDigits.length >= 4 && phoneMatches(g.phone, tokenDigits)) return true;
-        return (
-          normalize(g.name).includes(token) || normalize(g.parent_group ?? "").includes(token)
+      // ¿La consulta apunta a un vendedor/grupo? Entonces el resultado se
+      // presenta agrupado por vendedor, no por servicio.
+      const groupTokenHit =
+        parsed.phone !== null ||
+        parsed.sellerLetters.length > 0 ||
+        parsed.tokens.some((t) =>
+          groups.some(
+            (g) => norm(g.name).includes(t) || norm(g.parent_group ?? "").includes(t),
+          ),
         );
-      };
-
-      const groupTokenHit = phoneQ
-        ? true
-        : tokens.some((t) => groups.some((g) => matchesGroupToken(g, t)));
 
       const matched: StockOffer[] = [];
       for (const row of stock) {
@@ -450,21 +412,20 @@ export const searchStock = createServerFn({ method: "GET" })
         const s = serviceById.get(row.service_id);
         if (!g || !s) continue;
         const cat = catById.get(s.category_id);
-        const haystack = normalize(
-          [
-            s.name,
-            g.name,
-            g.parent_group ?? "",
-            g.notes ?? "",
-            row.detail ?? "",
-            PRODUCT_TEXT[row.product_type] ?? row.product_type,
-            durationText(row.months),
-            cat?.name ?? "",
-          ].join(" "),
+        const ok = matchesQuery(
+          {
+            serviceName: s.name,
+            categoryName: cat?.name ?? "",
+            groupName: g.name,
+            parentGroup: g.parent_group,
+            variant: g.notes,
+            phone: g.phone,
+            detail: row.detail,
+            productType: row.product_type,
+            months: row.months,
+          },
+          parsed,
         );
-        const ok = phoneQ
-          ? phoneMatches(g.phone, phoneQ)
-          : tokens.every((t) => haystack.includes(t) || matchesGroupToken(g, t));
         if (!ok) continue;
 
         const offer = toOffer(row, g, s.name);
@@ -479,15 +440,16 @@ export const searchStock = createServerFn({ method: "GET" })
       if (matched.length === 0) return { services: [], sellers: [] };
 
       if (groupTokenHit) {
-        // Resultados por vendedor, ordenados por categoría y por la posición
-        // fija del servicio dentro de esa categoría.
         const bySeller = new Map<string, StockOffer[]>();
         for (const o of matched) {
           const list = bySeller.get(o.group.slug) ?? [];
           list.push(o);
           bySeller.set(o.group.slug, list);
         }
+        // Orden permanente: primero vendedores con nombre propio, luego
+        // Vendedor A, B, C… en orden alfabético.
         const sellers: SearchSellerResult[] = [...bySeller.entries()]
+          .sort((a, b) => compareSellers(a[1][0]!.group.name, b[1][0]!.group.name))
           .slice(0, 20)
           .map(([slug, offers]) => {
             const g = offers[0]!.group;
@@ -534,3 +496,70 @@ export const searchStock = createServerFn({ method: "GET" })
       return { services, sellers: [] };
     },
   );
+
+/** Catálogo completo de un vendedor/grupo (vista de solo consulta). */
+export const getSellerCatalog = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ slug: z.string().max(60) }).parse(input))
+  .handler(async ({ data }): Promise<SearchSellerResult | null> => {
+    const supabase = publicClient();
+    const gRes = await supabase
+      .from("groups")
+      .select("id,slug,name,kind,phone,parent_group,notes")
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (!gRes.data) return null;
+    const g = gRes.data as GroupRowDb;
+
+    const [catsRes, servicesRes, stock] = await Promise.all([
+      supabase.from("categories").select("id,slug,name,sort_order").order("sort_order"),
+      supabase.from("services").select("id,slug,name,sort_order,category_id").order("sort_order"),
+      pageAll<StockRowDb>((from, to) =>
+        supabase
+          .from("stock_items")
+          .select("id,group_id,service_id,product_type,months,price,detail,available")
+          .eq("group_id", g.id)
+          .range(from, to),
+      ),
+    ]);
+
+    const catById = new Map(
+      ((catsRes.data ?? []) as Array<{ id: string; slug: string; name: string; sort_order: number }>).map(
+        (c) => [c.id, c],
+      ),
+    );
+    const svcById = new Map(
+      (
+        (servicesRes.data ?? []) as Array<{
+          id: string;
+          slug: string;
+          name: string;
+          sort_order: number;
+          category_id: string;
+        }>
+      ).map((s) => [s.id, s]),
+    );
+
+    const offers: StockOffer[] = [];
+    for (const row of stock) {
+      const s = svcById.get(row.service_id);
+      if (!s) continue;
+      const cat = catById.get(s.category_id);
+      const offer = toOffer(row, g, s.name);
+      offer.serviceSlug = s.slug;
+      offer.serviceOrder = s.sort_order;
+      offer.categorySlug = cat?.slug ?? "otros";
+      offer.categoryName = cat?.name ?? "Otros";
+      offer.categoryOrder = cat?.sort_order ?? 99;
+      offers.push(offer);
+    }
+
+    return {
+      slug: g.slug,
+      name: g.name,
+      kind: g.kind,
+      phone: g.kind === "venta_libre" ? g.phone : null,
+      parentGroup: g.parent_group,
+      offers,
+    };
+  });
+
