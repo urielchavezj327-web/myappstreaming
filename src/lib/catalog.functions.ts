@@ -2,8 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import { compareSellers, matchesQuery, norm, parseQuery } from "./search-core";
-
+import {
+  compareOffersByService,
+  compareSellers,
+  matchesQuery,
+  norm,
+  parseQuery,
+} from "./search-core";
 
 function publicClient() {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
@@ -177,6 +182,8 @@ export type StockOffer = {
   categorySlug?: string;
   categoryName?: string;
   categoryOrder?: number;
+  subcategorySlug?: string | null;
+  subcategoryOrder?: number | null;
   group: {
     slug: string;
     name: string;
@@ -243,6 +250,7 @@ export const getServiceDetail = createServerFn({ method: "GET" })
       color: string | null;
       category: string;
       categoryName: string;
+      subcategory: string | null;
     };
 
     if (isBundle) {
@@ -271,11 +279,12 @@ export const getServiceDetail = createServerFn({ method: "GET" })
         color: rows[0]?.color ?? null,
         category: (cat.data as { slug: string } | null)?.slug ?? "otros",
         categoryName: (cat.data as { name: string } | null)?.name ?? "Otros",
+        subcategory: subSlug,
       };
     } else {
       const svc = await supabase
         .from("services")
-        .select("id,slug,name,color,category_id")
+        .select("id,slug,name,color,category_id,subcategory_id")
         .eq("slug", data.slug)
         .maybeSingle();
       if (!svc.data) return null;
@@ -285,12 +294,18 @@ export const getServiceDetail = createServerFn({ method: "GET" })
         name: string;
         color: string | null;
         category_id: string;
+        subcategory_id: string | null;
       };
-      const cat = await supabase
-        .from("categories")
-        .select("slug,name")
-        .eq("id", service.category_id)
-        .maybeSingle();
+      const [cat, sub] = await Promise.all([
+        supabase.from("categories").select("slug,name").eq("id", service.category_id).maybeSingle(),
+        service.subcategory_id
+          ? supabase
+              .from("subcategories")
+              .select("slug")
+              .eq("id", service.subcategory_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
       serviceIds = [service.id];
       serviceNameById = new Map([[service.id, service.name]]);
       header = {
@@ -299,6 +314,7 @@ export const getServiceDetail = createServerFn({ method: "GET" })
         color: service.color,
         category: (cat.data as { slug: string } | null)?.slug ?? "otros",
         categoryName: (cat.data as { name: string } | null)?.name ?? "Otros",
+        subcategory: (sub.data as { slug: string } | null)?.slug ?? null,
       };
     }
 
@@ -306,7 +322,10 @@ export const getServiceDetail = createServerFn({ method: "GET" })
 
     const [groups, stock] = await Promise.all([
       pageAll<GroupRowDb>((from, to) =>
-        supabase.from("groups").select("id,slug,name,kind,phone,parent_group,notes").range(from, to),
+        supabase
+          .from("groups")
+          .select("id,slug,name,kind,phone,parent_group,notes")
+          .range(from, to),
       ),
       pageAll<StockRowDb>((from, to) =>
         supabase
@@ -334,6 +353,8 @@ export type SearchServiceResult = {
   name: string;
   color: string | null;
   categoryName: string;
+  categorySlug: string | null;
+  subcategorySlug: string | null;
   offers: StockOffer[];
 };
 
@@ -356,11 +377,12 @@ export const searchStock = createServerFn({ method: "GET" })
       if (parsed.empty) return { services: [], sellers: [] };
 
       const supabase = publicClient();
-      const [catsRes, servicesRes, groups, stock] = await Promise.all([
+      const [catsRes, subsRes, servicesRes, groups, stock] = await Promise.all([
         supabase.from("categories").select("id,slug,name,sort_order").order("sort_order"),
+        supabase.from("subcategories").select("id,slug,sort_order"),
         supabase
           .from("services")
-          .select("id,slug,name,color,sort_order,category_id")
+          .select("id,slug,name,color,sort_order,category_id,subcategory_id")
           .order("sort_order"),
         pageAll<GroupRowDb>((from, to) =>
           supabase
@@ -384,6 +406,11 @@ export const searchStock = createServerFn({ method: "GET" })
         sort_order: number;
       }>;
       const catById = new Map(catRows.map((c) => [c.id, c]));
+      const subById = new Map(
+        ((subsRes.data ?? []) as Array<{ id: string; slug: string; sort_order: number }>).map(
+          (s) => [s.id, s],
+        ),
+      );
       const allServices = (servicesRes.data ?? []) as Array<{
         id: string;
         slug: string;
@@ -391,6 +418,7 @@ export const searchStock = createServerFn({ method: "GET" })
         color: string | null;
         sort_order: number;
         category_id: string;
+        subcategory_id: string | null;
       }>;
       const serviceById = new Map(allServices.map((s) => [s.id, s]));
       const groupById = new Map(groups.map((g) => [g.id, g]));
@@ -401,9 +429,7 @@ export const searchStock = createServerFn({ method: "GET" })
         parsed.phone !== null ||
         parsed.sellerLetters.length > 0 ||
         parsed.tokens.some((t) =>
-          groups.some(
-            (g) => norm(g.name).includes(t) || norm(g.parent_group ?? "").includes(t),
-          ),
+          groups.some((g) => norm(g.name).includes(t) || norm(g.parent_group ?? "").includes(t)),
         );
 
       const matched: StockOffer[] = [];
@@ -428,74 +454,88 @@ export const searchStock = createServerFn({ method: "GET" })
         );
         if (!ok) continue;
 
+        const sub = s.subcategory_id ? subById.get(s.subcategory_id) : undefined;
         const offer = toOffer(row, g, s.name);
         offer.serviceSlug = s.slug;
         offer.serviceOrder = s.sort_order;
         offer.categorySlug = cat?.slug ?? "otros";
         offer.categoryName = cat?.name ?? "Otros";
         offer.categoryOrder = cat?.sort_order ?? 99;
+        offer.subcategorySlug = sub?.slug ?? null;
+        offer.subcategoryOrder = sub?.sort_order ?? null;
         matched.push(offer);
       }
 
-      if (matched.length === 0) return { services: [], sellers: [] };
-
-      if (groupTokenHit) {
-        const bySeller = new Map<string, StockOffer[]>();
-        for (const o of matched) {
-          const list = bySeller.get(o.group.slug) ?? [];
-          list.push(o);
-          bySeller.set(o.group.slug, list);
-        }
-        // Orden permanente: primero vendedores con nombre propio, luego
-        // Vendedor A, B, C… en orden alfabético.
-        const sellers: SearchSellerResult[] = [...bySeller.entries()]
-          .sort((a, b) => compareSellers(a[1][0]!.group.name, b[1][0]!.group.name))
-          .slice(0, 20)
-          .map(([slug, offers]) => {
-            const g = offers[0]!.group;
-            return {
-              slug,
-              name: g.name,
-              kind: g.kind,
-              phone: g.phone,
-              parentGroup: g.parentGroup,
-              offers,
-            };
-          });
-        return { services: [], sellers };
-      }
-
-      const byService = new Map<string, StockOffer[]>();
-      for (const o of matched) {
-        const key = o.serviceSlug ?? "";
-        const list = byService.get(key) ?? [];
-        list.push(o);
-        byService.set(key, list);
-      }
-      const services: SearchServiceResult[] = [...byService.entries()]
-        .sort((a, b) => {
-          const sa = a[1][0]!;
-          const sb = b[1][0]!;
-          return (
-            (sa.categoryOrder ?? 99) - (sb.categoryOrder ?? 99) ||
-            (sa.serviceOrder ?? 99) - (sb.serviceOrder ?? 99)
-          );
-        })
-        .slice(0, 20)
-        .map(([slug, offers]) => {
-          const svc = allServices.find((s) => s.slug === slug);
-          return {
-            slug,
-            name: offers[0]!.serviceName ?? slug,
-            color: svc?.color ?? null,
-            categoryName: offers[0]!.categoryName ?? "",
-            offers,
-          };
-        });
-
-      return { services, sellers: [] };
+      const colorBySlug = new Map(allServices.map((s) => [s.slug, s.color]));
+      return buildSearchResults(matched, groupTokenHit, colorBySlug);
     },
   );
+
+/**
+ * Agrupa las ofertas que casaron con la consulta. Está aparte para que el
+ * buscador de /agregar produzca EXACTAMENTE la misma estructura que la portada
+ * y ambos se puedan pintar con los mismos componentes.
+ */
+export function buildSearchResults(
+  matched: StockOffer[],
+  groupTokenHit: boolean,
+  colorBySlug: Map<string, string | null>,
+  limit = 20,
+): { services: SearchServiceResult[]; sellers: SearchSellerResult[] } {
+  if (matched.length === 0) return { services: [], sellers: [] };
+
+  if (groupTokenHit) {
+    const bySeller = new Map<string, StockOffer[]>();
+    for (const o of matched) {
+      const list = bySeller.get(o.group.slug) ?? [];
+      list.push(o);
+      bySeller.set(o.group.slug, list);
+    }
+    // Orden permanente: primero vendedores con nombre propio, luego
+    // Vendedor A, B, C… en orden alfabético.
+    const sellers: SearchSellerResult[] = [...bySeller.entries()]
+      .sort((a, b) => compareSellers(a[1][0]!.group.name, b[1][0]!.group.name))
+      .slice(0, limit)
+      .map(([slug, offers]) => {
+        const g = offers[0]!.group;
+        return {
+          slug,
+          name: g.name,
+          kind: g.kind,
+          phone: g.phone,
+          parentGroup: g.parentGroup,
+          offers,
+        };
+      });
+    return { services: [], sellers };
+  }
+
+  const byService = new Map<string, StockOffer[]>();
+  for (const o of matched) {
+    const key = o.serviceSlug ?? "";
+    const list = byService.get(key) ?? [];
+    list.push(o);
+    byService.set(key, list);
+  }
+  const services: SearchServiceResult[] = [...byService.entries()]
+    .sort((a, b) => {
+      const sa = a[1][0]!;
+      const sb = b[1][0]!;
+      return (sa.categoryOrder ?? 99) - (sb.categoryOrder ?? 99) || compareOffersByService(sa, sb);
+    })
+    .slice(0, limit)
+    .map(([slug, offers]) => ({
+      slug,
+      name: offers[0]!.serviceName ?? slug,
+      color: colorBySlug.get(slug) ?? null,
+      categoryName: offers[0]!.categoryName ?? "",
+      categorySlug: offers[0]!.categorySlug ?? null,
+      subcategorySlug: offers[0]!.subcategorySlug ?? null,
+      offers,
+    }));
+
+  return { services, sellers: [] };
+}
 
 /** Catálogo completo de un vendedor/grupo (vista de solo consulta). */
 export const getSellerCatalog = createServerFn({ method: "GET" })
@@ -510,9 +550,13 @@ export const getSellerCatalog = createServerFn({ method: "GET" })
     if (!gRes.data) return null;
     const g = gRes.data as GroupRowDb;
 
-    const [catsRes, servicesRes, stock] = await Promise.all([
+    const [catsRes, subsRes, servicesRes, stock] = await Promise.all([
       supabase.from("categories").select("id,slug,name,sort_order").order("sort_order"),
-      supabase.from("services").select("id,slug,name,sort_order,category_id").order("sort_order"),
+      supabase.from("subcategories").select("id,slug,sort_order"),
+      supabase
+        .from("services")
+        .select("id,slug,name,sort_order,category_id,subcategory_id")
+        .order("sort_order"),
       pageAll<StockRowDb>((from, to) =>
         supabase
           .from("stock_items")
@@ -523,9 +567,20 @@ export const getSellerCatalog = createServerFn({ method: "GET" })
     ]);
 
     const catById = new Map(
-      ((catsRes.data ?? []) as Array<{ id: string; slug: string; name: string; sort_order: number }>).map(
-        (c) => [c.id, c],
-      ),
+      (
+        (catsRes.data ?? []) as Array<{
+          id: string;
+          slug: string;
+          name: string;
+          sort_order: number;
+        }>
+      ).map((c) => [c.id, c]),
+    );
+    const subById = new Map(
+      ((subsRes.data ?? []) as Array<{ id: string; slug: string; sort_order: number }>).map((s) => [
+        s.id,
+        s,
+      ]),
     );
     const svcById = new Map(
       (
@@ -535,6 +590,7 @@ export const getSellerCatalog = createServerFn({ method: "GET" })
           name: string;
           sort_order: number;
           category_id: string;
+          subcategory_id: string | null;
         }>
       ).map((s) => [s.id, s]),
     );
@@ -544,12 +600,15 @@ export const getSellerCatalog = createServerFn({ method: "GET" })
       const s = svcById.get(row.service_id);
       if (!s) continue;
       const cat = catById.get(s.category_id);
+      const sub = s.subcategory_id ? subById.get(s.subcategory_id) : undefined;
       const offer = toOffer(row, g, s.name);
       offer.serviceSlug = s.slug;
       offer.serviceOrder = s.sort_order;
       offer.categorySlug = cat?.slug ?? "otros";
       offer.categoryName = cat?.name ?? "Otros";
       offer.categoryOrder = cat?.sort_order ?? 99;
+      offer.subcategorySlug = sub?.slug ?? null;
+      offer.subcategoryOrder = sub?.sort_order ?? null;
       offers.push(offer);
     }
 
@@ -562,4 +621,3 @@ export const getSellerCatalog = createServerFn({ method: "GET" })
       offers,
     };
   });
-

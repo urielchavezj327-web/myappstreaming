@@ -1,28 +1,24 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
-import { Lock, MessageCircle, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Lock, MessageCircle, Pencil, Search, Trash2, X } from "lucide-react";
 
 import { getGroups, type GroupRow } from "@/lib/groups.functions";
 import { whatsappLink } from "@/lib/format";
+import { compareSellers, norm } from "@/lib/search-core";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
-import {
-  deleteSeller,
-  getAdminState,
-  unlockAdmin,
-  updateSeller,
-} from "@/lib/admin.functions";
+import { deleteSeller, getAdminState, unlockAdmin, updateSeller } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/grupos")({
   head: () => ({
     meta: [
-      { title: "Grupos y vendedores — Comparador de Stock" },
+      { title: "Grupos y vendedores — Stock Index" },
       {
         name: "description",
         content:
           "Directorio de grupos internos y vendedores de venta libre con su contacto de WhatsApp y número de ofertas publicadas.",
       },
-      { property: "og:title", content: "Grupos y vendedores — Comparador de Stock" },
+      { property: "og:title", content: "Grupos y vendedores — Stock Index" },
       {
         property: "og:description",
         content: "Grupos internos y venta libre, con contacto directo por WhatsApp.",
@@ -32,6 +28,9 @@ export const Route = createFileRoute("/grupos")({
     ],
   }),
   loader: () => getGroups(),
+  // Al volver de "Ver stock" la página se pinta desde caché con su altura
+  // completa, que es lo que permite recuperar la posición de scroll.
+  staleTime: 5 * 60_000,
   component: GroupsPage,
   errorComponent: ({ error }) => (
     <div className="p-10 text-sm text-muted-foreground">No se pudo cargar: {error.message}</div>
@@ -39,19 +38,35 @@ export const Route = createFileRoute("/grupos")({
   notFoundComponent: () => <div className="p-10">Sin grupos.</div>,
 });
 
-type Modal =
-  | { kind: "edit"; row: GroupRow }
-  | { kind: "delete"; row: GroupRow }
-  | null;
+type Modal = { kind: "edit"; row: GroupRow } | { kind: "delete"; row: GroupRow } | null;
 
 function GroupsPage() {
   const { groups } = Route.useLoaderData() as { groups: GroupRow[] };
   const router = useRouter();
-  const internal = groups.filter((g) => g.kind === "interno");
-  const free = groups.filter((g) => g.kind !== "interno");
   const [modal, setModal] = useState<Modal>(null);
+  const [filter, setFilter] = useState("");
 
-  // Los vendedores se agrupan bajo su grupo padre, en el orden del catálogo.
+  const query = norm(filter);
+  const matches = (g: GroupRow) =>
+    query.length === 0 ||
+    norm(g.name).includes(query) ||
+    norm(g.parentGroup ?? "").includes(query) ||
+    (g.phone ?? "").replace(/\D/g, "").includes(query.replace(/\D/g, "")) ||
+    false;
+
+  // "Mis Grupos" conserva el orden que tiene en la base: es un orden propio
+  // (MonShop primero) y no hay vendedores "A, B, C" que reordenar.
+  const internal = useMemo(
+    () => groups.filter((g) => g.kind === "interno" && matches(g)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, query],
+  );
+
+  const free = useMemo(() => groups.filter((g) => g.kind !== "interno"), [groups]);
+
+  // Los vendedores se agrupan bajo su grupo padre, en el orden del catálogo, y
+  // dentro de cada grupo con el orden permanente: primero los que tienen nombre
+  // propio, después Vendedor A, B, C…
   const byParent = useMemo(() => {
     const map = new Map<string, GroupRow[]>();
     for (const g of free) {
@@ -60,42 +75,93 @@ function GroupsPage() {
       list.push(g);
       map.set(key, list);
     }
-    return [...map.entries()];
+    return [...map.entries()].map(
+      ([parent, rows]) =>
+        [parent, rows.slice().sort((a, b) => compareSellers(a.name, b.name))] as const,
+    );
   }, [free]);
+
+  const visibleParents = byParent
+    .map(([parent, rows]) => [parent, rows.filter(matches)] as const)
+    .filter(([, rows]) => rows.length > 0);
+
+  const totalFree = free.length;
+  const nothing = internal.length === 0 && visibleParents.length === 0;
 
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main className="mx-auto max-w-6xl space-y-12 px-4 py-10 sm:px-6 sm:py-14">
-        <header>
-          <h1 className="t-display">Grupos y vendedores</h1>
-          <p className="mt-3 text-[13px] text-muted-foreground">
-            {internal.length} grupos internos · {free.length} vendedores de venta libre
+
+      <section className="aurora border-b border-border">
+        <div className="mx-auto max-w-6xl px-4 pb-8 pt-9 sm:px-6 sm:pb-10 sm:pt-12">
+          <h1 className="text-center t-display">Grupos y vendedores</h1>
+          <p className="mt-3 text-center text-[13px] text-muted-foreground">
+            {groups.filter((g) => g.kind === "interno").length} grupos internos · {totalFree}{" "}
+            vendedores de venta libre
           </p>
-        </header>
 
-        <section>
-          <h2 className="border-b border-border pb-3 t-title">Mis Grupos</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {internal.map((g) => (
-              <SellerCard key={g.slug} row={g} onEdit={setModal} />
-            ))}
+          <div className="relative mx-auto mt-6 max-w-2xl">
+            <Search
+              className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              type="search"
+              aria-label="Filtrar vendedores o grupos"
+              placeholder="Filtra por vendedor, grupo o teléfono…"
+              className="glass h-14 w-full rounded-2xl pl-14 pr-12 text-[15px] outline-none transition-all placeholder:text-faint focus:border-border-strong [&::-webkit-search-cancel-button]:hidden"
+            />
+            {filter ? (
+              <button
+                type="button"
+                onClick={() => setFilter("")}
+                aria-label="Limpiar filtro"
+                className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-faint transition-colors hover:bg-surface-2 hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="space-y-9">
-          <h2 className="border-b border-border pb-3 t-title">Vendedores de Venta Libre</h2>
-          {byParent.map(([parent, rows]) => (
-            <div key={parent}>
-              <p className="mb-3 t-label text-faint">{parent}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {rows.map((g) => (
-                  <SellerCard key={g.slug} row={g} contact onEdit={setModal} />
-                ))}
-              </div>
+      <main className="mx-auto max-w-6xl space-y-14 px-4 py-10 sm:px-6 sm:py-14">
+        {nothing ? (
+          <div className="glass rounded-3xl px-6 py-14 text-center">
+            <p className="text-[15px] font-medium">Sin resultados para “{filter}”</p>
+            <p className="mt-1.5 text-[13px] text-faint">
+              Prueba con el nombre del vendedor, su grupo o su teléfono.
+            </p>
+          </div>
+        ) : null}
+
+        {internal.length > 0 ? (
+          <section>
+            <GroupHeading title="Mis Grupos" count={internal.length} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {internal.map((g) => (
+                <SellerCard key={g.slug} row={g} onEdit={setModal} />
+              ))}
             </div>
-          ))}
-        </section>
+          </section>
+        ) : null}
+
+        {visibleParents.length > 0 ? (
+          <section className="space-y-12">
+            {visibleParents.map(([parent, rows]) => (
+              <div key={parent}>
+                <GroupHeading title={parent} count={rows.length} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {rows.map((g) => (
+                    <SellerCard key={g.slug} row={g} contact onEdit={setModal} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </section>
+        ) : null}
       </main>
 
       {modal ? (
@@ -114,6 +180,31 @@ function GroupsPage() {
   );
 }
 
+/**
+ * Encabezado de grupo padre. Antes era una etiqueta pequeña y apagada que se
+ * confundía con las tarjetas; ahora corta la página en secciones claras.
+ */
+function GroupHeading({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="mb-6 text-center">
+      <div className="flex items-center gap-4">
+        <span
+          className="h-px flex-1 bg-gradient-to-r from-transparent to-border-strong"
+          aria-hidden
+        />
+        <h2 className="t-section text-foreground">{title}</h2>
+        <span
+          className="h-px flex-1 bg-gradient-to-l from-transparent to-border-strong"
+          aria-hidden
+        />
+      </div>
+      <p className="mt-1.5 text-[11px] uppercase tracking-[0.18em] text-faint">
+        {count} vendedor{count === 1 ? "" : "es"}
+      </p>
+    </div>
+  );
+}
+
 function SellerCard({
   row,
   contact = false,
@@ -127,19 +218,23 @@ function SellerCard({
   const meta: string[] = [];
   if (contact) meta.push(row.phone ?? "Sin número publicado");
   if (row.variant) meta.push(row.variant);
-  meta.push(`${row.offers} ofertas`);
 
   return (
     <div className="glass rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-border-strong">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-[16px] font-semibold tracking-tight">{row.name}</h3>
-          <p className="mt-1 text-[12px] text-muted-foreground">{meta.join(" · ")}</p>
+          <h3 className="truncate text-[17px] font-semibold tracking-tight">{row.name}</h3>
+          {meta.length > 0 ? (
+            <p className="mt-1 truncate text-[12px] text-muted-foreground">{meta.join(" · ")}</p>
+          ) : null}
+          <p className="mt-1.5 inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground">
+            {row.offers} oferta{row.offers === 1 ? "" : "s"}
+          </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
           <button
             type="button"
-            aria-label="Editar vendedor"
+            aria-label={`Editar ${row.name}`}
             onClick={() => onEdit({ kind: "edit", row })}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
           >
@@ -147,7 +242,7 @@ function SellerCard({
           </button>
           <button
             type="button"
-            aria-label="Eliminar vendedor"
+            aria-label={`Eliminar ${row.name}`}
             onClick={() => onEdit({ kind: "delete", row })}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-destructive transition-colors hover:bg-destructive/10"
           >
@@ -156,11 +251,11 @@ function SellerCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3.5 flex flex-wrap items-center gap-2">
         <Link
           to="/vendedor/$slug"
           params={{ slug: row.slug }}
-          className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+          className="inline-flex items-center gap-2 rounded-xl border border-border-strong px-3.5 py-2 text-[12px] font-medium text-foreground transition-colors hover:bg-surface-2"
         >
           Ver stock →
         </Link>
@@ -169,19 +264,18 @@ function SellerCard({
             href={whatsappLink(row.phone, "Hola, vengo del comparador de precios.")}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-[12px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
           >
             <MessageCircle className="h-4 w-4" strokeWidth={2.2} /> WhatsApp
           </a>
         ) : null}
       </div>
-
     </div>
   );
 }
 
 const inputCls =
-  "h-11 w-full rounded-xl border border-input bg-surface-2 px-3 text-sm outline-none transition-colors focus:border-border-strong";
+  "h-11 w-full rounded-xl border border-input bg-surface-2 px-3 text-[16px] outline-none transition-colors focus:border-border-strong";
 const labelCls = "mb-1.5 block text-[11px] uppercase tracking-[0.16em] text-faint";
 
 function SellerModal({
@@ -206,12 +300,25 @@ function SellerModal({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useMemo(() => {
+  // La sesión se revalida en el servidor cada vez que se abre el modal; si algo
+  // falla, el estado por defecto es bloqueado.
+  useEffect(() => {
+    let alive = true;
     checkState()
-      .then((r) => setUnlocked(r.unlocked))
-      .catch(() => setUnlocked(false));
-    return null;
+      .then((r) => alive && setUnlocked(r.unlocked))
+      .catch(() => alive && setUnlocked(false));
+    return () => {
+      alive = false;
+    };
   }, [checkState]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const submit = async () => {
     setBusy(true);
@@ -239,16 +346,30 @@ function SellerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center"
+      className="fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center"
       onClick={onClose}
+      role="presentation"
     >
       <div
-        className="glass elev rise w-full max-w-md rounded-3xl p-5"
+        className="frost pop-in w-full max-w-md rounded-3xl p-5"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={modal.kind === "edit" ? "Editar vendedor" : "Eliminar vendedor"}
       >
-        <h3 className="t-title">
-          {modal.kind === "edit" ? "Editar vendedor" : "Eliminar vendedor"}
-        </h3>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="t-title">
+            {modal.kind === "edit" ? "Editar vendedor" : "Eliminar vendedor"}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-faint transition-colors hover:bg-surface-2 hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         {unlocked === null ? (
           <div className="skeleton mt-5 h-24 rounded-2xl" />
@@ -279,6 +400,7 @@ function SellerModal({
               id="pin-grupos"
               type="password"
               inputMode="numeric"
+              autoFocus
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               className={inputCls}
@@ -288,9 +410,9 @@ function SellerModal({
               <button
                 type="submit"
                 disabled={busy || !pin}
-                className="h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                className="h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
               >
-                Entrar
+                {busy ? "Verificando…" : "Entrar"}
               </button>
               <button
                 type="button"
@@ -347,7 +469,7 @@ function SellerModal({
                 type="button"
                 disabled={busy || !name.trim()}
                 onClick={submit}
-                className="h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                className="h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 {busy ? "Guardando…" : "Guardar cambios"}
               </button>
@@ -363,8 +485,8 @@ function SellerModal({
         ) : (
           <div className="mt-5 space-y-4">
             <p className="text-[13px] leading-relaxed text-muted-foreground">
-              Se eliminará <span className="text-foreground">{modal.row.name}</span> y sus{" "}
-              {modal.row.offers} ofertas. Esta acción no se puede deshacer.
+              Se eliminará <span className="font-semibold text-foreground">{modal.row.name}</span> y
+              sus {modal.row.offers} ofertas. Esta acción no se puede deshacer.
             </p>
             {error ? <p className="text-xs text-destructive">{error}</p> : null}
             <div className="flex gap-2">
@@ -372,7 +494,7 @@ function SellerModal({
                 type="button"
                 disabled={busy}
                 onClick={submit}
-                className="h-11 flex-1 rounded-xl bg-destructive text-sm font-semibold text-destructive-foreground disabled:opacity-50"
+                className="h-11 flex-1 rounded-xl bg-destructive text-sm font-semibold text-destructive-foreground transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 {busy ? "Eliminando…" : "Eliminar vendedor"}
               </button>

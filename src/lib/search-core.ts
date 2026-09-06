@@ -39,17 +39,58 @@ export function durationText(months: number | null) {
   return `${months} meses`;
 }
 
+/**
+ * Términos que nombran un TIPO DE PRODUCTO real, no una palabra suelta.
+ *
+ * Buscar "Netflix perfil" no debe traer cuentas completas cuyo detalle dice
+ * "4 perfiles + infantil", ni "Netflix cuenta completa" debe traer lotes que
+ * dicen "10 cuentas completas". Cuando uno de estos términos aparece en la
+ * consulta se filtra por `product_type`, no por el texto del detalle.
+ *
+ * Solo entran perfil, cuenta completa y lote: son los tres tipos que se piden
+ * por nombre. "panel", "familiar" o "invitación" aparecen dentro del detalle de
+ * ofertas de todo tipo ("Disney completa con panel"), así que convertirlos en
+ * filtro estricto rompería búsquedas legítimas.
+ *
+ * El orden importa: las frases largas se detectan antes que las cortas.
+ */
+const PRODUCT_PHRASES: Array<[string, string]> = [
+  ["cuentas completas", "completa"],
+  ["cuenta completa", "completa"],
+  ["completas", "completa"],
+  ["completa", "completa"],
+  ["cuentas", "completa"],
+  ["cuenta", "completa"],
+  ["full", "completa"],
+  ["perfiles", "perfil"],
+  ["perfil", "perfil"],
+  ["lotes", "lote"],
+  ["lote", "lote"],
+];
+
 export type ParsedQuery = {
   empty: boolean;
   phone: string | null;
   /** Letras exactas pedidas: "Vendedor H" -> ["h"] */
   sellerLetters: string[];
   tokens: string[];
+  /** Tipos de producto pedidos por nombre: "perfil", "completa", "lote". */
+  productTypes: string[];
+  /** Términos con los que se pidieron, para poder buscarlos también por nombre. */
+  productTerms: string[];
 };
 
 export function parseQuery(raw: string): ParsedQuery {
   const phone = phoneQueryDigits(raw);
-  if (phone) return { empty: false, phone, sellerLetters: [], tokens: [] };
+  if (phone)
+    return {
+      empty: false,
+      phone,
+      sellerLetters: [],
+      tokens: [],
+      productTypes: [],
+      productTerms: [],
+    };
 
   let text = norm(raw);
   const sellerLetters: string[] = [];
@@ -60,9 +101,21 @@ export function parseQuery(raw: string): ParsedQuery {
     return " ";
   });
 
+  const productTypes: string[] = [];
+  const productTerms: string[] = [];
+  let padded = ` ${text} `;
+  for (const [phrase, type] of PRODUCT_PHRASES) {
+    if (!padded.includes(` ${phrase} `)) continue;
+    padded = padded.split(` ${phrase} `).join(" ");
+    productTerms.push(phrase);
+    if (!productTypes.includes(type)) productTypes.push(type);
+  }
+  text = padded.trim();
+
   const tokens = text.split(/\s+/).filter((t) => t.length > 0);
-  const empty = sellerLetters.length === 0 && tokens.join("").length < 2;
-  return { empty, phone: null, sellerLetters, tokens };
+  const empty =
+    sellerLetters.length === 0 && productTypes.length === 0 && tokens.join("").length < 2;
+  return { empty, phone: null, sellerLetters, tokens, productTypes, productTerms };
 }
 
 export type MatchTarget = {
@@ -91,7 +144,17 @@ export function matchesQuery(t: MatchTarget, q: ParsedQuery): boolean {
     if (!letter || !q.sellerLetters.includes(letter)) return false;
   }
 
-  if (q.tokens.length === 0) return q.sellerLetters.length > 0;
+  if (q.productTypes.length > 0 && !q.productTypes.includes(t.productType)) {
+    // Excepción: el término puede formar parte de un nombre real
+    // ("Recuperación de cuentas", "Paneles y Métodos"). Se busca en la
+    // identidad de la oferta, nunca en el detalle.
+    const identity = norm(
+      [t.serviceName, t.categoryName, t.groupName, t.parentGroup ?? ""].join(" "),
+    );
+    if (!q.productTerms.some((term) => identity.includes(term))) return false;
+  }
+
+  if (q.tokens.length === 0) return q.sellerLetters.length > 0 || q.productTypes.length > 0;
 
   const haystack = norm(
     [
@@ -132,29 +195,58 @@ export function compareSellers(a: string, b: string) {
 }
 
 /**
- * Orden lógico de trámites por tipo de documento:
- * actas (nacimiento, divorcio, matrimonio) → CSF/RFC → recetas →
- * certificados escolares → constancias → identificaciones → resto.
+ * Orden de los trámites por tipo de documento.
+ *
+ * Se apoya en las subcategorías reales de la base (`subcategories.sort_order`),
+ * que ya describen el orden lógico: actas → SAT → salud → educación →
+ * antecedentes → vehículos → Infonavit → citas. Así, al crear una subcategoría
+ * nueva el orden se corrige solo, sin tocar código.
+ *
+ * Único ajuste sobre ese orden: "IMSS / ISSSTE y salud" mezcla dos cosas que se
+ * consultan por separado, así que se parte en dos bloques — recetas y
+ * certificados médicos antes de Educación, y NSS / semanas / AFORE después.
  */
-const TRAMITE_RULES: Array<[RegExp, number]> = [
-  [/acta.*nacimiento|nacimiento/, 10],
-  [/acta.*divorcio|divorcio/, 11],
-  [/acta.*matrimonio|matrimonio/, 12],
-  [/acta.*defuncion|defuncion/, 13],
-  [/acta/, 14],
-  [/curp/, 19],
-  [/csf|constancia.*fiscal|rfc|sat/, 20],
-  [/receta|medic/, 30],
-  [/certificado.*(primaria|secundaria|prepa|bachi|escolar|estudios)|certificado/, 40],
-  [/kardex|historial.*academico|titulo|cedula/, 41],
-  [/constancia/, 50],
-  [/ine|identificacion|pasaporte|licencia/, 60],
-  [/nomina|recibo|comprobante.*domicilio|comprobante/, 70],
-  [/imss|nss|afore|infonavit/, 80],
-];
+const MEDICO =
+  /receta|certificado medico|prueba|covid|antidoping|embarazo|vih|sifilis|urgencias|analisis|discapacidad/;
 
-export function tramiteRank(serviceName: string, detail: string | null) {
-  const text = norm(`${serviceName} ${detail ?? ""}`);
-  for (const [re, rank] of TRAMITE_RULES) if (re.test(text)) return rank;
-  return 900;
+export function tramiteRank(
+  serviceName: string,
+  subcategorySlug: string | null | undefined,
+  subcategoryOrder: number | null | undefined,
+): number {
+  if (!subcategorySlug) return 900;
+  if (subcategorySlug === "salud") return MEDICO.test(norm(serviceName)) ? 25 : 45;
+  const order = subcategoryOrder ?? 99;
+  // Educación (4) queda entre los dos bloques de salud (25 y 45).
+  return order <= 2 ? order * 10 : order === 4 ? 40 : order * 10;
+}
+
+/** Campos mínimos para ordenar una oferta dentro del listado de un vendedor. */
+export type SortableOffer = {
+  categorySlug?: string | undefined;
+  categoryOrder?: number | undefined;
+  serviceName?: string | undefined;
+  serviceOrder?: number | undefined;
+  subcategorySlug?: string | null | undefined;
+  subcategoryOrder?: number | null | undefined;
+};
+
+/**
+ * Posición de una oferta dentro de su categoría. Los trámites se agrupan por
+ * tipo de documento; el resto conserva el orden del catálogo.
+ */
+export function serviceRankWithin(offer: SortableOffer): [number, number] {
+  if (offer.categorySlug === "tramites") {
+    return [
+      tramiteRank(offer.serviceName ?? "", offer.subcategorySlug, offer.subcategoryOrder),
+      offer.serviceOrder ?? 99,
+    ];
+  }
+  return [0, offer.serviceOrder ?? 99];
+}
+
+export function compareOffersByService(a: SortableOffer, b: SortableOffer): number {
+  const [ra, sa] = serviceRankWithin(a);
+  const [rb, sb] = serviceRankWithin(b);
+  return ra - rb || sa - sb || (a.serviceName ?? "").localeCompare(b.serviceName ?? "");
 }
