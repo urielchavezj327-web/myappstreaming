@@ -176,6 +176,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   const [options, setOptions] = useState<AdminOptions | null>(null);
   const [recent, setRecent] = useState<AdminOffer[]>([]);
   const [offerQuery, setOfferQuery] = useState("");
+  const [offerCat, setOfferCat] = useState("");
   const [sellerMode, setSellerMode] = useState<"existing" | "new">("existing");
   const [groupId, setGroupId] = useState("");
   const [name, setName] = useState("");
@@ -187,7 +188,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const refresh = () =>
-    loadOffers({ data: { q: offerQuery } })
+    loadOffers({ data: { q: offerQuery, cat: offerCat } })
       .then((r: { offers: AdminOffer[] }) => setRecent(r.offers))
       .catch(() => {});
 
@@ -202,13 +203,14 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
 
   useEffect(() => {
     const id = setTimeout(() => {
-      loadOffers({ data: { q: offerQuery } })
+      loadOffers({ data: { q: offerQuery, cat: offerCat } })
         .then((r: { offers: AdminOffer[] }) => setRecent(r.offers))
         .catch(() => {});
     }, 300);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerQuery]);
+  }, [offerQuery, offerCat]);
+
 
 
   const servicesByCat = useMemo(() => {
@@ -517,27 +519,39 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
         onChanged={refresh}
         query={offerQuery}
         onQuery={setOfferQuery}
+        categories={options.categories}
+        cat={offerCat}
+        onCat={setOfferCat}
       />
     </div>
   );
 }
+
 
 function RecentOffers({
   offers,
   onChanged,
   query,
   onQuery,
+  categories,
+  cat,
+  onCat,
 }: {
   offers: AdminOffer[];
   onChanged: () => void;
   query: string;
   onQuery: (v: string) => void;
+  categories: AdminOptions["categories"];
+  cat: string;
+  onCat: (v: string) => void;
 }) {
   const update = useServerFn(updateOffer);
   const remove = useServerFn(deleteOffer);
   const [editing, setEditing] = useState<string | null>(null);
   const [price, setPrice] = useState("");
+  const [detail, setDetail] = useState("");
   const [available, setAvailable] = useState(true);
+
 
   return (
     <section>
@@ -568,9 +582,33 @@ function RecentOffers({
         ) : null}
       </div>
 
+      <div className="no-scrollbar -mx-4 mt-3 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="flex w-max min-w-full flex-nowrap gap-2">
+          {[{ id: "", slug: "", name: "Todas" }, ...categories].map((c) => {
+            const active = cat === c.slug;
+            return (
+              <button
+                key={c.slug || "todas"}
+                type="button"
+                onClick={() => onCat(active && c.slug ? "" : c.slug)}
+                className={`shrink-0 whitespace-nowrap rounded-xl border px-3 py-1.5 text-[12px] transition-colors ${
+                  active
+                    ? "border-transparent bg-primary font-medium text-primary-foreground"
+                    : "border-border bg-surface text-muted-foreground hover:border-border-strong hover:text-foreground"
+                }`}
+              >
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {offers.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">Sin ofertas para esa búsqueda.</p>
       ) : null}
+
+
 
       <ul className="glass mt-4 overflow-hidden rounded-2xl">
         {offers.map((o) => (
@@ -579,9 +617,13 @@ function RecentOffers({
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-medium">{o.serviceName}</p>
                 <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {o.groupName} · {productLabel(o.productType)} · {durationLabel(o.months)}
+                  {o.categoryName} · {o.groupName} · {productLabel(o.productType)} ·{" "}
+                  {durationLabel(o.months)}
                   {o.available ? "" : " · Agotado"}
                 </p>
+                {o.detail ? (
+                  <p className="mt-0.5 truncate text-[11px] text-faint">{o.detail}</p>
+                ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="text-[15px] font-semibold tabular-nums">
@@ -592,6 +634,7 @@ function RecentOffers({
                   onClick={() => {
                     setEditing(editing === o.id ? null : o.id);
                     setPrice(o.price === null ? "" : String(o.price));
+                    setDetail(o.detail ?? "");
                     setAvailable(o.available);
                   }}
                   className="rounded-lg border border-border px-2 py-1 text-[11px]"
@@ -610,6 +653,13 @@ function RecentOffers({
                   className="h-10 w-28 rounded-xl border border-input bg-surface-2 px-3 text-sm outline-none"
                   placeholder="Precio"
                 />
+                <input
+                  value={detail}
+                  onChange={(e) => setDetail(e.target.value)}
+                  maxLength={200}
+                  className="h-10 min-w-[12rem] flex-1 rounded-xl border border-input bg-surface-2 px-3 text-sm outline-none"
+                  placeholder="Detalle (garantía, restricciones…)"
+                />
                 <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
                   <input
                     type="checkbox"
@@ -626,13 +676,14 @@ function RecentOffers({
                         id: o.id,
                         price: price.trim() === "" ? null : Number(price),
                         months: o.months,
-                        detail: o.detail,
+                        detail: detail.trim() === "" ? null : detail.trim(),
                         available,
                       },
                     });
                     setEditing(null);
                     onChanged();
                   }}
+
                   className="h-10 rounded-xl bg-primary px-3 text-[12px] font-semibold text-primary-foreground"
                 >
                   Guardar

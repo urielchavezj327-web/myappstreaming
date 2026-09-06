@@ -3,7 +3,7 @@ import { useSession } from "@tanstack/react-start/server";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-import { phoneMatches, phoneQueryDigits } from "./phone";
+import { compareSellers, matchesQuery, parseQuery, tramiteRank } from "./search-core";
 
 
 type AdminSession = { unlocked?: boolean };
@@ -213,33 +213,8 @@ export type AdminOffer = {
 };
 
 
-const normalize = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
+// El buscador del panel usa EXACTAMENTE el mismo motor que la portada.
 
-const PRODUCT_TEXT: Record<string, string> = {
-  perfil: "perfil",
-  completa: "cuenta completa full",
-  individual: "individual",
-  familiar: "familiar",
-  invitacion: "invitacion",
-  lote: "lote",
-  tramite: "tramite",
-  panel: "panel",
-  otro: "servicio",
-};
-
-function durationText(months: number | null) {
-  if (months === null) return "unico";
-  if (months === 0) return "permanente";
-  if (months === 1) return "1 mes meses mensual";
-  if (months === 12) return "12 meses anual 1 ano";
-  if (months === 24) return "24 meses 2 anos";
-  return `${months} meses`;
-}
 
 export const searchAdminOffers = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) =>
@@ -249,12 +224,8 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
     await requireUnlocked();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const phoneQ = phoneQueryDigits(data.q);
-    const tokens = phoneQ
-      ? []
-      : normalize(data.q)
-          .split(/\s+/)
-          .filter((t) => t.length > 0);
+    const parsed = parseQuery(data.q);
+
 
 
     type Row = {
@@ -291,34 +262,45 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
 
     const cat = data.cat?.trim() ?? "";
 
-    // Cada palabra se evalúa por separado (servicio + vendedor + duración + tipo).
+    // Mismo motor compartido que la portada (search-core).
     const filtered = rows.filter((r) => {
       if (cat && (r.services?.categories?.slug ?? "") !== cat) return false;
-      if (phoneQ) return phoneMatches(r.groups?.phone ?? null, phoneQ);
-      if (tokens.length === 0) return true;
-
-      const haystack = normalize(
-        [
-          r.services?.name ?? "",
-          r.groups?.name ?? "",
-          r.groups?.parent_group ?? "",
-          (r.groups?.phone ?? "").replace(/\D/g, ""),
-          r.detail ?? "",
-          PRODUCT_TEXT[r.product_type] ?? r.product_type,
-          durationText(r.months),
-        ].join(" "),
+      if (parsed.empty) return true;
+      return matchesQuery(
+        {
+          serviceName: r.services?.name ?? "",
+          categoryName: r.services?.categories?.name ?? "",
+          groupName: r.groups?.name ?? "",
+          parentGroup: r.groups?.parent_group ?? null,
+          variant: null,
+          phone: r.groups?.phone ?? null,
+          detail: r.detail,
+          productType: r.product_type,
+          months: r.months,
+        },
+        parsed,
       );
-      return tokens.every((t) => haystack.includes(t));
     });
 
-    // Orden por defecto igual al buscador de portada: por categoría y servicio.
-    filtered.sort(
-      (a, b) =>
-        (a.services?.categories?.sort_order ?? 99) - (b.services?.categories?.sort_order ?? 99) ||
+    // Orden igual al de portada: categoría → servicio (trámites por tipo de
+    // documento) → vendedores con nombre propio antes de Vendedor A, B, C…
+    filtered.sort((a, b) => {
+      const catA = a.services?.categories?.sort_order ?? 99;
+      const catB = b.services?.categories?.sort_order ?? 99;
+      if (catA !== catB) return catA - catB;
+      const isTramite = (r: Row) => r.product_type === "tramite";
+      if (isTramite(a) && isTramite(b)) {
+        const ra = tramiteRank(a.services?.name ?? "", a.detail);
+        const rb = tramiteRank(b.services?.name ?? "", b.detail);
+        if (ra !== rb) return ra - rb;
+      }
+      return (
         (a.services?.sort_order ?? 99) - (b.services?.sort_order ?? 99) ||
         (a.services?.name ?? "").localeCompare(b.services?.name ?? "") ||
-        (a.groups?.name ?? "").localeCompare(b.groups?.name ?? ""),
-    );
+        compareSellers(a.groups?.name ?? "", b.groups?.name ?? "")
+      );
+    });
+
 
     const offers = filtered.slice(0, 80).map((r) => ({
       id: r.id,

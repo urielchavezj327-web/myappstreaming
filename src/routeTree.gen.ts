@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgregarRouteImport } from './routes/agregar'
 import { Route as GruposRouteImport } from './routes/grupos'
 import { Route as ServicioSlugRouteImport } from './routes/servicio.$slug'
+import { Route as VendedorSlugRouteImport } from './routes/vendedor.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,25 @@ const ServicioSlugRoute = ServicioSlugRouteImport.update({
   path: '/servicio/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendedorSlugRoute = VendedorSlugRouteImport.update({
+  id: '/vendedor/$slug',
+  path: '/vendedor/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agregar': typeof AgregarRoute
   '/grupos': typeof GruposRoute
   '/servicio/$slug': typeof ServicioSlugRoute
+  '/vendedor/$slug': typeof VendedorSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agregar': typeof AgregarRoute
   '/grupos': typeof GruposRoute
   '/servicio/$slug': typeof ServicioSlugRoute
+  '/vendedor/$slug': typeof VendedorSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,21 @@ export interface FileRoutesById {
   '/agregar': typeof AgregarRoute
   '/grupos': typeof GruposRoute
   '/servicio/$slug': typeof ServicioSlugRoute
+  '/vendedor/$slug': typeof VendedorSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/agregar' | '/grupos' | '/servicio/$slug'
+  fullPaths:
+    '/' | '/agregar' | '/grupos' | '/servicio/$slug' | '/vendedor/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agregar' | '/grupos' | '/servicio/$slug'
-  id: '__root__' | '/' | '/agregar' | '/grupos' | '/servicio/$slug'
+  to: '/' | '/agregar' | '/grupos' | '/servicio/$slug' | '/vendedor/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/agregar'
+    | '/grupos'
+    | '/servicio/$slug'
+    | '/vendedor/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +83,7 @@ export interface RootRouteChildren {
   AgregarRoute: typeof AgregarRoute
   GruposRoute: typeof GruposRoute
   ServicioSlugRoute: typeof ServicioSlugRoute
+  VendedorSlugRoute: typeof VendedorSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServicioSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendedor/$slug': {
+      id: '/vendedor/$slug'
+      path: '/vendedor/$slug'
+      fullPath: '/vendedor/$slug'
+      preLoaderRoute: typeof VendedorSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +131,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgregarRoute: AgregarRoute,
   GruposRoute: GruposRoute,
   ServicioSlugRoute: ServicioSlugRoute,
+  VendedorSlugRoute: VendedorSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

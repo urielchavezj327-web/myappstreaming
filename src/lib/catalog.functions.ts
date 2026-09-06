@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import { phoneMatches, phoneQueryDigits } from "./phone";
+import { compareSellers, matchesQuery, norm, parseQuery } from "./search-core";
 
 
 function publicClient() {
