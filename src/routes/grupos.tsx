@@ -156,16 +156,26 @@ function SellerCard({
         </div>
       </div>
 
-      {contact && row.phone ? (
-        <a
-          href={whatsappLink(row.phone, "Hola, vengo del comparador de precios.")}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Link
+          to="/vendedor/$slug"
+          params={{ slug: row.slug }}
+          className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
         >
-          <MessageCircle className="h-4 w-4" strokeWidth={2.2} /> WhatsApp
-        </a>
-      ) : null}
+          Ver stock →
+        </Link>
+        {contact && row.phone ? (
+          <a
+            href={whatsappLink(row.phone, "Hola, vengo del comparador de precios.")}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
+          >
+            <MessageCircle className="h-4 w-4" strokeWidth={2.2} /> WhatsApp
+          </a>
+        ) : null}
+      </div>
+
     </div>
   );
 }
