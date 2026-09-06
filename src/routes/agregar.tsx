@@ -617,9 +617,13 @@ function RecentOffers({
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-medium">{o.serviceName}</p>
                 <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {o.groupName} · {productLabel(o.productType)} · {durationLabel(o.months)}
+                  {o.categoryName} · {o.groupName} · {productLabel(o.productType)} ·{" "}
+                  {durationLabel(o.months)}
                   {o.available ? "" : " · Agotado"}
                 </p>
+                {o.detail ? (
+                  <p className="mt-0.5 truncate text-[11px] text-faint">{o.detail}</p>
+                ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="text-[15px] font-semibold tabular-nums">
@@ -630,6 +634,7 @@ function RecentOffers({
                   onClick={() => {
                     setEditing(editing === o.id ? null : o.id);
                     setPrice(o.price === null ? "" : String(o.price));
+                    setDetail(o.detail ?? "");
                     setAvailable(o.available);
                   }}
                   className="rounded-lg border border-border px-2 py-1 text-[11px]"
@@ -648,6 +653,13 @@ function RecentOffers({
                   className="h-10 w-28 rounded-xl border border-input bg-surface-2 px-3 text-sm outline-none"
                   placeholder="Precio"
                 />
+                <input
+                  value={detail}
+                  onChange={(e) => setDetail(e.target.value)}
+                  maxLength={200}
+                  className="h-10 min-w-[12rem] flex-1 rounded-xl border border-input bg-surface-2 px-3 text-sm outline-none"
+                  placeholder="Detalle (garantía, restricciones…)"
+                />
                 <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
                   <input
                     type="checkbox"
@@ -664,13 +676,14 @@ function RecentOffers({
                         id: o.id,
                         price: price.trim() === "" ? null : Number(price),
                         months: o.months,
-                        detail: o.detail,
+                        detail: detail.trim() === "" ? null : detail.trim(),
                         available,
                       },
                     });
                     setEditing(null);
                     onChanged();
                   }}
+
                   className="h-10 rounded-xl bg-primary px-3 text-[12px] font-semibold text-primary-foreground"
                 >
                   Guardar
