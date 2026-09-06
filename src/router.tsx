@@ -8,7 +8,9 @@ export const getRouter = () => {
   const router = createRouter({
     routeTree,
     context: { queryClient },
-    scrollRestoration: true,
+    // La restauración la maneja <ScrollMemory />: la del router no persiste
+    // nada en esta versión y dejaba la página a media altura al volver.
+    scrollRestoration: false,
     defaultPreloadStaleTime: 0,
   });
 
