@@ -582,9 +582,33 @@ function RecentOffers({
         ) : null}
       </div>
 
+      <div className="no-scrollbar -mx-4 mt-3 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="flex w-max min-w-full flex-nowrap gap-2">
+          {[{ id: "", slug: "", name: "Todas" }, ...categories].map((c) => {
+            const active = cat === c.slug;
+            return (
+              <button
+                key={c.slug || "todas"}
+                type="button"
+                onClick={() => onCat(active && c.slug ? "" : c.slug)}
+                className={`shrink-0 whitespace-nowrap rounded-xl border px-3 py-1.5 text-[12px] transition-colors ${
+                  active
+                    ? "border-transparent bg-primary font-medium text-primary-foreground"
+                    : "border-border bg-surface text-muted-foreground hover:border-border-strong hover:text-foreground"
+                }`}
+              >
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {offers.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">Sin ofertas para esa búsqueda.</p>
       ) : null}
+
+
 
       <ul className="glass mt-4 overflow-hidden rounded-2xl">
         {offers.map((o) => (
