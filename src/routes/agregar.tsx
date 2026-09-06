@@ -519,10 +519,14 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
         onChanged={refresh}
         query={offerQuery}
         onQuery={setOfferQuery}
+        categories={options.categories}
+        cat={offerCat}
+        onCat={setOfferCat}
       />
     </div>
   );
 }
+
 
 function RecentOffers({
   offers,
