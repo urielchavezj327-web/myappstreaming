@@ -3,7 +3,7 @@ import { useSession } from "@tanstack/react-start/server";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-import { phoneMatches, phoneQueryDigits } from "./phone";
+import { compareSellers, matchesQuery, parseQuery, tramiteRank } from "./search-core";
 
 
 type AdminSession = { unlocked?: boolean };
