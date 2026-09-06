@@ -533,17 +533,25 @@ function RecentOffers({
   onChanged,
   query,
   onQuery,
+  categories,
+  cat,
+  onCat,
 }: {
   offers: AdminOffer[];
   onChanged: () => void;
   query: string;
   onQuery: (v: string) => void;
+  categories: AdminOptions["categories"];
+  cat: string;
+  onCat: (v: string) => void;
 }) {
   const update = useServerFn(updateOffer);
   const remove = useServerFn(deleteOffer);
   const [editing, setEditing] = useState<string | null>(null);
   const [price, setPrice] = useState("");
+  const [detail, setDetail] = useState("");
   const [available, setAvailable] = useState(true);
+
 
   return (
     <section>
