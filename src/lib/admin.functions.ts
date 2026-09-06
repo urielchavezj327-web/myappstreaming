@@ -3,8 +3,15 @@ import { useSession } from "@tanstack/react-start/server";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-import { compareSellers, matchesQuery, parseQuery, tramiteRank } from "./search-core";
-
+import { matchesQuery, norm, parseQuery } from "./search-core";
+import {
+  buildSearchResults,
+  pageAll,
+  type SearchSellerResult,
+  type SearchServiceResult,
+  type StockOffer,
+} from "./catalog.functions";
+import { resolveBrand } from "./brands";
 
 type AdminSession = { unlocked?: boolean };
 
@@ -19,7 +26,6 @@ function sessionConfig() {
   };
 }
 
-
 function pinMatches(input: string, expected: string) {
   const a = createHash("sha256").update(input, "utf8").digest();
   const b = createHash("sha256").update(expected, "utf8").digest();
@@ -27,6 +33,9 @@ function pinMatches(input: string, expected: string) {
 }
 
 async function requireUnlocked() {
+  // `useSession` es la API de sesión de servidor de TanStack Start, no un hook
+  // de React: la regla de hooks no aplica aquí.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const session = await useSession<AdminSession>(sessionConfig());
   if (!session.data.unlocked) throw new Error("PIN requerido");
 }
@@ -55,6 +64,7 @@ export const lockAdmin = createServerFn({ method: "POST" }).handler(async () => 
 
 export type AdminOptions = {
   categories: Array<{ id: string; slug: string; name: string }>;
+  subcategories: Array<{ id: string; slug: string; name: string; categoryId: string }>;
   services: Array<{ id: string; name: string; categoryId: string }>;
   groups: Array<{ id: string; name: string; kind: string; parentGroup: string | null }>;
 };
@@ -63,13 +73,20 @@ export const getAdminOptions = createServerFn({ method: "GET" }).handler(
   async (): Promise<AdminOptions> => {
     await requireUnlocked();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [cats, services, groups] = await Promise.all([
+    const [cats, subs, services, groups] = await Promise.all([
       supabaseAdmin.from("categories").select("id,slug,name").order("sort_order"),
+      supabaseAdmin.from("subcategories").select("id,slug,name,category_id").order("sort_order"),
       supabaseAdmin.from("services").select("id,name,category_id").order("sort_order"),
       supabaseAdmin.from("groups").select("id,name,kind,parent_group").order("sort_order"),
     ]);
     return {
       categories: (cats.data ?? []).map((c) => ({ id: c.id, slug: c.slug, name: c.name })),
+      subcategories: (subs.data ?? []).map((s) => ({
+        id: s.id,
+        slug: s.slug,
+        name: s.name,
+        categoryId: s.category_id,
+      })),
       services: (services.data ?? []).map((s) => ({
         id: s.id,
         name: s.name,
@@ -173,7 +190,7 @@ export const saveStock = createServerFn({ method: "POST" })
           name: seller.name,
           kind: seller.kind,
           // Regla permanente: el teléfono solo se guarda para venta libre.
-          phone: seller.kind === "venta_libre" ? (seller.phone || null) : null,
+          phone: seller.kind === "venta_libre" ? seller.phone || null : null,
           parent_group: parent,
           sort_order: nextOrder,
         })
@@ -199,125 +216,219 @@ export const saveStock = createServerFn({ method: "POST" })
     return { ok: true as const, inserted: rows.length };
   });
 
-export type AdminOffer = {
-  id: string;
-  serviceName: string;
-  groupName: string;
-  productType: string;
-  months: number | null;
-  price: number | null;
-  detail: string | null;
-  available: boolean;
-  categorySlug: string;
-  categoryName: string;
-};
+/**
+ * Alta de un servicio nuevo desde el panel.
+ *
+ * El color se resuelve con el mismo registro de marcas que pinta las fichas,
+ * así que un servicio llamado "Claude" nace con el naranja de Anthropic y su
+ * ficha queda idéntica al resto sin ningún paso extra.
+ */
+export const createService = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        name: z.string().trim().min(2).max(60),
+        categoryId: z.string().uuid(),
+        subcategoryId: z.string().uuid().nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const cat = await supabaseAdmin
+      .from("categories")
+      .select("slug")
+      .eq("id", data.categoryId)
+      .maybeSingle();
+    if (!cat.data) throw new Error("Esa categoría no existe");
 
-// El buscador del panel usa EXACTAMENTE el mismo motor que la portada.
+    let sub: { slug: string } | null = null;
+    if (data.subcategoryId) {
+      const res = await supabaseAdmin
+        .from("subcategories")
+        .select("slug,category_id")
+        .eq("id", data.subcategoryId)
+        .maybeSingle();
+      if (!res.data || res.data.category_id !== data.categoryId) {
+        throw new Error("Esa subcategoría no pertenece a la categoría elegida");
+      }
+      sub = { slug: res.data.slug };
+    }
 
+    // Nombre repetido dentro de la misma categoría: se avisa en vez de crear
+    // una ficha duplicada que partiría las ofertas en dos.
+    const existing = await supabaseAdmin
+      .from("services")
+      .select("name")
+      .eq("category_id", data.categoryId);
+    const clash = (existing.data ?? []).find((r) => norm(r.name) === norm(data.name));
+    if (clash) throw new Error(`Ya existe "${clash.name}" en esa categoría`);
 
+    let slug = slugify(data.name);
+    const taken = await supabaseAdmin
+      .from("services")
+      .select("slug")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (taken.data) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const brand = resolveBrand({
+      name: data.name,
+      categorySlug: cat.data.slug,
+      subcategorySlug: sub?.slug ?? null,
+    });
+
+    const { data: maxRow } = await supabaseAdmin
+      .from("services")
+      .select("sort_order")
+      .eq("category_id", data.categoryId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const sortOrder = ((maxRow?.sort_order as number | undefined) ?? 0) + 1;
+
+    const inserted = await supabaseAdmin
+      .from("services")
+      .insert({
+        slug,
+        name: data.name,
+        color: brand.colors[0] ?? "#8A8A93",
+        category_id: data.categoryId,
+        subcategory_id: data.subcategoryId,
+        sort_order: sortOrder,
+      })
+      .select("id,name,category_id")
+      .single();
+    if (inserted.error) throw new Error(inserted.error.message);
+
+    return {
+      id: inserted.data.id,
+      name: inserted.data.name,
+      categoryId: inserted.data.category_id,
+    };
+  });
+
+/**
+ * Buscador del panel. Usa EXACTAMENTE el mismo motor y el mismo agrupamiento
+ * que la portada (`search-core` + `buildSearchResults`), para que los
+ * resultados se vean y se ordenen igual en los dos sitios. Lo único propio del
+ * panel es el filtro por categoría y que cada oferta trae su `id` para poder
+ * editarla o borrarla en línea.
+ */
 export const searchAdminOffers = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) =>
     z.object({ q: z.string().max(80), cat: z.string().max(40).optional() }).parse(input),
   )
-  .handler(async ({ data }): Promise<{ offers: AdminOffer[] }> => {
-    await requireUnlocked();
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  .handler(
+    async ({
+      data,
+    }): Promise<{ services: SearchServiceResult[]; sellers: SearchSellerResult[] }> => {
+      await requireUnlocked();
+      const parsed = parseQuery(data.q);
+      // Antes se devolvía todo el stock cargado cuando no había búsqueda; ahora
+      // el panel arranca vacío, igual que la portada.
+      if (parsed.empty) return { services: [], sellers: [] };
 
-    const parsed = parseQuery(data.q);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const [catsRes, subsRes, servicesRes, groupsRes, stock] = await Promise.all([
+        supabaseAdmin.from("categories").select("id,slug,name,sort_order").order("sort_order"),
+        supabaseAdmin.from("subcategories").select("id,slug,sort_order"),
+        supabaseAdmin
+          .from("services")
+          .select("id,slug,name,color,sort_order,category_id,subcategory_id")
+          .order("sort_order"),
+        supabaseAdmin
+          .from("groups")
+          .select("id,slug,name,kind,phone,parent_group,notes")
+          .order("sort_order"),
+        pageAll<{
+          id: string;
+          group_id: string;
+          service_id: string;
+          product_type: string;
+          months: number | null;
+          price: number | null;
+          detail: string | null;
+          available: boolean;
+        }>((from, to) =>
+          supabaseAdmin
+            .from("stock_items")
+            .select("id,group_id,service_id,product_type,months,price,detail,available")
+            .range(from, to),
+        ),
+      ]);
 
+      const catById = new Map((catsRes.data ?? []).map((c) => [c.id, c]));
+      const subById = new Map((subsRes.data ?? []).map((s) => [s.id, s]));
+      const svcById = new Map((servicesRes.data ?? []).map((s) => [s.id, s]));
+      const groupById = new Map((groupsRes.data ?? []).map((g) => [g.id, g]));
+      const groups = [...groupById.values()];
 
+      const groupTokenHit =
+        parsed.phone !== null ||
+        parsed.sellerLetters.length > 0 ||
+        parsed.tokens.some((t) =>
+          groups.some((g) => norm(g.name).includes(t) || norm(g.parent_group ?? "").includes(t)),
+        );
 
-    type Row = {
-      id: string;
-      product_type: string;
-      months: number | null;
-      price: number | null;
-      detail: string | null;
-      available: boolean;
-      created_at: string;
-      services: {
-        name: string;
-        sort_order: number | null;
-        categories: { slug: string; name: string; sort_order: number | null } | null;
-      } | null;
-      groups: { name: string; parent_group: string | null; phone: string | null } | null;
-    };
+      const cat = data.cat?.trim() ?? "";
+      const matched: StockOffer[] = [];
+      for (const row of stock) {
+        const g = groupById.get(row.group_id);
+        const s = svcById.get(row.service_id);
+        if (!g || !s) continue;
+        const category = catById.get(s.category_id);
+        if (cat && (category?.slug ?? "") !== cat) continue;
+        const ok = matchesQuery(
+          {
+            serviceName: s.name,
+            categoryName: category?.name ?? "",
+            groupName: g.name,
+            parentGroup: g.parent_group,
+            variant: g.notes,
+            phone: g.phone,
+            detail: row.detail,
+            productType: row.product_type,
+            months: row.months,
+          },
+          parsed,
+        );
+        if (!ok) continue;
 
-    const rows: Row[] = [];
-    const size = 1000;
-    for (let from = 0; ; from += size) {
-      const { data: page, error } = await supabaseAdmin
-        .from("stock_items")
-        .select(
-          "id,product_type,months,price,detail,available,created_at,services(name,sort_order,categories(slug,name,sort_order)),groups(name,parent_group,phone)",
-        )
-        .order("created_at", { ascending: false })
-        .range(from, from + size - 1);
-      if (error) throw new Error(error.message);
-      const chunk = (page ?? []) as unknown as Row[];
-      rows.push(...chunk);
-      if (chunk.length < size) break;
-    }
-
-    const cat = data.cat?.trim() ?? "";
-
-    // Mismo motor compartido que la portada (search-core).
-    const filtered = rows.filter((r) => {
-      if (cat && (r.services?.categories?.slug ?? "") !== cat) return false;
-      if (parsed.empty) return true;
-      return matchesQuery(
-        {
-          serviceName: r.services?.name ?? "",
-          categoryName: r.services?.categories?.name ?? "",
-          groupName: r.groups?.name ?? "",
-          parentGroup: r.groups?.parent_group ?? null,
-          variant: null,
-          phone: r.groups?.phone ?? null,
-          detail: r.detail,
-          productType: r.product_type,
-          months: r.months,
-        },
-        parsed,
-      );
-    });
-
-    // Orden igual al de portada: categoría → servicio (trámites por tipo de
-    // documento) → vendedores con nombre propio antes de Vendedor A, B, C…
-    filtered.sort((a, b) => {
-      const catA = a.services?.categories?.sort_order ?? 99;
-      const catB = b.services?.categories?.sort_order ?? 99;
-      if (catA !== catB) return catA - catB;
-      const isTramite = (r: Row) => r.product_type === "tramite";
-      if (isTramite(a) && isTramite(b)) {
-        const ra = tramiteRank(a.services?.name ?? "", a.detail);
-        const rb = tramiteRank(b.services?.name ?? "", b.detail);
-        if (ra !== rb) return ra - rb;
+        const sub = s.subcategory_id ? subById.get(s.subcategory_id) : undefined;
+        matched.push({
+          id: row.id,
+          productType: row.product_type,
+          months: row.months,
+          price: row.price === null ? null : Number(row.price),
+          detail: row.detail,
+          available: row.available,
+          serviceName: s.name,
+          serviceSlug: s.slug,
+          serviceOrder: s.sort_order,
+          categorySlug: category?.slug ?? "otros",
+          categoryName: category?.name ?? "Otros",
+          categoryOrder: category?.sort_order ?? 99,
+          subcategorySlug: sub?.slug ?? null,
+          subcategoryOrder: sub?.sort_order ?? null,
+          group: {
+            slug: g.slug,
+            name: g.name,
+            kind: g.kind,
+            // Regla permanente: el teléfono solo existe para venta libre.
+            phone: g.kind === "venta_libre" ? g.phone : null,
+            parentGroup: g.parent_group,
+            variant: g.notes,
+          },
+        });
       }
-      return (
-        (a.services?.sort_order ?? 99) - (b.services?.sort_order ?? 99) ||
-        (a.services?.name ?? "").localeCompare(b.services?.name ?? "") ||
-        compareSellers(a.groups?.name ?? "", b.groups?.name ?? "")
-      );
-    });
 
-
-    const offers = filtered.slice(0, 80).map((r) => ({
-      id: r.id,
-      serviceName: r.services?.name ?? "—",
-      groupName: r.groups?.name ?? "—",
-      productType: r.product_type,
-      months: r.months,
-      price: r.price === null ? null : Number(r.price),
-      detail: r.detail,
-      available: r.available,
-      categorySlug: r.services?.categories?.slug ?? "",
-      categoryName: r.services?.categories?.name ?? "Otros",
-    }));
-    return { offers };
-  });
-
-
+      const colorBySlug = new Map((servicesRes.data ?? []).map((s) => [s.slug, s.color]));
+      return buildSearchResults(matched, groupTokenHit, colorBySlug, 12);
+    },
+  );
 
 export const updateSeller = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
@@ -344,8 +455,8 @@ export const updateSeller = createServerFn({ method: "POST" })
       .update({
         name: data.name,
         // Regla permanente: el teléfono y el grupo solo aplican a venta libre.
-        phone: isFree ? (data.phone || null) : null,
-        parent_group: isFree ? (data.parentGroup || null) : null,
+        phone: isFree ? data.phone || null : null,
+        parent_group: isFree ? data.parentGroup || null : null,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -363,7 +474,6 @@ export const deleteSeller = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
-
 
 export const updateOffer = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
