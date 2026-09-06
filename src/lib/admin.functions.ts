@@ -213,33 +213,8 @@ export type AdminOffer = {
 };
 
 
-const normalize = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
+// El buscador del panel usa EXACTAMENTE el mismo motor que la portada.
 
-const PRODUCT_TEXT: Record<string, string> = {
-  perfil: "perfil",
-  completa: "cuenta completa full",
-  individual: "individual",
-  familiar: "familiar",
-  invitacion: "invitacion",
-  lote: "lote",
-  tramite: "tramite",
-  panel: "panel",
-  otro: "servicio",
-};
-
-function durationText(months: number | null) {
-  if (months === null) return "unico";
-  if (months === 0) return "permanente";
-  if (months === 1) return "1 mes meses mensual";
-  if (months === 12) return "12 meses anual 1 ano";
-  if (months === 24) return "24 meses 2 anos";
-  return `${months} meses`;
-}
 
 export const searchAdminOffers = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) =>
