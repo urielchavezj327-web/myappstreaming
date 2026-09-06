@@ -4,6 +4,7 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import {
+  BUNDLE_PREFIX,
   getCatalog,
   searchStock,
   type CatalogCategory,
@@ -11,11 +12,20 @@ import {
   type SearchSellerResult,
   type SearchServiceResult,
 } from "@/lib/catalog.functions";
-import { formatPrice } from "@/lib/format";
+import { brandSkin, resolveBrand } from "@/lib/brands";
+import { Wordmark } from "@/components/wordmark";
 import { OfferGroups, SellerOffers } from "@/components/offer-list";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 
 type IndexSearch = { cat: string; q: string };
+type Results = { services: SearchServiceResult[]; sellers: SearchSellerResult[] };
+
+/**
+ * Caché de búsquedas en memoria. Al volver de una ficha el buscador no se
+ * vuelve a lanzar, así la lista aparece con su altura completa en el primer
+ * frame y el navegador puede restaurar la posición exacta de scroll.
+ */
+const searchCache = new Map<string, Results>();
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): IndexSearch => ({
@@ -24,13 +34,13 @@ export const Route = createFileRoute("/")({
   }),
   head: () => ({
     meta: [
-      { title: "Comparador de Stock — Precios de streaming y trámites" },
+      { title: "Stock Index — Comparador de precios de stock digital" },
       {
         name: "description",
         content:
           "Compara en un solo panel los precios de Netflix, Disney+, ViX, música, IA y trámites entre todos los grupos y vendedores.",
       },
-      { property: "og:title", content: "Comparador de Stock — Precios de streaming y trámites" },
+      { property: "og:title", content: "Stock Index — Comparador de precios" },
       {
         property: "og:description",
         content:
@@ -41,6 +51,9 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: () => getCatalog(),
+  // Al volver atrás se reutiliza el catálogo ya cargado: la página se pinta
+  // completa de inmediato y no se pierde la posición de scroll.
+  staleTime: 5 * 60_000,
   component: Index,
   errorComponent: ({ error }) => (
     <div className="mx-auto max-w-md p-10 text-center text-sm text-muted-foreground">
@@ -57,10 +70,7 @@ function Index() {
   const runSearch = useServerFn(searchStock);
 
   const [draft, setDraft] = useState(q);
-  const [results, setResults] = useState<{
-    services: SearchServiceResult[];
-    sellers: SearchSellerResult[];
-  } | null>(null);
+  const [results, setResults] = useState<Results | null>(() => searchCache.get(q.trim()) ?? null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => setDraft(q), [q]);
@@ -72,10 +82,17 @@ function Index() {
       setResults(null);
       return;
     }
+    const cached = searchCache.get(q.trim());
+    if (cached) {
+      setResults(cached);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     runSearch({ data: { q } })
       .then((r) => {
+        searchCache.set(q.trim(), r);
         if (!cancelled) setResults(r);
       })
       .catch(() => {
@@ -113,38 +130,15 @@ function Index() {
       <SiteHeader />
 
       <section className="aurora border-b border-border">
-        <div className="mx-auto max-w-6xl px-4 pb-8 pt-10 sm:px-6 sm:pb-10 sm:pt-14">
-          <h1 className="mb-7 text-center font-display text-[2.3rem] leading-none sm:text-[3.4rem]">
-            <span className="font-semibold tracking-[0.02em]">Stock</span>
-            <span className="ml-[0.35em] font-light italic tracking-[0.16em] text-muted-foreground">
-              Index
-            </span>
-          </h1>
-          <div className="relative mx-auto max-w-3xl">
-            <Search
-              className="pointer-events-none absolute left-5 top-1/2 z-10 h-6 w-6 -translate-y-1/2 text-muted-foreground sm:left-6 sm:h-7 sm:w-7"
-              strokeWidth={2}
-              aria-hidden
-            />
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              aria-label="Buscar servicios, vendedores o precios"
-              placeholder="Busca cualquier servicio, vendedor o número…"
-              className="glass elev h-16 w-full rounded-3xl pl-16 pr-14 text-[16px] outline-none transition-all placeholder:text-faint focus:border-border-strong sm:pl-[4.25rem] sm:text-[17px]"
-            />
+        <div className="mx-auto max-w-6xl px-4 pb-9 pt-10 sm:px-6 sm:pb-12 sm:pt-14">
+          <StockIndexTitle />
 
-            {draft ? (
-              <button
-                type="button"
-                onClick={() => setDraft("")}
-                aria-label="Limpiar búsqueda"
-                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-faint transition-colors hover:bg-surface-2 hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            ) : null}
-          </div>
+          <SearchField
+            value={draft}
+            onChange={setDraft}
+            onClear={() => setDraft("")}
+            busy={loading}
+          />
 
           <dl className="mx-auto mt-6 grid max-w-3xl grid-cols-3 gap-2.5">
             <Stat label="Ofertas" value={totals.offers} />
@@ -152,7 +146,6 @@ function Index() {
             <Stat label="Categorías" value={totals.categories} />
           </dl>
         </div>
-
       </section>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
@@ -167,6 +160,8 @@ function Index() {
                   return (
                     <button
                       key={c.slug}
+                      type="button"
+                      aria-pressed={isActive}
                       onClick={() =>
                         navigate({
                           search: (prev: IndexSearch) => ({ ...prev, cat: c.slug }),
@@ -175,7 +170,7 @@ function Index() {
                       }
                       className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl border px-4 py-2.5 text-[14px] transition-all duration-200 active:scale-[0.97] ${
                         isActive
-                          ? "border-transparent bg-primary font-medium text-primary-foreground shadow-[0_10px_28px_-14px_rgba(255,255,255,0.7)]"
+                          ? "border-transparent bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_-16px_rgba(255,255,255,0.8)]"
                           : "border-border bg-surface text-muted-foreground hover:border-border-strong hover:text-foreground"
                       }`}
                     >
@@ -194,7 +189,7 @@ function Index() {
             </div>
 
             {current && current.services.length > 0 ? (
-              <CategoryBlock key={current.slug} services={current.services} />
+              <CategoryBlock key={current.slug} category={current} />
             ) : (
               <EmptyState title="Esta categoría todavía no tiene stock" />
             )}
@@ -203,6 +198,70 @@ function Index() {
       </main>
 
       <SiteFooter />
+    </div>
+  );
+}
+
+/**
+ * "Stock" en serif ligera y apagada, "Index" tal cual estaba: el peso visual
+ * recae en Index. El bloque va ópticamente centrado — el tracking de "Index"
+ * añade aire después de la última letra y se compensa con el margen negativo.
+ */
+function StockIndexTitle() {
+  return (
+    <h1 className="mb-7 flex items-baseline justify-center text-[2.3rem] leading-none sm:text-[3.4rem]">
+      <span className="font-serif text-[0.78em] font-light tracking-[0.01em] text-faint">
+        Stock
+      </span>
+      <span className="ml-[0.3em] -mr-[0.16em] font-display font-light italic tracking-[0.16em] text-muted-foreground">
+        Index
+      </span>
+    </h1>
+  );
+}
+
+function SearchField({
+  value,
+  onChange,
+  onClear,
+  busy,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onClear: () => void;
+  busy: boolean;
+}) {
+  return (
+    <div className="relative mx-auto max-w-3xl">
+      <Search
+        className={`pointer-events-none absolute left-5 top-1/2 z-10 h-6 w-6 -translate-y-1/2 transition-colors sm:left-6 sm:h-7 sm:w-7 ${
+          busy ? "animate-pulse text-foreground" : "text-muted-foreground"
+        }`}
+        strokeWidth={2}
+        aria-hidden
+      />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        type="search"
+        enterKeyHint="search"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        aria-label="Buscar servicios, vendedores o precios"
+        placeholder="Busca cualquier servicio, vendedor o número…"
+        className="glass elev h-16 w-full rounded-3xl pl-16 pr-14 text-[16px] outline-none transition-all placeholder:text-faint focus:border-border-strong sm:pl-[4.25rem] sm:text-[17px] [&::-webkit-search-cancel-button]:hidden"
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label="Limpiar búsqueda"
+          className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-faint transition-colors hover:bg-surface-2 hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -232,7 +291,7 @@ function EmptyState({ title, hint }: { title: string; hint?: string }) {
 
 function SearchSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-hidden>
       {[0, 1, 2].map((i) => (
         <div key={i} className="skeleton h-24 rounded-2xl" />
       ))}
@@ -245,7 +304,7 @@ function SearchResults({
   loading,
   query,
 }: {
-  results: { services: SearchServiceResult[]; sellers: SearchSellerResult[] } | null;
+  results: Results | null;
   loading: boolean;
   query: string;
 }) {
@@ -280,7 +339,19 @@ function SearchResults({
             </Link>
           </div>
           <div className="mt-5">
-            <OfferGroups offers={s.offers} accent={s.color ?? "#9a9aa2"} />
+            <OfferGroups
+              offers={s.offers}
+              accent={
+                brandSkin(
+                  resolveBrand({
+                    name: s.name,
+                    categorySlug: s.categorySlug ?? null,
+                    subcategorySlug: s.subcategorySlug ?? null,
+                    color: s.color,
+                  }),
+                ).accent
+              }
+            />
           </div>
         </section>
       ))}
@@ -319,9 +390,11 @@ function SellerResult({ seller }: { seller: SearchSellerResult }) {
     <section className="rise">
       <div className="border-b border-border pb-4">
         {seller.parentGroup ? <p className="t-label text-faint">{seller.parentGroup}</p> : null}
-        <h2 className="mt-1 t-title">{seller.name}</h2>
+        <h2 className="mt-1 t-section">{seller.name}</h2>
         <p className="mt-1.5 text-[13px] text-muted-foreground">
-          {seller.kind === "venta_libre" ? (seller.phone ?? "Sin número publicado") : "Grupo interno"}{" "}
+          {seller.kind === "venta_libre"
+            ? (seller.phone ?? "Sin número publicado")
+            : "Grupo interno"}{" "}
           · {seller.offers.length} ofertas
         </p>
       </div>
@@ -355,7 +428,7 @@ function SellerResult({ seller }: { seller: SearchSellerResult }) {
   );
 }
 
-function FilterChip({
+export function FilterChip({
   active,
   onClick,
   label,
@@ -370,15 +443,16 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border px-3.5 py-2 text-[13px] transition-all active:scale-[0.97] ${
+      aria-pressed={active}
+      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border px-4 py-2.5 text-[14px] transition-all active:scale-[0.97] ${
         active
-          ? "border-transparent bg-primary font-medium text-primary-foreground"
+          ? "border-transparent bg-primary font-semibold text-primary-foreground"
           : "border-border bg-surface text-muted-foreground hover:border-border-strong hover:text-foreground"
       }`}
     >
       {label}
       <span
-        className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+        className={`rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ${
           active ? "bg-black/10" : "bg-surface-2"
         }`}
       >
@@ -388,26 +462,37 @@ function FilterChip({
   );
 }
 
-function CategoryBlock({ services }: { services: CatalogService[] }) {
+function CategoryBlock({ category }: { category: CatalogCategory }) {
   const groups = useMemo(() => {
     const map = new Map<string, CatalogService[]>();
-    for (const s of services) {
+    for (const s of category.services) {
       const key = s.subcategoryName ?? "";
       const list = map.get(key) ?? [];
       list.push(s);
       map.set(key, list);
     }
-    return map;
-  }, [services]);
+    return [...map.entries()];
+  }, [category.services]);
+
+  // Los nombres de trámites son largos ("No derechohabiente Isssemym"): en
+  // mosaico de dos columnas se romperían en cuatro líneas, así que esa
+  // categoría se presenta en filas de ancho completo.
+  const asRows = category.slug === "tramites";
 
   return (
-    <div className="mt-8 space-y-10">
-      {[...groups.entries()].map(([label, list]) => (
+    <div className="mt-8 space-y-11">
+      {groups.map(([label, list]) => (
         <section key={label || "general"} className="rise">
-          {label ? <h2 className="mb-3.5 t-label text-faint">{label}</h2> : null}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {label ? (
+            <div className="mb-4 flex items-center gap-3">
+              <h2 className="t-label text-faint">{label}</h2>
+              <span className="h-px flex-1 bg-border" aria-hidden />
+              <span className="text-[11px] tabular-nums text-faint">{list.length}</span>
+            </div>
+          ) : null}
+          <div className={asRows ? "grid gap-2.5" : "grid grid-cols-2 gap-3 lg:grid-cols-3"}>
             {list.map((s) => (
-              <ServiceCard key={s.slug} service={s} />
+              <ServiceCard key={s.slug} service={s} variant={asRows ? "row" : "tile"} />
             ))}
           </div>
         </section>
@@ -416,39 +501,60 @@ function CategoryBlock({ services }: { services: CatalogService[] }) {
   );
 }
 
-const ServiceCard = memo(function ServiceCard({ service }: { service: CatalogService }) {
-  const accent = service.color ?? "#9a9aa2";
+const ServiceCard = memo(function ServiceCard({
+  service,
+  variant,
+}: {
+  service: CatalogService;
+  variant: "tile" | "row";
+}) {
+  const isBundle = service.slug.startsWith(BUNDLE_PREFIX);
+  const brand = resolveBrand({
+    name: service.name,
+    categorySlug: service.category,
+    subcategorySlug: isBundle ? service.slug.slice(BUNDLE_PREFIX.length) : service.subcategory,
+    color: service.color,
+    bundle: isBundle,
+  });
+  const skin = brandSkin(brand);
+
   return (
     <Link
       to="/servicio/$slug"
       params={{ slug: service.slug }}
-      className="glass card-cv group relative overflow-hidden rounded-2xl p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_28px_60px_-30px_rgba(0,0,0,0.95)] active:scale-[0.99]"
+      style={
+        {
+          background: skin.background,
+          borderColor: skin.border,
+          "--wordmark-ink": skin.ink,
+          "--wordmark-shadow": skin.inkShadow,
+        } as React.CSSProperties
+      }
+      className={`group relative flex flex-col items-center justify-center overflow-hidden border text-center shadow-[0_18px_40px_-26px_rgba(0,0,0,0.9)] transition-transform duration-200 active:scale-[0.985] ${
+        variant === "tile"
+          ? "cv-tile aspect-[1/0.82] rounded-3xl p-4"
+          : "min-h-[88px] rounded-2xl px-5 py-4"
+      }`}
     >
       <span
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 opacity-25 transition-opacity duration-300 group-hover:opacity-45"
-        style={{ background: `radial-gradient(120% 100% at 0% 0%, ${accent}, transparent 70%)` }}
+        className="pointer-events-none absolute inset-0 opacity-90 transition-opacity duration-300 group-hover:opacity-100"
+        style={{ background: skin.glow }}
         aria-hidden
       />
       <span
-        className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
-        style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }}
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${skin.accent}, transparent)` }}
         aria-hidden
       />
-      <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-[16px] font-semibold tracking-tight">{service.name}</h3>
-          <p className="mt-1 truncate text-[12px] text-muted-foreground">
-            {service.offers} oferta{service.offers === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-faint">Desde</p>
-          <p className="text-[21px] font-semibold tabular-nums tracking-tight">
-            {formatPrice(service.minPrice)}
-          </p>
-        </div>
-      </div>
+      <span className="relative flex flex-1 items-center justify-center px-1">
+        <Wordmark name={service.name} brand={brand} size={variant === "tile" ? "tile" : "row"} />
+      </span>
+      <span
+        className="relative mt-2 text-[11px] tabular-nums tracking-wide"
+        style={{ color: skin.ink, opacity: 0.72 }}
+      >
+        {service.offers} oferta{service.offers === 1 ? "" : "s"}
+      </span>
     </Link>
   );
 });
-

@@ -39,7 +39,6 @@ export function formatPrice(price: number | null) {
   }).format(value)}`;
 }
 
-
 export function whatsappLink(phone: string, message: string) {
   const digits = phone.replace(/\D/g, "");
   const normalized = digits.length === 10 ? `52${digits}` : digits;
