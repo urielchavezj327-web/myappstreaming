@@ -262,34 +262,45 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
 
     const cat = data.cat?.trim() ?? "";
 
-    // Cada palabra se evalúa por separado (servicio + vendedor + duración + tipo).
+    // Mismo motor compartido que la portada (search-core).
     const filtered = rows.filter((r) => {
       if (cat && (r.services?.categories?.slug ?? "") !== cat) return false;
-      if (phoneQ) return phoneMatches(r.groups?.phone ?? null, phoneQ);
-      if (tokens.length === 0) return true;
-
-      const haystack = normalize(
-        [
-          r.services?.name ?? "",
-          r.groups?.name ?? "",
-          r.groups?.parent_group ?? "",
-          (r.groups?.phone ?? "").replace(/\D/g, ""),
-          r.detail ?? "",
-          PRODUCT_TEXT[r.product_type] ?? r.product_type,
-          durationText(r.months),
-        ].join(" "),
+      if (parsed.empty) return true;
+      return matchesQuery(
+        {
+          serviceName: r.services?.name ?? "",
+          categoryName: r.services?.categories?.name ?? "",
+          groupName: r.groups?.name ?? "",
+          parentGroup: r.groups?.parent_group ?? null,
+          variant: null,
+          phone: r.groups?.phone ?? null,
+          detail: r.detail,
+          productType: r.product_type,
+          months: r.months,
+        },
+        parsed,
       );
-      return tokens.every((t) => haystack.includes(t));
     });
 
-    // Orden por defecto igual al buscador de portada: por categoría y servicio.
-    filtered.sort(
-      (a, b) =>
-        (a.services?.categories?.sort_order ?? 99) - (b.services?.categories?.sort_order ?? 99) ||
+    // Orden igual al de portada: categoría → servicio (trámites por tipo de
+    // documento) → vendedores con nombre propio antes de Vendedor A, B, C…
+    filtered.sort((a, b) => {
+      const catA = a.services?.categories?.sort_order ?? 99;
+      const catB = b.services?.categories?.sort_order ?? 99;
+      if (catA !== catB) return catA - catB;
+      const isTramite = (r: Row) => r.product_type === "tramite";
+      if (isTramite(a) && isTramite(b)) {
+        const ra = tramiteRank(a.services?.name ?? "", a.detail);
+        const rb = tramiteRank(b.services?.name ?? "", b.detail);
+        if (ra !== rb) return ra - rb;
+      }
+      return (
         (a.services?.sort_order ?? 99) - (b.services?.sort_order ?? 99) ||
         (a.services?.name ?? "").localeCompare(b.services?.name ?? "") ||
-        (a.groups?.name ?? "").localeCompare(b.groups?.name ?? ""),
-    );
+        compareSellers(a.groups?.name ?? "", b.groups?.name ?? "")
+      );
+    });
+
 
     const offers = filtered.slice(0, 80).map((r) => ({
       id: r.id,
