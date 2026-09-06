@@ -176,6 +176,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   const [options, setOptions] = useState<AdminOptions | null>(null);
   const [recent, setRecent] = useState<AdminOffer[]>([]);
   const [offerQuery, setOfferQuery] = useState("");
+  const [offerCat, setOfferCat] = useState("");
   const [sellerMode, setSellerMode] = useState<"existing" | "new">("existing");
   const [groupId, setGroupId] = useState("");
   const [name, setName] = useState("");
@@ -187,7 +188,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const refresh = () =>
-    loadOffers({ data: { q: offerQuery } })
+    loadOffers({ data: { q: offerQuery, cat: offerCat } })
       .then((r: { offers: AdminOffer[] }) => setRecent(r.offers))
       .catch(() => {});
 
@@ -202,13 +203,14 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
 
   useEffect(() => {
     const id = setTimeout(() => {
-      loadOffers({ data: { q: offerQuery } })
+      loadOffers({ data: { q: offerQuery, cat: offerCat } })
         .then((r: { offers: AdminOffer[] }) => setRecent(r.offers))
         .catch(() => {});
     }, 300);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerQuery]);
+  }, [offerQuery, offerCat]);
+
 
 
   const servicesByCat = useMemo(() => {
