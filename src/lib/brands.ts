@@ -467,7 +467,7 @@ const BRANDS: Array<[RegExp, Brand]> = [
       tracking: "-0.05em",
       symbol: "appleMusic",
       symbolScale: 0.66,
-      label: "Music",
+      label: "Apple Music",
     }),
   ],
   [
@@ -500,7 +500,7 @@ const BRANDS: Array<[RegExp, Brand]> = [
       tracking: "-0.035em",
       symbol: "amazonMusicNote",
       symbolScale: 0.6,
-      label: "music",
+      label: "Amazon Music",
     }),
   ],
   [
