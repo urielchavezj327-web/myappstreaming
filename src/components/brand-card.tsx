@@ -5,12 +5,16 @@ import { brandSkin, resolveBrand, type BrandInput } from "@/lib/brands";
 import { Wordmark, type WordmarkSize } from "@/components/wordmark";
 
 /**
- * Tarjeta de servicio del catálogo. El logotipo va centrado y dimensionado
- * para llenar la tarjeta (ver `Wordmark`), sobre el degradado con los colores
- * reales de la marca.
+ * Tarjeta de servicio del catálogo.
  *
- * `tile` es el mosaico de dos columnas; `row` es la fila ancha que usan los
- * trámites, cuyos nombres son demasiado largos para el mosaico.
+ * La tarjeta *es* el logotipo: fondo, tinta y símbolo salen del logotipo real
+ * de la marca (ver `brands.ts`). Encima van las dos capas que le dan cuerpo de
+ * vidrio — el filo de luz superior y la sombra en capas — que son las mismas
+ * de toda la app, así que una ficha de Netflix y un panel de ajustes se
+ * reconocen como piezas del mismo sistema aunque no compartan color.
+ *
+ * `tile` es el mosaico de dos columnas; `row` es la fila ancha de los trámites,
+ * cuyos nombres no caben en el mosaico.
  */
 export const BrandCard = memo(function BrandCard({
   to,
@@ -40,40 +44,37 @@ export const BrandCard = memo(function BrandCard({
           borderColor: skin.border,
           "--wordmark-ink": skin.ink,
           "--wordmark-shadow": skin.inkShadow,
+          "--edge": skin.edge,
         } as React.CSSProperties
       }
-      className={`wordmark-box group relative flex flex-col items-center justify-center overflow-hidden border text-center shadow-[0_20px_44px_-28px_rgba(0,0,0,0.95)] transition-transform duration-200 active:scale-[0.985] sm:hover:-translate-y-0.5 ${
+      className={`wordmark-box lightedge tappable group relative isolate flex overflow-hidden border shadow-[0_2px_4px_-2px_rgba(0,0,0,0.6),0_18px_36px_-20px_rgba(0,0,0,0.9)] sm:hover:-translate-y-0.5 sm:hover:shadow-[0_2px_6px_-2px_rgba(0,0,0,0.6),0_28px_54px_-24px_rgba(0,0,0,0.95)] ${
         variant === "tile"
-          ? "cv-tile aspect-[1/0.82] rounded-[1.6rem] p-4"
-          : "rounded-2xl px-5 py-5"
+          ? "cv-tile aspect-[1/0.86] flex-col items-center justify-center rounded-[1.65rem] px-3.5 pb-3 pt-4"
+          : "flex-row items-center gap-3 rounded-[1.15rem] px-4 py-3.5"
       }`}
     >
       <span
-        className="pointer-events-none absolute inset-0"
-        style={{ background: skin.glow }}
-        aria-hidden
-      />
-      {skin.sheen ? (
-        <span
-          className="pointer-events-none absolute inset-0 opacity-70"
-          style={{ background: skin.sheen }}
-          aria-hidden
-        />
-      ) : null}
-      <span
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, ${skin.accent}, transparent)` }}
-        aria-hidden
-      />
-
-      <span className="relative flex flex-1 items-center justify-center px-1">
+        className={`relative flex min-w-0 items-center ${
+          variant === "tile" ? "flex-1 justify-center self-stretch" : "flex-1"
+        }`}
+      >
         <Wordmark name={name} brand={brand} size={size} />
       </span>
+
       <span
-        className="relative mt-2.5 text-[12.5px] font-medium tabular-nums tracking-wide"
-        style={{ color: skin.ink, opacity: 0.78 }}
+        className={
+          variant === "tile"
+            ? "relative mt-2 text-[11.5px] font-semibold tabular-nums tracking-[0.08em]"
+            : "relative shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-semibold tabular-nums"
+        }
+        style={
+          variant === "tile"
+            ? { color: skin.meta }
+            : { color: skin.meta, background: "rgba(255,255,255,0.07)" }
+        }
       >
-        {offers} oferta{offers === 1 ? "" : "s"}
+        {offers}
+        <span className="ml-1 font-medium opacity-80">oferta{offers === 1 ? "" : "s"}</span>
       </span>
     </Link>
   );

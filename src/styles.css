@@ -5,18 +5,25 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Stock Index — sistema de diseño
+ * Stockdex — sistema de diseño «Obsidiana»
  *
- * Grafito elevado en lugar de negro plano: la base sube lo suficiente para que
- * las superficies se separen por luz y no por bordes duros. La interfaz se
- * mantiene neutra (grises y blancos) y todo el color viene de las marcas, que
- * se aplican por tarjeta desde `src/lib/brands.ts`.
+ * Tres decisiones lo gobiernan todo:
+ *
+ *  1. **La base es negra, no gris.** El gris medio aplanaba la pantalla porque
+ *     dejaba a las superficies sin a dónde subir. Sobre obsidiana, cada capa se
+ *     separa por luz propia y la interfaz gana profundidad sin dibujar cajas.
+ *  2. **Las superficies son vidrio.** Se definen como blanco translúcido sobre
+ *     la base, no como grises opacos: así se apilan (una tarjeta dentro de un
+ *     panel se ve más alta) y dejan pasar la aurora del fondo.
+ *  3. **El color es información.** El acento menta señala precio y acción; el
+ *     color de marca vive en las fichas. El resto de la interfaz es neutro para
+ *     que esos dos hablen.
  */
 
 /* Tipografías auto-hospedadas (subconjunto latin, archivos variables).
-   Antes venían de fonts.googleapis.com: dos preconnect y una hoja de estilo
-   bloqueante más. Servirlas desde el propio dominio adelanta el primer render
-   en celular y evita el parpadeo de texto. */
+   Servirlas desde el propio dominio adelanta el primer render en celular y
+   evita el parpadeo de texto. `archivo` y `outfit` existen para recrear
+   logotipos: la mayoría de las marcas usan una grotesca o una geométrica. */
 @font-face {
   font-family: "Sora";
   font-style: normal;
@@ -30,6 +37,20 @@
   font-weight: 200 800;
   font-display: swap;
   src: url("/fonts/manrope.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/archivo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Outfit";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/outfit.woff2") format("woff2");
 }
 @font-face {
   font-family: "Oswald";
@@ -63,15 +84,17 @@
 @theme inline {
   --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-grotesk: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-geometric: "Outfit", "Futura", ui-sans-serif, sans-serif;
   --font-condensed: "Oswald", "Arial Narrow", ui-sans-serif, sans-serif;
   --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
   --font-script: "Grand Hotel", "Brush Script MT", cursive;
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 3px);
+  --radius-sm: calc(var(--radius) - 7px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 10px);
-  --radius-3xl: calc(var(--radius) + 18px);
+  --radius-xl: calc(var(--radius) + 5px);
+  --radius-2xl: calc(var(--radius) + 12px);
+  --radius-3xl: calc(var(--radius) + 22px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
@@ -90,6 +113,9 @@
   --color-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-dim: var(--brand-dim);
+  --color-brand-ink: var(--brand-ink);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
@@ -101,41 +127,62 @@
 }
 
 :root {
-  --radius: 1rem;
-  /* Grafito elevado: el fondo deja de ser casi negro para que las superficies
-     se distingan por luz propia y la página no se sienta plana. */
-  --background: oklch(0.255 0.007 286);
-  --foreground: oklch(0.985 0.002 285);
-  --surface: oklch(0.298 0.008 286);
-  --surface-2: oklch(0.334 0.009 286);
-  --surface-3: oklch(0.378 0.010 286);
-  --card: oklch(0.298 0.008 286);
-  --card-foreground: oklch(0.985 0.002 285);
-  --popover: oklch(0.312 0.008 286);
-  --popover-foreground: oklch(0.985 0.002 285);
-  --primary: oklch(0.985 0.002 285);
-  --primary-foreground: oklch(0.245 0.006 286);
-  --secondary: oklch(0.378 0.010 286);
-  --secondary-foreground: oklch(0.985 0.002 285);
-  --muted: oklch(0.352 0.009 286);
-  --muted-foreground: oklch(0.79 0.009 286);
-  --faint: oklch(0.685 0.009 286);
-  --accent: oklch(0.392 0.010 286);
-  --accent-foreground: oklch(0.985 0.002 285);
-  --destructive: oklch(0.66 0.19 25);
-  --destructive-foreground: oklch(0.985 0.002 285);
-  --success: oklch(0.8 0.15 155);
-  --success-foreground: oklch(0.22 0.005 285);
-  --border: oklch(1 0 0 / 10%);
-  --border-strong: oklch(1 0 0 / 20%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.78 0.008 286);
+  --radius: 1.05rem;
 
+  /* ── Base ───────────────────────────────────────────────────────────── */
+  --background: oklch(0.148 0.013 278);
+  --base-deep: oklch(0.106 0.011 278);
+  --foreground: oklch(0.985 0.003 285);
+
+  /* ── Superficies elevadas: blanco translúcido, tres niveles ─────────── */
+  --surface: oklch(1 0 0 / 4.5%);
+  --surface-2: oklch(1 0 0 / 8%);
+  --surface-3: oklch(1 0 0 / 12.5%);
+
+  /* ── Bordes ─────────────────────────────────────────────────────────── */
+  --border: oklch(1 0 0 / 9%);
+  --border-strong: oklch(1 0 0 / 19%);
+  /* Filo de luz: el borde superior de una superficie de vidrio. */
+  --edge: oklch(1 0 0 / 32%);
+
+  /* ── Texto en tres niveles reales, no tres grises casi iguales ──────── */
+  --muted-foreground: oklch(0.775 0.011 280);
+  --faint: oklch(0.578 0.014 280);
+
+  /* ── Acento propio: menta luminosa. Precio, acción y estado activo. ─── */
+  --brand: oklch(0.858 0.158 167);
+  --brand-dim: oklch(0.66 0.135 167);
+  --brand-ink: oklch(0.205 0.055 167);
+  --brand-glow: oklch(0.858 0.158 167 / 26%);
+
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.2 0.014 278);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.985 0.003 285);
+  --primary-foreground: oklch(0.16 0.012 278);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-2);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.68 0.2 22);
+  --destructive-foreground: oklch(0.985 0.002 285);
+  --success: var(--brand);
+  --success-foreground: var(--brand-ink);
+  --input: oklch(1 0 0 / 13%);
+  --ring: oklch(0.858 0.158 167 / 75%);
+
+  /* ── Sombras en capas: contacto, cuerpo y ambiente ──────────────────── */
   --shadow-soft:
-    0 1px 0 0 oklch(1 0 0 / 7%) inset, 0 12px 32px -20px oklch(0 0 0 / 85%);
+    inset 0 1px 0 0 oklch(1 0 0 / 7%), 0 1px 2px -1px oklch(0 0 0 / 55%),
+    0 10px 24px -14px oklch(0 0 0 / 75%);
   --shadow-lift:
-    0 1px 0 0 oklch(1 0 0 / 10%) inset, 0 28px 64px -30px oklch(0 0 0 / 90%),
-    0 6px 18px -10px oklch(0 0 0 / 65%);
+    inset 0 1px 0 0 oklch(1 0 0 / 10%), 0 2px 4px -2px oklch(0 0 0 / 65%),
+    0 14px 30px -16px oklch(0 0 0 / 80%), 0 36px 68px -34px oklch(0 0 0 / 90%);
+  --shadow-pop:
+    inset 0 1px 0 0 oklch(1 0 0 / 14%), 0 3px 8px -3px oklch(0 0 0 / 70%),
+    0 24px 52px -22px oklch(0 0 0 / 88%);
 
   /* Valores por defecto de los logotipos; cada tarjeta los sobreescribe. */
   --wordmark-ink: var(--foreground);
@@ -151,7 +198,7 @@
 }
 
 :root[data-density="compacta"] {
-  --radius: 0.85rem;
+  --radius: 0.9rem;
 }
 :root[data-density="compacta"] main {
   --density-gap: 0.75;
@@ -160,9 +207,8 @@
   animation: none;
 }
 
-:root[data-color="suave"] a[class*="wordmark-box"],
 :root[data-color="suave"] .wordmark-box {
-  filter: saturate(0.55) brightness(0.92);
+  filter: saturate(0.6) brightness(0.94);
 }
 
 @layer base {
@@ -175,15 +221,28 @@
     scroll-behavior: auto;
     /* Evita el rebote horizontal en celular al deslizar las tiras de chips. */
     overflow-x: hidden;
+    /*
+     * Aurora. Va en <html> y no en un pseudo-elemento del body porque el body
+     * no crea contexto de apilamiento: una capa con z-index negativo quedaría
+     * *detrás* de su propio fondo y no se vería. Aquí es el fondo del lienzo,
+     * fijo al viewport, y se pinta una sola vez.
+     *
+     * Cuatro focos: luz cenital blanca, menta a la izquierda, violeta a la
+     * derecha y un rescoldo cálido al pie. Ninguno es un color plano: es lo
+     * que impide que el negro se lea como un vacío.
+     */
+    background-color: var(--background);
+    background-image:
+      radial-gradient(128% 58% at 50% -16%, oklch(0.44 0.03 276 / 92%), transparent 66%),
+      radial-gradient(82% 46% at -4% 4%, oklch(0.7 0.15 167 / 20%), transparent 66%),
+      radial-gradient(76% 48% at 104% -2%, oklch(0.58 0.17 302 / 26%), transparent 66%),
+      radial-gradient(104% 44% at 50% 106%, oklch(0.58 0.12 42 / 13%), transparent 70%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
 
   body {
-    background-color: var(--color-background);
-    /* Luz cenital muy suave: da profundidad sin introducir color. */
-    background-image:
-      radial-gradient(120% 62% at 50% -16%, oklch(0.46 0.012 286 / 70%), transparent 62%),
-      radial-gradient(95% 48% at 100% 6%, oklch(0.4 0.01 286 / 50%), transparent 64%);
-    background-attachment: fixed;
+    background: transparent;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -195,52 +254,69 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.025em;
-    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-weight: 700;
   }
 
   ::selection {
-    background: oklch(1 0 0 / 18%);
+    background: var(--brand-glow);
+    color: var(--foreground);
   }
 
-  /* Foco visible y consistente en toda la app (se usa mucho desde el móvil
-     con teclado externo y lectores de pantalla). */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 5px;
   }
 }
 
-/* Escala tipográfica */
+/* ── Escala tipográfica ─────────────────────────────────────────────────
+   Contraste real entre niveles: el título dobla al cuerpo y el terciario
+   baja de tamaño *y* de tono, para que la jerarquía se lea de un vistazo. */
+
 @utility t-display {
   font-family: var(--font-display);
-  font-size: clamp(2.15rem, 7vw, 3.1rem);
-  line-height: 1.03;
-  letter-spacing: -0.035em;
-  font-weight: 700;
+  font-size: clamp(2.5rem, 9vw, 3.9rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-weight: 800;
 }
 
 @utility t-section {
   font-family: var(--font-display);
-  font-size: clamp(1.6rem, 5.6vw, 2.05rem);
-  line-height: 1.14;
-  letter-spacing: -0.025em;
+  font-size: clamp(1.72rem, 6vw, 2.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
   font-weight: 700;
 }
 
 @utility t-title {
   font-family: var(--font-display);
-  font-size: 1.45rem;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  font-size: 1.5rem;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
   font-weight: 700;
 }
 
+@utility t-subtitle {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
 @utility t-label {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+@utility t-micro {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
@@ -249,85 +325,86 @@
   line-height: 1.5;
 }
 
-/* Cuerpo de lectura de listas y filas. */
 @utility t-body {
   font-size: 1rem;
   line-height: 1.45;
 }
 
-/*
- * Superficie base de tarjetas y listas. Sin `backdrop-filter`: en el catálogo
- * de Trámites hay casi 80 tarjetas a la vez y cada capa de desenfoque crea su
- * propia raíz de composición, que es lo que trababa el scroll en el celular.
- */
+/* Precio: cifras de ancho fijo para que las columnas no bailen. */
+@utility t-price {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* ── Vidrio ─────────────────────────────────────────────────────────────
+   `glass` no lleva `backdrop-filter`: en Trámites hay 59 tarjetas a la vez y
+   cada capa de desenfoque crea su propia raíz de composición, que es lo que
+   trababa el scroll. El efecto de vidrio se consigue igual con el filo de luz
+   superior, el degradado vertical y las sombras en capas — sobre obsidiana el
+   desenfoque no aportaría nada visible. */
 @utility glass {
   background:
-    linear-gradient(180deg, oklch(1 0 0 / 6%), oklch(1 0 0 / 2%)),
-    var(--color-surface);
+    linear-gradient(180deg, oklch(1 0 0 / 7%), oklch(1 0 0 / 2.5%)), var(--color-surface);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft);
 }
 
-/* Vidrio con desenfoque real: solo para el encabezado fijo y los modales,
-   donde son pocos elementos y el efecto sí aporta. */
-@utility frost {
-  background: oklch(0.22 0.006 286 / 82%);
+@utility glass-2 {
+  background:
+    linear-gradient(180deg, oklch(1 0 0 / 9%), oklch(1 0 0 / 3.5%)), var(--color-surface-2);
   border: 1px solid var(--color-border-strong);
   box-shadow: var(--shadow-lift);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+/* Vidrio con desenfoque real: encabezado fijo, modales y el buscador, donde
+   son pocos elementos y sí se nota que hay algo detrás. */
+@utility frost {
+  background: linear-gradient(180deg, oklch(0.24 0.014 278 / 88%), oklch(0.18 0.013 278 / 92%));
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-lift);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+
+/* Filo de luz en el borde superior: lo que hace que una superficie parezca
+   vidrio de verdad y no un rectángulo más claro. */
+@utility lightedge {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset-inline: 12%;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--edge), transparent);
+    pointer-events: none;
+  }
 }
 
 @utility elev {
   box-shadow: var(--shadow-lift);
 }
 
-@utility aurora {
-  background-image:
-    radial-gradient(74% 70% at 10% -18%, oklch(0.58 0.018 286 / 55%), transparent 64%),
-    radial-gradient(58% 58% at 94% -8%, oklch(0.5 0.016 286 / 50%), transparent 64%),
-    linear-gradient(to bottom, oklch(1 0 0 / 5%), transparent 52%);
-}
-
-@utility grid-bg {
-  background-image:
-    radial-gradient(circle at 15% -10%, oklch(0.36 0.01 286 / 55%), transparent 55%),
-    linear-gradient(to bottom, oklch(1 0 0 / 3%), transparent 40%);
-}
-
 @utility hairline {
   border: 1px solid var(--color-border);
 }
 
-/*
- * Saltar el pintado de lo que está fuera de pantalla.
- *
- * Solo se aplica a las tarjetas del mosaico, cuya altura la fija su proporción
- * y no su contenido. En contenedores de altura variable no se puede usar: al
- * volver atrás el documento se encoge al tamaño declarado justo cuando el
- * router restaura el scroll, y la posición se pierde.
- */
-/*
- * Caja de logotipo. `container-type: inline-size` habilita las unidades `cqw`,
- * con las que el nombre de cada servicio se dimensiona para llenar su tarjeta
- * en vez de usar un cuerpo fijo que dejaba huecos en unos y apretaba otros.
- */
-/* Alturas y espaciados que la escala nueva usa repetidamente. */
-@utility h-13 {
-  height: 3.25rem;
-}
+/* ── Piezas ─────────────────────────────────────────────────────────── */
 
-@utility px-4\.5 {
-  padding-inline: 1.125rem;
-}
-
+/* Caja de logotipo. `container-type: inline-size` habilita `cqw`, con lo que
+   el nombre de cada servicio se dimensiona para llenar su tarjeta. */
 @utility wordmark-box {
   container-type: inline-size;
 }
 
+/* Saltar el pintado de lo que está fuera de pantalla. Solo en tarjetas de
+   proporción fija: en contenedores de altura variable el documento se encoge
+   justo cuando el router restaura el scroll y la posición se pierde. */
 @utility cv-tile {
   content-visibility: auto;
-  contain-intrinsic-size: auto 142px;
+  contain-intrinsic-size: auto 168px;
 }
 
 @utility no-scrollbar {
@@ -337,6 +414,28 @@
   }
 }
 
+@utility h-13 {
+  height: 3.25rem;
+}
+
+@utility px-4\.5 {
+  padding-inline: 1.125rem;
+}
+
+/* Realce del mejor precio: un foco suave detrás de la fila. */
+@utility spotlight {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: radial-gradient(120% 160% at 12% 0%, var(--brand-glow), transparent 62%);
+    pointer-events: none;
+  }
+}
+
+/* ── Carga ──────────────────────────────────────────────────────────── */
 @utility skeleton {
   position: relative;
   overflow: hidden;
@@ -347,8 +446,8 @@
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 8%), transparent);
-    animation: shimmer 1.6s infinite;
+    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 9%), transparent);
+    animation: shimmer 1.5s infinite;
   }
 }
 
@@ -358,10 +457,11 @@
   }
 }
 
+/* ── Movimiento ─────────────────────────────────────────────────────── */
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -370,7 +470,7 @@
 }
 
 @utility rise {
-  animation: rise 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes fade-in {
@@ -383,13 +483,13 @@
 }
 
 @utility fade-in {
-  animation: fade-in 0.2s ease-out both;
+  animation: fade-in 0.22s ease-out both;
 }
 
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.98);
+    transform: translateY(16px) scale(0.975);
   }
   to {
     opacity: 1;
@@ -398,10 +498,23 @@
 }
 
 @utility pop-in {
-  animation: pop-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: pop-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Quien prefiera menos movimiento no debería sufrir las entradas animadas. */
+/* Respuesta al toque: la pieza cede y se aclara bajo el dedo. */
+@utility tappable {
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.16s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease;
+  &:active {
+    transform: scale(0.975);
+    filter: brightness(1.1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

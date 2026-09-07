@@ -1,62 +1,98 @@
+import type { SymbolId } from "@/components/brand-symbols";
+
 /**
  * Identidad visual de cada servicio.
  *
- * Una sola fuente de verdad para el color y el tratamiento tipográfico de las
- * fichas. Vive en código (no en `services.color`) por dos razones:
+ * **Criterio**: se reproduce el logotipo real, no una interpretación. Cada
+ * marca aporta tres datos tomados de su logotipo tal como existe hoy:
  *
- *  1. Los colores de la base venían de una carga inicial y varios no coinciden
- *     con el logotipo real (Kocowa estaba rosa, MUBI gris, Hidive verde…).
- *  2. Un servicio nuevo creado desde /agregar toma su identidad al instante:
- *     escribir "Claude" basta para que use el naranja óxido de Anthropic.
+ *  - `bg`   — el color de fondo del logotipo. Si Tidal es negro, la ficha es
+ *             negra; no se inventa un degradado «con todos los colores».
+ *  - `ink`  — el color exacto de las letras. No todo va en blanco: la N de
+ *             Netflix es roja, el nombre de Peacock es negro, el de Spotify
+ *             verde.
+ *  - `wash` — cuánto respira el color de acento sobre ese fondo. Existe porque
+ *             muchas marcas premium *sí* son negras (HBO Max, Tidal, Apple TV+,
+ *             MUBI) y una rejilla de negros idénticos no se lee; el acento sale
+ *             del propio logotipo, así que el fondo sigue siendo el suyo.
  *
- * `services.color` se sigue respetando como respaldo cuando no hay marca
- * conocida, para no perder las decisiones de color ya tomadas a mano.
+ * Cuando el logotipo real lleva degradado en las letras (ViX, Gemini) se
+ * replica ese degradado en `inkGrad`, no uno distinto.
+ *
+ * Vive en código y no en `services.color` porque varios colores de la base
+ * venían mal de la carga inicial, y porque así un servicio nuevo creado desde
+ * /agregar toma su identidad al instante.
  */
 
-export type BrandFont = "display" | "condensed" | "script" | "serif" | "sans";
-export type BrandMark = "none" | "smile" | "arc" | "plus" | "twoLine" | "peacock";
+export type BrandFont = "display" | "grotesk" | "geometric" | "condensed" | "script" | "serif";
 
 export type Brand = {
-  /** Colores del logotipo real, el principal primero. */
-  colors: string[];
-  /** Color del nombre sobre la tarjeta. */
+  /** Fondo exacto del logotipo. Color sólido o degradado CSS completo. */
+  bg: string;
+  /** Color exacto de las letras. */
   ink: string;
+  /** Degradado de las letras cuando el logotipo real lo lleva. */
+  inkGrad?: string;
+  /** Color del logotipo con el que respira el fondo y se dibujan los filos. */
+  accent: string;
+  /** Presencia del acento sobre el fondo, de 0 a 1. */
+  wash: number;
   font: BrandFont;
   weight: number;
   tracking: string;
   upper: boolean;
   italic: boolean;
-  mark: BrandMark;
-  /** Para logotipos de dos líneas (HBO / Max, YouTube / Premium). */
+  /** Símbolo de la marca, encima del nombre. */
+  symbol?: SymbolId;
+  /** Color del hueco en los símbolos sólidos (el disco de Spotify). */
+  symbolHole?: string;
+  /** Tinta del símbolo cuando difiere de la del nombre (la A roja de Adobe). */
+  symbolInk?: string;
+  /** Peso del símbolo respecto al nombre. 1 = equilibrado. */
+  symbolScale?: number;
+  /** Tope de líneas del nombre, cuando el logotipo real tiene una forma fija. */
+  maxLines?: number;
+  /** Texto del logotipo cuando difiere del nombre del servicio. */
+  label?: string;
+  /** Segunda palabra con tratamiento propio: «Premium», «hub», «+». */
+  suffix?: string;
+  /** Fondo del sufijo (el bloque naranja de Pornhub). */
+  suffixBg?: string;
+  /** Tinta del sufijo si difiere. */
+  suffixInk?: string;
+  /** Logotipo de dos líneas. */
   lines?: [string, string];
-  /** Tarjeta de fondo claro (Peacock): invierte el degradado y la tinta. */
+  /** Fondo claro: el resto de la interfaz de la tarjeta se oscurece. */
   light: boolean;
-  /**
-   * Servicio sin logotipo de marca (trámites y servicios propios). Recibe un
-   * degradado más claro y con más recorrido de tono: al no tener logotipo que
-   * los identifique, el color es lo único que los distingue y merecen el
-   * tratamiento más cuidado, no el más simple.
-   */
-  soft: boolean;
 };
 
-type BrandSpec = Partial<Omit<Brand, "colors">> & { colors: string[] };
+type Spec = Partial<Brand> & { bg: string; ink: string };
 
-const WHITE = "#FFFFFF";
+const W = "#FFFFFF";
 
-function spec(s: BrandSpec): Brand {
+function spec(s: Spec): Brand {
   return {
-    colors: s.colors,
-    ink: s.ink ?? WHITE,
-    font: s.font ?? "display",
+    bg: s.bg,
+    ink: s.ink,
+    ...(s.inkGrad ? { inkGrad: s.inkGrad } : {}),
+    accent: s.accent ?? s.ink,
+    wash: s.wash ?? 0.22,
+    font: s.font ?? "grotesk",
     weight: s.weight ?? 700,
     tracking: s.tracking ?? "-0.03em",
     upper: s.upper ?? false,
     italic: s.italic ?? false,
-    mark: s.mark ?? "none",
+    ...(s.symbol ? { symbol: s.symbol } : {}),
+    ...(s.symbolHole ? { symbolHole: s.symbolHole } : {}),
+    ...(s.symbolInk ? { symbolInk: s.symbolInk } : {}),
+    ...(s.symbolScale ? { symbolScale: s.symbolScale } : {}),
+    ...(s.maxLines ? { maxLines: s.maxLines } : {}),
+    ...(s.label ? { label: s.label } : {}),
+    ...(s.suffix ? { suffix: s.suffix } : {}),
+    ...(s.suffixBg ? { suffixBg: s.suffixBg } : {}),
+    ...(s.suffixInk ? { suffixInk: s.suffixInk } : {}),
     ...(s.lines ? { lines: s.lines } : {}),
     light: s.light ?? false,
-    soft: s.soft ?? false,
   };
 }
 
@@ -72,896 +108,1328 @@ function key(value: string) {
 }
 
 /**
- * Tabla de marcas. El orden importa: gana la primera que coincide, así que las
- * reglas específicas ("canva edu") van antes que las generales ("canva").
+ * Tabla de marcas. Gana la primera que coincide, así que lo específico
+ * («canva edu») va antes que lo general («canva»).
  */
 const BRANDS: Array<[RegExp, Brand]> = [
-  // ── Streaming ────────────────────────────────────────────────────────────
+  // ── Streaming ──────────────────────────────────────────────────────────
   [
     /^netflix/,
     spec({
-      colors: ["#E50914", "#B81D24", "#0A0507"],
-      font: "condensed",
-      weight: 700,
+      bg: "#000000",
+      ink: "#E50914",
+      accent: "#E50914",
+      wash: 0.3,
+      font: "grotesk",
+      weight: 800,
       upper: true,
-      tracking: "0.02em",
+      tracking: "-0.005em",
+      symbol: "netflix",
+      symbolScale: 0.6,
+      maxLines: 1,
+    }),
+  ],
+  [
+    // El logotipo actual es negro con las letras en blanco iridiscente; el azul
+    // de 2023 ya no se usa. La guía de marca pide fondo oscuro con degradado
+    // radial, que es justo lo que compone `brandSkin`.
+    /^hbo|^max\b/,
+    spec({
+      bg: "#000000",
+      ink: "#FFFFFF",
+      inkGrad: "linear-gradient(96deg,#FFFFFF,#DCE4F2 42%,#F7EDE2 70%,#FFFFFF)",
+      accent: "#9FB2CE",
+      wash: 0.17,
+      font: "grotesk",
+      weight: 600,
+      tracking: "-0.045em",
+      label: "HBO Max",
+      maxLines: 1,
     }),
   ],
   [
     /^disney/,
     spec({
-      colors: ["#0063E5", "#0E1D62", "#00CFFF"],
+      bg: "linear-gradient(168deg,#12266B,#050C2E 62%,#01061B)",
+      ink: "#FFFFFF",
+      accent: "#3DA9FF",
+      wash: 0.26,
       font: "script",
       weight: 400,
-      mark: "arc",
       tracking: "0em",
-    }),
-  ],
-  [
-    /^hbo|^max\b/,
-    spec({
-      colors: ["#991EEB", "#4B1FA8", "#002BE7"],
-      font: "display",
-      weight: 700,
-      mark: "twoLine",
-      lines: ["HBO", "Max"],
+      suffix: "+",
     }),
   ],
   [
     /^prime video|^amazon prime/,
     spec({
-      colors: ["#00A8E1", "#1A98FF", "#141F2B"],
-      font: "display",
+      bg: "#0B1620",
+      ink: "#FFFFFF",
+      accent: "#00A8E1",
+      wash: 0.3,
+      font: "geometric",
       weight: 600,
-      mark: "smile",
-      tracking: "-0.02em",
+      tracking: "-0.025em",
+      symbol: "primeSmile",
+      symbolInk: "#00A8E1",
+      symbolScale: 0.62,
+      label: "prime video",
     }),
   ],
   [
     /^paramount/,
-    spec({ colors: ["#0064FF", "#0037C1", "#0A1030"], font: "display", weight: 600, mark: "plus" }),
-  ],
-  [
-    /^vix/,
     spec({
-      colors: ["#FF4E00", "#FF0080", "#2A0A3C"],
-      font: "display",
+      bg: "#0064FF",
+      ink: "#FFFFFF",
+      accent: "#8FC3FF",
+      wash: 0.2,
+      font: "grotesk",
       weight: 700,
-      italic: true,
-      tracking: "-0.04em",
+      tracking: "-0.035em",
+      symbol: "paramount",
+      symbolScale: 0.94,
+      suffix: "+",
     }),
   ],
   [
-    /^crunchyroll/,
+    /^peacock/,
     spec({
-      colors: ["#F47521", "#FF6600", "#17181C"],
-      font: "display",
-      weight: 700,
-      tracking: "-0.035em",
+      bg: "#FFFFFF",
+      ink: "#000000",
+      accent: "#6460AA",
+      wash: 0.09,
+      font: "grotesk",
+      weight: 600,
+      tracking: "-0.045em",
+      symbol: "peacock",
+      symbolScale: 0.92,
+      light: true,
     }),
   ],
   [
     /^apple tv/,
     spec({
-      colors: ["#5A5A62", "#A2AAAD", "#141416"],
-      font: "display",
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#B7B7BE",
+      wash: 0.12,
+      font: "grotesk",
       weight: 500,
-      mark: "plus",
-      tracking: "-0.045em",
+      tracking: "-0.055em",
+      symbol: "apple",
+      symbolScale: 0.72,
+      label: "tv",
+      suffix: "+",
     }),
   ],
   [
+    /^crunchyroll/,
+    spec({
+      bg: "#F47521",
+      ink: "#FFFFFF",
+      accent: "#FFC79A",
+      wash: 0.16,
+      font: "grotesk",
+      weight: 700,
+      tracking: "-0.04em",
+      symbol: "crunchyroll",
+      symbolHole: "#F47521",
+      symbolScale: 0.74,
+    }),
+  ],
+  [
+    // Las letras llevan el degradado naranja de la marca; el lila anterior era
+    // un invento. No pude confirmar las paradas exactas en una fuente oficial.
+    /^vix/,
+    spec({
+      bg: "#08060A",
+      ink: "#FF6A00",
+      inkGrad: "linear-gradient(96deg,#FFB300,#FF6A00 48%,#F5002E)",
+      accent: "#FF6A00",
+      wash: 0.3,
+      font: "grotesk",
+      weight: 800,
+      tracking: "-0.05em",
+    }),
+  ],
+  [
+    /^claro/,
+    spec({
+      bg: "#E30613",
+      ink: "#FFFFFF",
+      accent: "#FFC9CD",
+      wash: 0.14,
+      font: "geometric",
+      weight: 600,
+      tracking: "-0.03em",
+      symbol: "claroSwoosh",
+      symbolScale: 0.62,
+    }),
+  ],
+  [
+    /^formula 1|^f1\b/,
+    spec({
+      bg: "#15151E",
+      ink: "#FFFFFF",
+      accent: "#FF1801",
+      wash: 0.3,
+      font: "condensed",
+      weight: 700,
+      upper: true,
+      italic: true,
+      tracking: "0.02em",
+      symbol: "f1",
+      symbolInk: "#FF1801",
+      symbolScale: 0.6,
+      label: "F1 TV",
+      maxLines: 1,
+    }),
+  ],
+  [
+    // No pude confirmar la paleta oficial de Fox One; se usa el negro y el azul
+    // corporativo de FOX.
     /^fox/,
     spec({
-      colors: ["#0033A0", "#0A58CA", "#07091A"],
-      font: "condensed",
-      weight: 700,
+      bg: "#0A0A0C",
+      ink: "#FFFFFF",
+      accent: "#0C4DA2",
+      wash: 0.26,
+      font: "grotesk",
+      weight: 800,
       upper: true,
-      tracking: "0.04em",
+      tracking: "0.02em",
     }),
   ],
   [
-    /^universal/,
+    // No pude confirmar la paleta oficial de HIDIVE.
+    /^hidive/,
     spec({
-      colors: ["#FFC72C", "#8A6300", "#0E0E10"],
-      ink: "#FFD65C",
-      font: "display",
-      weight: 600,
-      mark: "plus",
-      upper: true,
-      tracking: "0.06em",
-    }),
-  ],
-  [/^claro/, spec({ colors: ["#E4002B", "#FF3D3D", "#1A0006"], font: "display", weight: 700 })],
-  [
-    /^iptv/,
-    spec({
-      colors: ["#2DD4BF", "#10B981", "#062C26"],
-      font: "condensed",
-      weight: 600,
-      upper: true,
-      tracking: "0.12em",
-    }),
-  ],
-  [/^viki/, spec({ colors: ["#00B9AE", "#BF0000", "#0B1418"], font: "display", weight: 700 })],
-  [
-    /^mubi/,
-    spec({
-      colors: ["#0A1AFF", "#0000CC", "#07070F"],
-      font: "display",
-      weight: 700,
-      upper: true,
-      tracking: "-0.02em",
-    }),
-  ],
-  [
-    /^kocowa/,
-    spec({
-      colors: ["#7C3AED", "#4C1D95", "#08060F"],
-      font: "display",
-      weight: 700,
+      bg: "#08090D",
+      ink: "#28B3F0",
+      accent: "#28B3F0",
+      wash: 0.24,
+      font: "grotesk",
+      weight: 800,
       upper: true,
       tracking: "0.01em",
     }),
   ],
   [
-    /^plex/,
+    // IPTV no es una marca sino una categoría: se le da identidad propia —
+    // pantalla y ondas de señal sobre pizarra fría, sin imitar a nadie.
+    /^iptv/,
     spec({
-      colors: ["#E5A00D", "#CC7B19", "#1B1B1F"],
-      font: "display",
-      weight: 700,
-      upper: true,
-      tracking: "0.06em",
-    }),
-  ],
-  [
-    /^formula 1|^f1/,
-    spec({
-      colors: ["#E10600", "#FF1801", "#15151E"],
+      bg: "linear-gradient(165deg,#0D2E37,#071B22 64%,#041015)",
+      ink: "#7BE6D2",
+      accent: "#31C9C0",
+      wash: 0.24,
       font: "condensed",
-      weight: 700,
-      italic: true,
+      weight: 600,
       upper: true,
-      tracking: "-0.02em",
+      tracking: "0.2em",
+      symbol: "iptv",
+      symbolScale: 0.8,
     }),
   ],
   [
-    /^iqiyi/,
+    // No pude confirmar la paleta oficial de KOCOWA.
+    /^kocowa/,
     spec({
-      colors: ["#00BE06", "#00A854", "#06160A"],
-      font: "display",
-      weight: 700,
+      bg: "#12061F",
+      ink: "#FFFFFF",
+      accent: "#8B3DFF",
+      wash: 0.32,
+      font: "grotesk",
+      weight: 800,
+      upper: true,
       tracking: "-0.02em",
     }),
   ],
   [
     /^mlb/,
     spec({
-      colors: ["#0B3A7A", "#BF0D3E", "#041E42"],
-      font: "condensed",
-      weight: 700,
+      bg: "#002D72",
+      ink: "#FFFFFF",
+      accent: "#D50032",
+      wash: 0.24,
+      font: "grotesk",
+      weight: 800,
       upper: true,
-      tracking: "0.03em",
+      tracking: "-0.01em",
+      symbol: "mlb",
+      symbolScale: 0.66,
     }),
   ],
   [
-    /^peacock/,
+    // MUBI es blanco y negro; no pude confirmar un acento oficial.
+    /^mubi/,
     spec({
-      colors: ["#FFFFFF", "#E6E6EA", "#0A0A0A"],
-      ink: "#0A0A0A",
-      font: "display",
+      bg: "#0A0A0A",
+      ink: "#FFFFFF",
+      accent: "#C8C8CE",
+      wash: 0.1,
+      font: "grotesk",
+      weight: 500,
+      upper: true,
+      tracking: "0.2em",
+      maxLines: 1,
+    }),
+  ],
+  [
+    /^plex/,
+    spec({
+      bg: "#1F2326",
+      ink: "#E5A00D",
+      accent: "#E5A00D",
+      wash: 0.26,
+      font: "geometric",
       weight: 600,
-      mark: "peacock",
-      light: true,
-      tracking: "-0.03em",
+      upper: true,
+      tracking: "0.14em",
+      symbol: "plex",
+      symbolInk: "#E5A00D",
+      symbolScale: 0.66,
     }),
   ],
   [
-    /^hidive/,
+    // No pude confirmar la paleta oficial de Universal+; se usa el azul y el
+    // globo de Universal.
+    /^universal/,
     spec({
-      colors: ["#0091D5", "#00D4FF", "#060B14"],
-      font: "condensed",
-      weight: 700,
+      bg: "#071A45",
+      ink: "#FFFFFF",
+      accent: "#5B8FD6",
+      wash: 0.24,
+      font: "grotesk",
+      weight: 600,
       upper: true,
-      tracking: "0.08em",
+      tracking: "0.06em",
+      symbol: "universal",
+      symbolScale: 0.82,
+      suffix: "+",
+    }),
+  ],
+  [
+    // Viki: azul Rakuten. No pude confirmar el hex exacto.
+    /^viki/,
+    spec({
+      bg: "#04121C",
+      ink: "#FFFFFF",
+      accent: "#00A8E0",
+      wash: 0.3,
+      font: "geometric",
+      weight: 700,
+      tracking: "-0.04em",
+      label: "viki",
+    }),
+  ],
+  [
+    // iQIYI: verde corporativo. No pude confirmar el hex exacto.
+    /^iqiyi/,
+    spec({
+      bg: "#00BE06",
+      ink: "#FFFFFF",
+      accent: "#B6F5B8",
+      wash: 0.14,
+      font: "geometric",
+      weight: 700,
+      tracking: "-0.04em",
+      label: "iQIYI",
     }),
   ],
 
-  // ── Música ───────────────────────────────────────────────────────────────
+  // ── Música ─────────────────────────────────────────────────────────────
   [
     /^spotify/,
     spec({
-      colors: ["#1DB954", "#1ED760", "#0C1A10"],
-      font: "display",
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#1ED760",
+      wash: 0.34,
+      font: "geometric",
       weight: 700,
       tracking: "-0.045em",
-    }),
-  ],
-  [
-    /^youtube/,
-    spec({
-      colors: ["#FF0000", "#CC0000", "#0F0F0F"],
-      font: "display",
-      weight: 700,
-      mark: "twoLine",
-      lines: ["YouTube", "Premium"],
+      symbol: "spotify",
+      symbolInk: "#1ED760",
+      symbolHole: "#000000",
+      symbolScale: 0.8,
     }),
   ],
   [
     /^apple music/,
     spec({
-      colors: ["#FA243C", "#FB5C74", "#14060A"],
-      font: "display",
+      bg: "linear-gradient(150deg,#FB5C74,#FA233B 58%,#C7112B)",
+      ink: "#FFFFFF",
+      accent: "#FFC2CA",
+      wash: 0.12,
+      font: "grotesk",
       weight: 500,
-      tracking: "-0.045em",
+      tracking: "-0.05em",
+      symbol: "appleMusic",
+      symbolScale: 0.66,
+      label: "Apple Music",
+    }),
+  ],
+  [
+    /^youtube/,
+    spec({
+      bg: "#0F0F0F",
+      ink: "#FFFFFF",
+      accent: "#FF0033",
+      wash: 0.24,
+      font: "grotesk",
+      weight: 700,
+      tracking: "-0.05em",
+      symbol: "youtubePlay",
+      symbolInk: "#FF0033",
+      symbolHole: "#0F0F0F",
+      symbolScale: 0.6,
+      label: "YouTube",
+      suffix: "Premium",
     }),
   ],
   [
     /^amazon music/,
     spec({
-      colors: ["#25D1DA", "#46C3D4", "#141F2B"],
-      font: "display",
+      bg: "linear-gradient(155deg,#2ED2F5,#0A84D6 62%,#06407A)",
+      ink: "#FFFFFF",
+      accent: "#B6ECFB",
+      wash: 0.12,
+      font: "geometric",
       weight: 600,
-      tracking: "-0.03em",
-    }),
-  ],
-  [
-    /^tidal/,
-    spec({
-      colors: ["#33A9AC", "#0B3B3D", "#0B0B0D"],
-      font: "display",
-      weight: 500,
-      upper: true,
-      tracking: "0.22em",
+      tracking: "-0.035em",
+      symbol: "amazonMusicNote",
+      symbolScale: 0.6,
+      label: "Amazon Music",
     }),
   ],
   [
     /^deezer/,
     spec({
-      colors: ["#A238FF", "#FF0092", "#00C7F2"],
-      font: "display",
+      bg: "#0B0B0F",
+      ink: "#FFFFFF",
+      accent: "#A238FF",
+      wash: 0.3,
+      font: "geometric",
       weight: 700,
-      tracking: "-0.03em",
+      tracking: "-0.04em",
+      symbol: "deezerBars",
+      symbolInk: "#A238FF",
+      symbolScale: 0.72,
     }),
   ],
   [
+    // Negro con blanco, sin adornos: el logotipo de Tidal es exactamente eso.
+    /^tidal/,
+    spec({
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#D3D8DE",
+      wash: 0.08,
+      font: "grotesk",
+      weight: 400,
+      upper: true,
+      tracking: "0.3em",
+      maxLines: 1,
+    }),
+  ],
+  [
+    // No pude confirmar la paleta oficial de Qobuz.
     /^qobuz/,
     spec({
-      colors: ["#0070EF", "#003C82", "#070C16"],
-      font: "display",
+      bg: "#0B1B2E",
+      ink: "#8FC0F0",
+      accent: "#4A8FD6",
+      wash: 0.22,
+      font: "geometric",
       weight: 600,
-      tracking: "0.02em",
+      tracking: "-0.02em",
+      symbol: "qobuz",
+      symbolScale: 0.58,
     }),
   ],
 
-  // ── Diseño e IA ──────────────────────────────────────────────────────────
-  [
-    /^canva edu/,
-    spec({
-      colors: ["#00C4CC", "#3B82F6", "#0D0F1C"],
-      font: "display",
-      weight: 600,
-      tracking: "-0.03em",
-    }),
-  ],
-  [
-    /^canva/,
-    spec({
-      colors: ["#7D2AE8", "#00C4CC", "#0D0F1C"],
-      font: "display",
-      weight: 600,
-      tracking: "-0.03em",
-    }),
-  ],
-  [
-    /^chatgpt|^openai/,
-    spec({
-      colors: ["#10A37F", "#0D8A6A", "#07120F"],
-      font: "display",
-      weight: 600,
-      tracking: "-0.02em",
-    }),
-  ],
-  [
-    /^claude|^anthropic/,
-    spec({
-      colors: ["#D97757", "#CC785C", "#1A1512"],
-      font: "serif",
-      weight: 400,
-      tracking: "-0.01em",
-    }),
-  ],
-  [
-    /^gemini/,
-    spec({
-      colors: ["#4285F4", "#9B72CB", "#D96570"],
-      font: "display",
-      weight: 500,
-      tracking: "-0.02em",
-    }),
-  ],
-  [
-    /^capcut/,
-    spec({
-      colors: ["#00E5D0", "#25F4EE", "#08100F"],
-      font: "display",
-      weight: 700,
-      tracking: "-0.04em",
-    }),
-  ],
-  [
-    /^office|^microsoft 365/,
-    spec({
-      colors: ["#D83B01", "#185ABD", "#107C41"],
-      font: "display",
-      weight: 600,
-      tracking: "-0.02em",
-    }),
-  ],
-  [
-    /^duolingo/,
-    spec({
-      colors: ["#58CC02", "#89E219", "#1CB0F6"],
-      font: "display",
-      weight: 700,
-      tracking: "-0.03em",
-    }),
-  ],
-  [
-    /^picsart/,
-    spec({
-      colors: ["#C209C1", "#FF4181", "#7A00FF"],
-      font: "display",
-      weight: 700,
-      tracking: "-0.03em",
-    }),
-  ],
-  [
-    /^scribd|^everand/,
-    spec({
-      colors: ["#1E7B85", "#0A4C54", "#071214"],
-      font: "serif",
-      weight: 400,
-      tracking: "0em",
-    }),
-  ],
+  // ── Diseño e IA ────────────────────────────────────────────────────────
   [
     /^photoshop/,
     spec({
-      colors: ["#31A8FF", "#00C8FF", "#001E36"],
-      font: "display",
+      bg: "#001E36",
+      ink: "#31A8FF",
+      accent: "#31A8FF",
+      wash: 0.2,
+      font: "grotesk",
       weight: 600,
-      tracking: "-0.02em",
+      tracking: "-0.04em",
     }),
   ],
   [
     /^adobe/,
     spec({
-      colors: ["#FF0000", "#EC1C24", "#1A0000"],
-      font: "display",
+      bg: "#08080A",
+      ink: "#FFFFFF",
+      accent: "#FA0F00",
+      wash: 0.3,
+      font: "grotesk",
       weight: 700,
-      tracking: "-0.03em",
+      tracking: "-0.05em",
+      symbol: "adobeA",
+      symbolInk: "#FA0F00",
+      symbolScale: 0.72,
     }),
   ],
   [
-    /almacenamiento google|google drive|google one/,
+    /^canva edu/,
     spec({
-      colors: ["#4285F4", "#EA4335", "#FBBC04", "#34A853"],
-      font: "display",
+      bg: "linear-gradient(148deg,#00C4CC,#4B6BE8 52%,#7D2AE8)",
+      ink: "#FFFFFF",
+      accent: "#B7F2F5",
+      wash: 0.1,
+      font: "geometric",
+      weight: 600,
+      tracking: "-0.035em",
+      symbol: "canvaC",
+      symbolHole: "#5C46E0",
+      symbolScale: 0.6,
+      label: "Canva",
+      suffix: "Edu",
+    }),
+  ],
+  [
+    /^canva/,
+    spec({
+      bg: "linear-gradient(148deg,#00C4CC,#5C46E0 55%,#7D2AE8)",
+      ink: "#FFFFFF",
+      accent: "#9FEDF2",
+      wash: 0.1,
+      font: "geometric",
+      weight: 600,
+      tracking: "-0.035em",
+      symbol: "canvaC",
+      symbolHole: "#5C46E0",
+      symbolScale: 0.6,
+      label: "Canva",
+      suffix: "Pro",
+    }),
+  ],
+  [
+    /^capcut/,
+    spec({
+      bg: "#0E0E14",
+      ink: "#FFFFFF",
+      accent: "#3DE7F0",
+      wash: 0.26,
+      font: "geometric",
+      weight: 700,
+      tracking: "-0.045em",
+      symbol: "capcut",
+      symbolScale: 0.62,
+      label: "CapCut",
+      suffix: "Pro",
+    }),
+  ],
+  [
+    /^chatgpt|^openai/,
+    spec({
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#8FA8A2",
+      wash: 0.12,
+      font: "grotesk",
+      weight: 600,
+      tracking: "-0.035em",
+      symbol: "openai",
+      symbolScale: 0.7,
+    }),
+  ],
+  [
+    /^claude|^anthropic/,
+    spec({
+      bg: "#0F0D0B",
+      ink: "#FFFFFF",
+      accent: "#D97757",
+      wash: 0.32,
+      font: "serif",
       weight: 500,
       tracking: "-0.02em",
+      symbol: "geminiSpark",
+      symbolScale: 0.6,
+    }),
+  ],
+  [
+    /^gemini/,
+    spec({
+      bg: "#0A0D17",
+      ink: "#9AB6FF",
+      inkGrad: "linear-gradient(96deg,#5B8DFF,#A57BFF 58%,#E0708F)",
+      accent: "#7C8FFF",
+      wash: 0.26,
+      font: "geometric",
+      weight: 500,
+      tracking: "-0.03em",
+      symbol: "geminiSpark",
+      symbolScale: 0.58,
+    }),
+  ],
+  [
+    /^office|^microsoft 365|^m365/,
+    spec({
+      bg: "#141416",
+      ink: "#FFFFFF",
+      accent: "#00A4EF",
+      wash: 0.2,
+      font: "grotesk",
+      weight: 600,
+      tracking: "-0.04em",
+      symbol: "microsoft",
+      symbolScale: 0.62,
     }),
   ],
   [
     /onedrive/,
     spec({
-      colors: ["#0078D4", "#28A8EA", "#062033"],
-      font: "display",
+      bg: "#0364B8",
+      ink: "#FFFFFF",
+      accent: "#9BD3F5",
+      wash: 0.16,
+      font: "grotesk",
+      weight: 600,
+      tracking: "-0.035em",
+      symbol: "onedrive",
+      symbolScale: 0.62,
+      label: "OneDrive",
+    }),
+  ],
+  [
+    /almacenamiento google|google drive|google one/,
+    spec({
+      bg: "#101116",
+      ink: "#FFFFFF",
+      accent: "#4688F1",
+      wash: 0.22,
+      font: "geometric",
       weight: 500,
-      tracking: "-0.02em",
+      tracking: "-0.03em",
+      symbol: "googleDrive",
+      symbolScale: 0.64,
+      label: "Google Drive",
+    }),
+  ],
+  [
+    /^duolingo/,
+    spec({
+      bg: "#58CC02",
+      ink: "#FFFFFF",
+      accent: "#C6F5A0",
+      wash: 0.14,
+      font: "geometric",
+      weight: 800,
+      tracking: "-0.03em",
+      symbol: "duolingoOwl",
+      symbolHole: "#FFFFFF",
+      symbolScale: 0.72,
+    }),
+  ],
+  [
+    /^picsart/,
+    spec({
+      bg: "linear-gradient(150deg,#F0347E,#B026C9 55%,#6C1BD1)",
+      ink: "#FFFFFF",
+      accent: "#FFB3D4",
+      wash: 0.1,
+      font: "geometric",
+      weight: 700,
+      tracking: "-0.045em",
+      symbol: "picsart",
+      symbolScale: 0.58,
+    }),
+  ],
+  [
+    // No pude confirmar el hex oficial de Scribd; se usa su verde azulado.
+    /^scribd/,
+    spec({
+      bg: "#0B2E33",
+      ink: "#FFFFFF",
+      accent: "#1E9E92",
+      wash: 0.28,
+      font: "grotesk",
+      weight: 600,
+      tracking: "-0.04em",
+      symbol: "scribd",
+      symbolScale: 0.58,
     }),
   ],
 
-  // ── Otros con marca ──────────────────────────────────────────────────────
+  // ── Otros ──────────────────────────────────────────────────────────────
   [
-    /^pornhub/,
+    /^discord/,
     spec({
-      colors: ["#FF9000", "#F7A600", "#0A0A0A"],
-      font: "display",
+      bg: "#5865F2",
+      ink: "#FFFFFF",
+      accent: "#C3C8FF",
+      wash: 0.14,
+      font: "geometric",
       weight: 700,
-      tracking: "-0.03em",
+      tracking: "-0.035em",
+      symbol: "discord",
+      symbolHole: "#5865F2",
+      symbolScale: 0.66,
+      label: "Discord",
+      suffix: "Nitro",
     }),
   ],
   [
-    /^brazzers/,
+    /^free fire/,
     spec({
-      colors: ["#D9A441", "#8A5F13", "#0A0A0A"],
-      ink: "#F5D48A",
-      font: "serif",
-      weight: 400,
+      bg: "#111318",
+      ink: "#FFFFFF",
+      accent: "#FF7A00",
+      wash: 0.32,
+      font: "condensed",
+      weight: 700,
       upper: true,
-      tracking: "0.1em",
-    }),
-  ],
-  [
-    /^onlyfans/,
-    spec({
-      colors: ["#00AFF0", "#008CCF", "#04141F"],
-      font: "display",
-      weight: 600,
-      tracking: "-0.03em",
-    }),
-  ],
-  [
-    /^surfshark/,
-    spec({
-      colors: ["#1EBFBF", "#178A8A", "#07171B"],
-      font: "display",
-      weight: 600,
-      tracking: "-0.02em",
+      italic: true,
+      tracking: "0.02em",
+      symbol: "flame",
+      symbolInk: "#FF7A00",
+      symbolHole: "#111318",
+      symbolScale: 0.6,
+      label: "Free Fire",
     }),
   ],
   [
     /^nordvpn|^nord/,
     spec({
-      colors: ["#4687FF", "#2B6BE0", "#061024"],
-      font: "display",
+      bg: "#0A1226",
+      ink: "#FFFFFF",
+      accent: "#4687FF",
+      wash: 0.3,
+      font: "geometric",
       weight: 600,
-      tracking: "-0.02em",
+      tracking: "-0.035em",
+      symbol: "shield",
+      symbolInk: "#4687FF",
+      symbolScale: 0.58,
     }),
   ],
   [
-    /^expressvpn|^express/,
+    /^surfshark/,
     spec({
-      colors: ["#DA3940", "#A8262C", "#14090A"],
-      font: "display",
+      bg: "#0A2634",
+      ink: "#FFFFFF",
+      accent: "#20C5C5",
+      wash: 0.3,
+      font: "geometric",
       weight: 600,
-      tracking: "-0.02em",
+      tracking: "-0.04em",
+      symbol: "sharkFin",
+      symbolInk: "#20C5C5",
+      symbolScale: 0.6,
     }),
   ],
   [
-    /^bitdefender/,
+    /^expressvpn|^express vpn/,
     spec({
-      colors: ["#ED1C24", "#A80F15", "#12080A"],
-      font: "display",
+      bg: "#C7222A",
+      ink: "#FFFFFF",
+      accent: "#FFB3B6",
+      wash: 0.14,
+      font: "geometric",
       weight: 600,
-      tracking: "-0.02em",
+      tracking: "-0.04em",
+      symbol: "pin",
+      symbolScale: 0.56,
     }),
   ],
   [
     /^avira/,
     spec({
-      colors: ["#E4003C", "#A3002B", "#14060C"],
-      font: "display",
+      bg: "#0E1319",
+      ink: "#FFFFFF",
+      accent: "#E2001A",
+      wash: 0.28,
+      font: "geometric",
       weight: 600,
+      tracking: "-0.03em",
+      symbol: "umbrella",
+      symbolInk: "#E2001A",
+      symbolScale: 0.58,
+    }),
+  ],
+  [
+    /^bitdefender/,
+    spec({
+      bg: "#0C1017",
+      ink: "#FFFFFF",
+      accent: "#ED1C24",
+      wash: 0.28,
+      font: "grotesk",
+      weight: 600,
+      tracking: "-0.04em",
+      symbol: "shield",
+      symbolInk: "#ED1C24",
+      symbolScale: 0.56,
+    }),
+  ],
+  [
+    // Wordmark de dos bloques: «Porn» en blanco y «hub» sobre naranja.
+    /^pornhub/,
+    spec({
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#FF9900",
+      wash: 0.22,
+      font: "grotesk",
+      weight: 800,
+      tracking: "-0.05em",
+      label: "Porn",
+      suffix: "hub",
+      suffixBg: "#FF9900",
+      suffixInk: "#000000",
+    }),
+  ],
+  [
+    /^brazzers/,
+    spec({
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#9A9AA4",
+      wash: 0.1,
+      font: "grotesk",
+      weight: 800,
+      upper: true,
       tracking: "-0.02em",
     }),
   ],
   [
-    /discord/,
+    /^onlyfans/,
     spec({
-      colors: ["#5865F2", "#EB459E", "#1B1D26"],
-      font: "display",
+      bg: "#00AFF0",
+      ink: "#FFFFFF",
+      accent: "#B3E8FB",
+      wash: 0.14,
+      font: "geometric",
       weight: 600,
-      tracking: "-0.03em",
+      tracking: "-0.04em",
+      symbol: "infinity",
+      symbolScale: 0.5,
+      label: "OnlyFans",
     }),
   ],
   [
-    /free fire/,
+    /^smart fit|^smartfit/,
     spec({
-      colors: ["#F5811E", "#E7362B", "#150C05"],
-      font: "condensed",
-      weight: 700,
+      bg: "#FFD400",
+      ink: "#101010",
+      accent: "#7A5E00",
+      wash: 0.1,
+      font: "grotesk",
+      weight: 800,
+      upper: true,
       italic: true,
-      upper: true,
-      tracking: "0.01em",
-    }),
-  ],
-  [
-    /robux|pavos|roblox|fortnite/,
-    spec({
-      colors: ["#E2231A", "#00A2FF", "#0B0B0E"],
-      font: "display",
-      weight: 700,
-      tracking: "-0.03em",
-    }),
-  ],
-  [
-    /smart ?fit/,
-    spec({
-      colors: ["#FACC15", "#A87F00", "#111111"],
-      ink: "#FFE066",
-      font: "condensed",
-      weight: 700,
-      upper: true,
-      tracking: "0.04em",
-    }),
-  ],
-  [
-    /^cine\b|cinepolis|cinemex/,
-    spec({
-      colors: ["#0B1E4B", "#E0245E", "#FFC72C"],
-      font: "display",
-      weight: 600,
       tracking: "-0.02em",
+      symbol: "dumbbell",
+      symbolScale: 0.56,
+      light: true,
     }),
   ],
   [
-    /metro monterrey|^transporte/,
+    /^cine/,
     spec({
-      colors: ["#00A96B", "#007A4D", "#04150E"],
+      bg: "#12141C",
+      ink: "#F2C260",
+      accent: "#E8A33A",
+      wash: 0.24,
+      font: "serif",
+      weight: 600,
+      upper: true,
+      tracking: "0.12em",
+      symbol: "ticket",
+      symbolScale: 0.56,
+      label: "Cine",
+    }),
+  ],
+  [
+    /^transporte|metro monterrey/,
+    spec({
+      bg: "#0A4D34",
+      ink: "#FFFFFF",
+      accent: "#5FD6A4",
+      wash: 0.22,
       font: "condensed",
       weight: 600,
       upper: true,
-      tracking: "0.06em",
+      tracking: "0.1em",
+      symbol: "train",
+      symbolScale: 0.56,
+      label: "Metro",
     }),
-  ],
-
-  // ── Otros sin marca: identidad propia, nunca gris ───────────────────────
-  [
-    /pagos de servicios/,
-    spec({ colors: ["#FBBF24", "#B45309", "#1B1204"], font: "display", weight: 600 }),
-  ],
-  [
-    /compras con descuento|compras online/,
-    spec({ colors: ["#F472B6", "#BE185D", "#1C0812"], font: "display", weight: 600 }),
-  ],
-  [
-    /abonos|liquidacion de creditos/,
-    spec({ colors: ["#C2A33B", "#7A6416", "#161206"], font: "display", weight: 600 }),
-  ],
-  [/recargas/, spec({ colors: ["#60A5FA", "#1D4ED8", "#080F22"], font: "display", weight: 600 })],
-  [/comida/, spec({ colors: ["#00C16A", "#047857", "#04160F"], font: "display", weight: 600 })],
-  [
-    /hospedaje|boletos|viajes/,
-    spec({ colors: ["#38BDF8", "#0369A1", "#04141E"], font: "display", weight: 600 }),
-  ],
-  [
-    /seguro de autos/,
-    spec({ colors: ["#4F8DF5", "#1E3A8A", "#070E20"], font: "display", weight: 600 }),
-  ],
-  [
-    /videojuegos/,
-    spec({ colors: ["#7B61FF", "#4C1D95", "#0C0718"], font: "display", weight: 600 }),
-  ],
-  [
-    /peliculas|libros|pdf/,
-    spec({ colors: ["#C4B5FD", "#6D28D9", "#0E0A1C"], font: "serif", weight: 400 }),
-  ],
-  [
-    /paneles|metodos/,
-    spec({ colors: ["#14B8A6", "#0F766E", "#041614"], font: "display", weight: 600 }),
-  ],
-  [
-    /recuperacion de cuentas/,
-    spec({ colors: ["#F97316", "#9A3412", "#180A03"], font: "display", weight: 600 }),
-  ],
-  [
-    /numeros virtuales/,
-    spec({ colors: ["#22D3EE", "#0E7490", "#04161B"], font: "display", weight: 600 }),
-  ],
-  [
-    /bots/,
-    spec({
-      colors: ["#6EE7B7", "#047857", "#04160F"],
-      font: "condensed",
-      weight: 600,
-      upper: true,
-      tracking: "0.08em",
-    }),
-  ],
-  [
-    /seguidores|redes sociales/,
-    spec({ colors: ["#F87171", "#B91C1C", "#1A0808"], font: "display", weight: 600 }),
   ],
 ];
 
 /**
- * Paleta de Trámites por subcategoría. Antes eran 78 fichas del mismo gris, lo
- * que aplanaba toda la categoría; ahora cada tipo de documento tiene su tono,
- * separados en el círculo cromático para distinguirse de un vistazo y con la
- * misma saturación para que la categoría siga leyéndose como un sistema.
+ * Servicios propios sin logotipo de marca. No son marcas ajenas, así que en vez
+ * de imitar a nadie reciben su propio símbolo y un color profundo distinto.
  */
-const TRAMITE_PALETTE: Record<string, string[]> = {
-  actas: ["#7E9BFF", "#4B5FD6", "#232A6B"],
-  sat: ["#5FD6A4", "#2A9C78", "#0F4A42"],
-  salud: ["#5AD2E8", "#2E93BE", "#123F5C"],
-  educacion: ["#FFC46B", "#DE8734", "#6B3612"],
-  antecedentes: ["#C6A0FF", "#8B5CF6", "#402472"],
-  vehiculos: ["#FF9E8C", "#EE5A5A", "#6E1F2D"],
-  infonavit: ["#FF9FC9", "#E85B9C", "#6B2148"],
-  citas: ["#BCE577", "#7FB233", "#334A14"],
+const OWN: Array<[RegExp, Brand]> = [
+  [
+    /^pagos de servicios/,
+    spec({
+      bg: "#241A05",
+      ink: "#FFC94D",
+      accent: "#F0A81E",
+      wash: 0.2,
+      symbol: "card",
+      symbolScale: 0.56,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^compras con descuento/,
+    spec({
+      bg: "#280C21",
+      ink: "#FF9AD5",
+      accent: "#D95FA8",
+      wash: 0.2,
+      symbol: "bag",
+      symbolScale: 0.56,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^abonos|liquidacion de creditos/,
+    spec({
+      bg: "#20200A",
+      ink: "#E6D65F",
+      accent: "#C9B63E",
+      wash: 0.2,
+      symbol: "coins",
+      symbolScale: 0.56,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^recargas/,
+    spec({
+      bg: "#0B2440",
+      ink: "#8FC8FF",
+      accent: "#4A90E2",
+      wash: 0.22,
+      symbol: "phone",
+      symbolScale: 0.5,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^comida/,
+    spec({
+      bg: "#26110A",
+      ink: "#FFA870",
+      accent: "#E4713A",
+      wash: 0.22,
+      symbol: "cutlery",
+      symbolScale: 0.52,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^hospedaje|boletos y viajes/,
+    spec({
+      bg: "#05222F",
+      ink: "#74DCF5",
+      accent: "#2EAFD4",
+      wash: 0.22,
+      symbol: "plane",
+      symbolScale: 0.54,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^seguro de autos/,
+    spec({
+      bg: "#0C1D3D",
+      ink: "#93B4FF",
+      accent: "#4C74D9",
+      wash: 0.22,
+      symbol: "carShield",
+      symbolScale: 0.56,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^videojuegos/,
+    spec({
+      bg: "#1C0E3C",
+      ink: "#BCA6FF",
+      accent: "#7B5CE6",
+      wash: 0.24,
+      symbol: "gamepad",
+      symbolScale: 0.56,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^peliculas|libros y pdf/,
+    spec({
+      bg: "#251034",
+      ink: "#DCB8FF",
+      accent: "#8B5CD6",
+      wash: 0.22,
+      symbol: "book",
+      symbolScale: 0.54,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^bots para grupos/,
+    spec({
+      bg: "#05231D",
+      ink: "#7FEBC4",
+      accent: "#25B98C",
+      wash: 0.22,
+      symbol: "bot",
+      symbolScale: 0.54,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^seguidores/,
+    spec({
+      bg: "#2A0A1A",
+      ink: "#FF9DBA",
+      accent: "#E05580",
+      wash: 0.22,
+      symbol: "users",
+      symbolScale: 0.54,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^numeros virtuales/,
+    spec({
+      bg: "#101E29",
+      ink: "#9BD9EC",
+      accent: "#4FA8C4",
+      wash: 0.22,
+      symbol: "hash",
+      symbolScale: 0.5,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^recuperacion de cuentas/,
+    spec({
+      bg: "#271C06",
+      ink: "#F5CE7B",
+      accent: "#D0A23C",
+      wash: 0.22,
+      symbol: "key",
+      symbolScale: 0.52,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^paneles y metodos/,
+    spec({
+      bg: "#151527",
+      ink: "#B4B4FF",
+      accent: "#6E6EE0",
+      wash: 0.24,
+      symbol: "grid",
+      symbolScale: 0.52,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /^robux|pavos/,
+    spec({
+      bg: "#111318",
+      ink: "#E9EBF2",
+      accent: "#8E9AAE",
+      wash: 0.18,
+      symbol: "coins",
+      symbolScale: 0.52,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+];
+
+/** Colecciones de «Otros»: agrupan varios servicios, no son una marca. */
+const BUNDLES: Array<[RegExp, Brand]> = [
+  [
+    /adultos/,
+    spec({
+      bg: "#1A060D",
+      ink: "#FF8FA8",
+      accent: "#E23B63",
+      wash: 0.26,
+      symbol: "playCircle",
+      symbolScale: 0.5,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+  [
+    /vpn/,
+    spec({
+      bg: "#07202B",
+      ink: "#7FE0EE",
+      accent: "#2CAFC4",
+      wash: 0.26,
+      symbol: "shield",
+      symbolScale: 0.5,
+      font: "display",
+      weight: 600,
+    }),
+  ],
+];
+
+/**
+ * Trámites, por tipo de documento.
+ *
+ * Tonos profundos y poco saturados: son 59 fichas seguidas y una paleta viva
+ * las convertía en etiquetas de papelería. El color distingue el tipo de
+ * documento y el icono lo nombra; el fondo se mantiene oscuro para que la
+ * categoría se lea como un bloque tranquilo.
+ */
+type TramiteStyle = { bg: string; ink: string; accent: string; symbol: SymbolId };
+
+const TRAMITES: Record<string, TramiteStyle> = {
+  actas: { bg: "#161B33", ink: "#A9B6E8", accent: "#5C6FBF", symbol: "seal" },
+  sat: { bg: "#0E2A25", ink: "#8ED8BA", accent: "#3F9E7C", symbol: "receipt" },
+  salud: { bg: "#0D2534", ink: "#93CBE2", accent: "#3F8FB0", symbol: "medicalCross" },
+  imss: { bg: "#122A2E", ink: "#96CFCF", accent: "#42979A", symbol: "idCard" },
+  educacion: { bg: "#291D0F", ink: "#E0BA80", accent: "#B0813C", symbol: "gradCap" },
+  antecedentes: { bg: "#201731", ink: "#BFA9E8", accent: "#7C5CC4", symbol: "fingerprint" },
+  vehiculos: { bg: "#2C1717", ink: "#E5A697", accent: "#B26050", symbol: "car" },
+  infonavit: { bg: "#2C1421", ink: "#E5A0BE", accent: "#B25580", symbol: "house" },
+  citas: { bg: "#1D2612", ink: "#BDD292", accent: "#7C9B45", symbol: "calendar" },
 };
 
-/** Colores de las tarjetas de colección de "Otros" (agrupan varias fichas). */
-const BUNDLE_PALETTE: Record<string, string[]> = {
-  adultos: ["#FF9000", "#B45309", "#120A02"],
-  "servicios-vpn": ["#1EBFBF", "#0F766E", "#04161A"],
-};
+const TRAMITE_ORDER = Object.keys(TRAMITES);
 
-const TRAMITE_FALLBACK = ["#8FB6FF", "#3F63C4", "#1B2450"];
-
-const cache = new Map<string, Brand>();
+/** Trámite sin subcategoría conocida: reparte por nombre, nunca gris. */
+function tramiteFallback(name: string): TramiteStyle {
+  let h = 0;
+  for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const slot = TRAMITE_ORDER[h % TRAMITE_ORDER.length] as string;
+  return TRAMITES[slot] as TramiteStyle;
+}
 
 export type BrandInput = {
   name: string;
   categorySlug?: string | null;
   subcategorySlug?: string | null;
-  /** `services.color` — respaldo cuando no hay marca conocida. */
+  /** Color guardado en la base; solo se usa si no hay nada mejor. */
   color?: string | null;
-  /** Tarjeta de colección de "Otros" (agrupa varias fichas), no un servicio. */
+  /** Tarjeta de colección de «Otros», no un servicio suelto. */
   bundle?: boolean;
 };
 
-/** Identidad visual de un servicio: color de marca real y estilo del nombre. */
+const cache = new Map<string, Brand>();
+
 export function resolveBrand(input: BrandInput): Brand {
-  const cacheKey = `${input.name}|${input.categorySlug ?? ""}|${input.subcategorySlug ?? ""}|${input.color ?? ""}|${input.bundle ? "b" : ""}`;
+  const cacheKey = `${input.name}|${input.categorySlug ?? ""}|${input.subcategorySlug ?? ""}|${input.color ?? ""}|${input.bundle ? 1 : 0}`;
   const hit = cache.get(cacheKey);
   if (hit) return hit;
 
-  const brand = computeBrand(input);
+  const brand = compute(input);
   cache.set(cacheKey, brand);
   return brand;
 }
 
-function computeBrand({ name, categorySlug, subcategorySlug, color, bundle }: BrandInput): Brand {
-  // Las colecciones de "Otros" tienen su propia identidad, no la del primer
-  // servicio que contienen. Solo aplica a la tarjeta agrupada, nunca a las
-  // fichas individuales que viven dentro (Pornhub, NordVPN…).
-  if (bundle && subcategorySlug && BUNDLE_PALETTE[subcategorySlug] && categorySlug === "otros") {
+function compute(input: BrandInput): Brand {
+  const name = key(input.name);
+
+  if (input.bundle) {
+    for (const [re, brand] of BUNDLES) if (re.test(name)) return brand;
+  }
+
+  if (input.categorySlug === "tramites") {
+    const sub = input.subcategorySlug ?? "";
+    // «salud» agrupa dos familias distintas: consultas médicas y seguridad
+    // social. Se separan porque el usuario las busca por separado.
+    const slot =
+      sub === "salud" &&
+      /nss|seguro social|seguridad social|imss|issste|isssemym|afore|semanas|vigencia|incapacidad|sindo/.test(
+        name,
+      )
+        ? "imss"
+        : sub;
+    const style = TRAMITES[slot] ?? tramiteFallback(name);
     return spec({
-      colors: BUNDLE_PALETTE[subcategorySlug]!,
+      bg: style.bg,
+      ink: style.ink,
+      accent: style.accent,
+      wash: 0.3,
       font: "display",
-      weight: 700,
-      soft: true,
+      weight: 600,
+      tracking: "-0.02em",
+      symbol: style.symbol,
+      symbolScale: 0.46,
     });
   }
 
-  // Trámites: no son marcas, se colorean por tipo de documento. Dentro de cada
-  // subcategoría se aplica una variación mínima derivada del nombre para que
-  // una lista de trece actas no parezca trece rectángulos idénticos, sin salir
-  // nunca del tono que identifica al grupo.
-  if (categorySlug === "tramites") {
-    const palette = (subcategorySlug && TRAMITE_PALETTE[subcategorySlug]) || TRAMITE_FALLBACK;
-    // Cada ficha gira el tono unos grados dentro de la familia de su
-    // subcategoría: se siguen leyendo como un grupo, pero ninguna tarjeta es
-    // idéntica a la de al lado.
-    const h = hashOf(key(name));
-    const turn = ((h % 25) - 12) * 1.1;
-    const jitter = ((h >> 5) % 9) / 100 - 0.035;
-    return spec({
-      colors: palette.map((c, i) => rotateHue(shade(c, i === 0 ? jitter : 0), turn)),
-      font: "display",
-      weight: 700,
-      tracking: "-0.025em",
-      soft: true,
-    });
-  }
+  for (const [re, brand] of BRANDS) if (re.test(name)) return brand;
+  for (const [re, brand] of OWN) if (re.test(name)) return brand;
 
-  const normalized = key(name);
-  for (const [pattern, brand] of BRANDS) {
-    if (pattern.test(normalized)) return brand;
-  }
-
-  // Sin marca conocida: se respeta el color elegido a mano en la base y se
-  // deriva un degradado coherente a partir de él.
-  const base = normalizeHex(color) ?? hashColor(normalized);
+  // Sin marca conocida: se respeta el color elegido a mano en la base.
+  const base = normalizeHex(input.color) ?? hashColor(name);
   return spec({
-    colors: [base, shade(base, -0.35), shade(base, -0.82)],
+    bg: shade(base, -0.78),
+    ink: tint(base, 0.55),
+    accent: base,
+    wash: 0.26,
     font: "display",
     weight: 600,
+    tracking: "-0.025em",
+    symbol: "grid",
+    symbolScale: 0.46,
   });
 }
 
-// ── Utilidades de color ────────────────────────────────────────────────────
+/** Color de acento de un servicio, para puntos y filos fuera de la ficha. */
+export function brandAccent(input: BrandInput): string {
+  return resolveBrand(input).accent;
+}
+
+// ── Composición de la superficie ────────────────────────────────────────────
+
+export type BrandSkin = {
+  /** Fondo completo de la tarjeta o de la ficha. */
+  background: string;
+  /** Borde. */
+  border: string;
+  /** Filo de luz superior. */
+  edge: string;
+  /** Tinta del logotipo. */
+  ink: string;
+  /** Degradado de la tinta, si la marca lo lleva. */
+  inkGrad: string | undefined;
+  /** Tinta del símbolo. */
+  symbolInk: string;
+  /** Sombra del logotipo, para que se despegue del fondo. */
+  inkShadow: string;
+  /** Acento de la marca, para contadores y detalles. */
+  accent: string;
+  /** Color legible para texto secundario sobre esta superficie. */
+  meta: string;
+  /** Color del texto de interfaz (no del logotipo) sobre esta superficie. */
+  chrome: string;
+};
+
+/**
+ * Compone la superficie de una marca.
+ *
+ * `hero` es la ficha completa: el mismo fondo pero con más recorrido, porque
+ * cubre toda la pantalla y necesita que la luz viaje de arriba abajo.
+ */
+export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSkin {
+  const hero = size === "hero";
+  const w = brand.wash * (hero ? 1.15 : 1);
+  const a = brand.accent;
+
+  // Capas, de arriba abajo: luz cenital, acento de marca, fondo real.
+  const layers = [
+    `radial-gradient(${hero ? "120% 46%" : "132% 62%"} at 50% ${hero ? "-8%" : "-14%"}, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.06 : 0.11)}, transparent 64%)`,
+    `radial-gradient(${hero ? "110% 62%" : "128% 96%"} at ${hero ? "82% 96%" : "50% 118%"}, ${rgba(a, w)}, transparent 62%)`,
+    `radial-gradient(${hero ? "76% 44%" : "92% 70%"} at ${hero ? "6% 8%" : "8% 4%"}, ${rgba(a, w * 0.55)}, transparent 60%)`,
+    brand.bg,
+  ];
+
+  return {
+    background: layers.join(", "),
+    border: rgba(brand.light ? "#000000" : a, brand.light ? 0.14 : 0.3),
+    edge: rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.12 : 0.34),
+    ink: brand.ink,
+    inkGrad: brand.inkGrad,
+    symbolInk: brand.symbolInk ?? brand.ink,
+    inkShadow: brand.light ? "none" : `0 2px 18px ${rgba(a, 0.34)}`,
+    accent: a,
+    // Neutro a propósito: el color de la marca es del fondo y del logotipo.
+    // Si además tiñera los textos de apoyo, el rojo de Netflix se comería la
+    // legibilidad de «81 ofertas» y de los precios.
+    meta: brand.light ? rgba("#000000", 0.6) : rgba("#FFFFFF", 0.66),
+    chrome: brand.light ? "#101014" : "#FFFFFF",
+  };
+}
+
+// ── Utilidades de color ─────────────────────────────────────────────────────
 
 function normalizeHex(value: string | null | undefined): string | null {
   if (!value) return null;
   const v = value.trim();
   if (/^#[0-9a-f]{6}$/i.test(v)) return v.toUpperCase();
   if (/^#[0-9a-f]{3}$/i.test(v)) {
-    const [r, g, b] = [v[1]!, v[2]!, v[3]!];
+    const [r, g, b] = [v[1], v[2], v[3]] as [string, string, string];
     return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
   }
   return null;
 }
 
-function hashOf(seed: string): number {
+function parse(hex: string): [number, number, number] {
+  const h = normalizeHex(hex) ?? "#888888";
+  return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+}
+
+function toHex(r: number, g: number, b: number) {
+  const c = (n: number) =>
+    Math.max(0, Math.min(255, Math.round(n)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${c(r)}${c(g)}${c(b)}`.toUpperCase();
+}
+
+function rgba(hex: string, alpha: number) {
+  const [r, g, b] = parse(hex);
+  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
+}
+
+/** Oscurece (`amount` negativo) o aclara un color. */
+function shade(hex: string, amount: number) {
+  const [r, g, b] = parse(hex);
+  const t = amount < 0 ? 0 : 255;
+  const p = Math.abs(amount);
+  return toHex(r + (t - r) * p, g + (t - g) * p, b + (t - b) * p);
+}
+
+function tint(hex: string, amount: number) {
+  return shade(hex, amount);
+}
+
+/** Color estable a partir del nombre, para lo que no tiene nada asignado. */
+function hashColor(name: string) {
   let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 100003;
-  return h;
-}
-
-/** Tono estable derivado del nombre, para servicios nuevos sin marca conocida. */
-function hashColor(seed: string): string {
-  return hslToHex(hashOf(seed) % 360, 62, 58);
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const v = l / 100 - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
-    return Math.round(255 * v);
-  };
-  return rgbToHex([f(0), f(8), f(4)]);
-}
-
-/** Gira el tono de un color conservando saturación y luminosidad. */
-export function rotateHue(hex: string, degrees: number): string {
-  const [r, g, b] = hexToRgb(hex).map((c) => c / 255) as [number, number, number];
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  if (max === min) return hex;
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let h: number;
-  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
-  else if (max === g) h = ((b - r) / d + 2) * 60;
-  else h = ((r - g) / d + 4) * 60;
-  return hslToHex((h + degrees + 360) % 360, s * 100, l * 100);
-}
-
-function hexToRgb(hex: string): [number, number, number] {
-  const v = normalizeHex(hex) ?? "#808080";
-  return [parseInt(v.slice(1, 3), 16), parseInt(v.slice(3, 5), 16), parseInt(v.slice(5, 7), 16)];
-}
-
-function rgbToHex(rgb: [number, number, number]): string {
-  return `#${rgb
-    .map((c) =>
-      Math.max(0, Math.min(255, Math.round(c)))
-        .toString(16)
-        .padStart(2, "0"),
-    )
-    .join("")}`.toUpperCase();
-}
-
-/** Mezcla dos colores. `amount` 0 = a, 1 = b. */
-export function mix(a: string, b: string, amount: number): string {
-  const [r1, g1, b1] = hexToRgb(a);
-  const [r2, g2, b2] = hexToRgb(b);
-  const t = Math.max(0, Math.min(1, amount));
-  return rgbToHex([r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t]);
-}
-
-/** Aclara (amount > 0) u oscurece (amount < 0) un color. */
-export function shade(hex: string, amount: number): string {
-  return amount >= 0 ? mix(hex, "#FFFFFF", amount) : mix(hex, "#000000", -amount);
-}
-
-/** Luminancia relativa, para decidir si un color necesita tinta clara u oscura. */
-export function luminance(hex: string): number {
-  const [r, g, b] = hexToRgb(hex).map((c) => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  }) as [number, number, number];
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-export function withAlpha(hex: string, alpha: number): string {
-  const [r, g, b] = hexToRgb(hex);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-/** Color de superficie sobre el que se mezclan los degradados oscuros. */
-const SURFACE = "#1E1E24";
-
-/**
- * Mezcla un color hacia la superficie hasta alcanzar una luminancia objetivo.
- *
- * Es lo que permite que las 147 fichas usen su color real y aun así el nombre
- * se lea siempre: da igual que la marca sea el amarillo de Universal+ o el azul
- * marino de MLB, la tarjeta acaba en la misma banda de luminancia.
- */
-function toLuminance(color: string, target: number): string {
-  if (luminance(color) <= target) {
-    // Ya es más oscuro que el objetivo: se aclara hacia el propio color puro.
-    let lo = 0;
-    let hi = 1;
-    for (let i = 0; i < 12; i++) {
-      const mid = (lo + hi) / 2;
-      if (luminance(mix(color, shade(color, 0.85), mid)) < target) lo = mid;
-      else hi = mid;
-    }
-    return mix(color, shade(color, 0.85), lo);
-  }
-  let lo = 0;
-  let hi = 1;
-  for (let i = 0; i < 12; i++) {
-    const mid = (lo + hi) / 2;
-    if (luminance(mix(color, SURFACE, mid)) > target) lo = mid;
-    else hi = mid;
-  }
-  return mix(color, SURFACE, hi);
-}
-
-export type BrandSkin = {
-  /** Fondo completo de la tarjeta. */
-  background: string;
-  /** Tinte para pastillas y recuadros sobre la tarjeta. */
-  wash: string;
-  /** Borde sutil teñido con la marca. */
-  border: string;
-  /** Brillo superior que da profundidad. */
-  glow: string;
-  /** Destello diagonal; solo en las tarjetas sin logotipo. */
-  sheen: string | null;
-  /** Color del nombre. */
-  ink: string;
-  /** Sombra/halo del nombre para asegurar legibilidad. */
-  inkShadow: string;
-  /** Acento sólido para puntos, barras y detalles. */
-  accent: string;
-};
-
-const skinCache = new Map<string, BrandSkin>();
-
-/** Bandas de luminancia del degradado según el tipo de tarjeta. */
-const BANDS = {
-  card: [0.155, 0.085, 0.04],
-  hero: [0.2, 0.11, 0.05],
-  // Sin logotipo: más claro y con más recorrido, para que el color cargue con
-  // todo el peso de identificar la ficha.
-  softCard: [0.235, 0.135, 0.065],
-  softHero: [0.28, 0.16, 0.08],
-} as const;
-
-/**
- * Traduce una marca a los estilos de la tarjeta: degradado con los colores
- * reales del logotipo (principal primero) llevado a una banda de luminancia
- * fija, para que la marca se reconozca sin comprometer la legibilidad ni el
- * conjunto neutro de la interfaz.
- */
-export function brandSkin(brand: Brand, intensity: "card" | "hero" = "card"): BrandSkin {
-  const cacheKey = `${brand.colors.join()}|${brand.ink}|${brand.light}|${brand.soft}|${intensity}`;
-  const hit = skinCache.get(cacheKey);
-  if (hit) return hit;
-
-  const [c0 = "#8A8A93", c1 = c0, c2 = c1, c3] = brand.colors;
-
-  let skin: BrandSkin;
-  if (brand.light) {
-    // Peacock: su marca es blanca sobre negro y se perdería contra el fondo de
-    // la app, así que la tarjeta se invierte y las plumas ponen el color.
-    skin = {
-      background: `linear-gradient(155deg, ${c0} 0%, ${c1} 44%, ${mix(c2, "#4A4A52", 0.3)} 100%)`,
-      wash: withAlpha("#FFFFFF", 0.5),
-      border: withAlpha("#000000", 0.32),
-      glow: `radial-gradient(120% 90% at 12% -10%, ${withAlpha("#FFFFFF", 0.85)}, transparent 70%)`,
-      sheen: null,
-      ink: brand.ink,
-      inkShadow: `0 1px 0 ${withAlpha("#FFFFFF", 0.65)}`,
-      accent: c2,
-    };
-  } else {
-    const band = BANDS[brand.soft ? (intensity === "hero" ? "softHero" : "softCard") : intensity];
-    const near = toLuminance(c0, band[0]);
-    const mid = toLuminance(c1, band[1]);
-    const far = toLuminance(c2, band[2]);
-    const lift = shade(c0, luminance(c0) < 0.18 ? 0.5 : 0.18);
-    skin = {
-      background: c3
-        ? `linear-gradient(150deg, ${near} 0%, ${mid} 38%, ${toLuminance(c3, band[1])} 70%, ${far} 100%)`
-        : `linear-gradient(150deg, ${near} 0%, ${mid} 52%, ${far} 100%)`,
-      wash: withAlpha("#000000", 0.2),
-      border: withAlpha(lift, brand.soft ? 0.4 : 0.32),
-      glow: `radial-gradient(125% 95% at 14% -14%, ${withAlpha(lift, intensity === "hero" ? 0.42 : 0.3)}, transparent 66%)`,
-      sheen: brand.soft
-        ? `linear-gradient(112deg, transparent 28%, ${withAlpha("#FFFFFF", 0.14)} 46%, transparent 62%)`
-        : null,
-      ink: brand.ink,
-      inkShadow: `0 2px 22px ${withAlpha(shade(c2, -0.2), 0.6)}`,
-      accent: lift,
-    };
-  }
-
-  skinCache.set(cacheKey, skin);
-  return skin;
-}
-
-/** Acento sólido de un servicio (puntos, barras, resaltados). */
-export function brandAccent(input: BrandInput): string {
-  return brandSkin(resolveBrand(input)).accent;
+  for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  const s = 0.52;
+  const l = 0.6;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const m = l - c / 2;
+  const seg = Math.floor(hue / 60) % 6;
+  const rgb: Array<[number, number, number]> = [
+    [c, x, 0],
+    [x, c, 0],
+    [0, c, x],
+    [0, x, c],
+    [x, 0, c],
+    [c, 0, x],
+  ];
+  const [r, g, b] = rgb[seg] as [number, number, number];
+  return toHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
 }

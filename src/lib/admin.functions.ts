@@ -328,7 +328,7 @@ export const createService = createServerFn({ method: "POST" })
       .insert({
         slug,
         name: data.name,
-        color: brand.colors[0] ?? "#8A8A93",
+        color: brand.accent,
         category_id: data.categoryId,
         subcategory_id: data.subcategoryId,
         sort_order: sortOrder,
@@ -386,11 +386,14 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
           price: number | null;
           detail: string | null;
           notes: string | null;
+          updated_at: string | null;
           available: boolean;
         }>((from, to) =>
           supabaseAdmin
             .from("stock_items")
-            .select("id,group_id,service_id,product_type,months,price,detail,notes,available")
+            .select(
+              "id,group_id,service_id,product_type,months,price,detail,notes,available,updated_at",
+            )
             .range(from, to),
         ),
       ]);
@@ -427,6 +430,7 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
             detail: row.detail,
             productType: row.product_type,
             months: row.months,
+            price: row.price === null ? null : Number(row.price),
           },
           parsed,
         );
@@ -441,6 +445,7 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
           detail: row.detail,
           offerVariant: row.notes,
           available: row.available,
+          updatedAt: row.updated_at ?? null,
           serviceName: s.name,
           serviceSlug: s.slug,
           serviceOrder: s.sort_order,

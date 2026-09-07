@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { Lock, MessageCircle, Pencil, Search, Trash2, X } from "lucide-react";
+import { Lock, MessageCircle, Pencil, Search, Star, Trash2, X } from "lucide-react";
 
 import { getGroups, type GroupRow } from "@/lib/groups.functions";
 import { whatsappLink } from "@/lib/format";
 import { compareSellers, norm } from "@/lib/search-core";
+import { useFavorites } from "@/lib/favorites";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { deleteSeller, getAdminState, unlockAdmin, updateSeller } from "@/lib/admin.functions";
 
@@ -44,6 +45,7 @@ function GroupsPage() {
   const { groups } = Route.useLoaderData() as { groups: GroupRow[] };
   const router = useRouter();
   const [modal, setModal] = useState<Modal>(null);
+  const { favorites, isFavorite, toggle } = useFavorites();
   const [filter, setFilter] = useState("");
 
   const query = norm(filter);
@@ -84,6 +86,13 @@ function GroupsPage() {
   const visibleParents = byParent
     .map(([parent, rows]) => [parent, rows.filter(matches)] as const)
     .filter(([, rows]) => rows.length > 0);
+
+  // Favoritos, en el orden en que se marcaron y respetando el filtro activo.
+  const favoriteRows = useMemo(
+    () => groups.filter((g) => favorites.includes(g.slug) && matches(g)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, favorites, query],
+  );
 
   const totalFree = free.length;
   const nothing = internal.length === 0 && visibleParents.length === 0;
@@ -137,12 +146,42 @@ function GroupsPage() {
           </div>
         ) : null}
 
+        {/*
+          Favoritos arriba del todo: con 56 vendedores, los cuatro o cinco a
+          los que de verdad se les escribe estaban repartidos por toda la
+          página. Se marcan con la estrella de cada tarjeta y viven en este
+          dispositivo, no en la base.
+        */}
+        {favoriteRows.length > 0 ? (
+          <section>
+            <GroupHeading title="Favoritos" count={favoriteRows.length} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {favoriteRows.map((g) => (
+                <SellerCard
+                  key={g.slug}
+                  row={g}
+                  contact={g.kind !== "interno"}
+                  onEdit={setModal}
+                  favorite
+                  onToggleFavorite={() => toggle(g.slug)}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {internal.length > 0 ? (
           <section>
             <GroupHeading title="Mis Grupos" count={internal.length} />
             <div className="grid gap-3 sm:grid-cols-2">
               {internal.map((g) => (
-                <SellerCard key={g.slug} row={g} onEdit={setModal} />
+                <SellerCard
+                  key={g.slug}
+                  row={g}
+                  onEdit={setModal}
+                  favorite={isFavorite(g.slug)}
+                  onToggleFavorite={() => toggle(g.slug)}
+                />
               ))}
             </div>
           </section>
@@ -155,7 +194,14 @@ function GroupsPage() {
                 <GroupHeading title={parent} count={rows.length} />
                 <div className="grid gap-3 sm:grid-cols-2">
                   {rows.map((g) => (
-                    <SellerCard key={g.slug} row={g} contact onEdit={setModal} />
+                    <SellerCard
+                      key={g.slug}
+                      row={g}
+                      contact
+                      onEdit={setModal}
+                      favorite={isFavorite(g.slug)}
+                      onToggleFavorite={() => toggle(g.slug)}
+                    />
                   ))}
                 </div>
               </div>
@@ -209,10 +255,14 @@ function SellerCard({
   row,
   contact = false,
   onEdit,
+  favorite,
+  onToggleFavorite,
 }: {
   row: GroupRow;
   contact?: boolean;
   onEdit: (m: Modal) => void;
+  favorite: boolean;
+  onToggleFavorite: () => void;
 }) {
   // Regla permanente: grupo/teléfono solo en venta libre.
   const meta: string[] = [];
@@ -220,63 +270,80 @@ function SellerCard({
   if (row.variant) meta.push(row.variant);
 
   return (
-    <div className="glass rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-border-strong">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-[17px] font-semibold tracking-tight">{row.name}</h3>
-          {meta.length > 0 ? (
-            <p className="mt-1 truncate text-[12px] text-muted-foreground">{meta.join(" · ")}</p>
-          ) : null}
-          <p className="mt-1.5 inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground">
-            {row.offers} oferta{row.offers === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-1.5">
-          <button
-            type="button"
-            aria-label={`Editar ${row.name}`}
-            onClick={() => onEdit({ kind: "edit", row })}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-label={`Eliminar ${row.name}`}
-            onClick={() => onEdit({ kind: "delete", row })}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-destructive transition-colors hover:bg-destructive/10"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+    /*
+     * La tarjeta entera es el enlace al stock: antes «Ver stock» era un botón
+     * suelto que ocupaba una fila propia y doblaba la altura de cada vendedor,
+     * con 56 de ellos en la página. Las acciones de dueño quedan encima, fuera
+     * del área del enlace.
+     */
+    <div className="glass lightedge tappable relative rounded-[1.15rem]">
+      <Link
+        to="/vendedor/$slug"
+        params={{ slug: row.slug }}
+        className={`flex items-center gap-3 py-3.5 pl-3 ${contact ? "pr-[8.6rem]" : "pr-[6.6rem]"}`}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16.5px] font-semibold tracking-tight text-foreground">
+            {row.name}
+          </span>
+          <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-faint">
+            <span className="font-semibold tabular-nums text-muted-foreground">
+              {row.offers} oferta{row.offers === 1 ? "" : "s"}
+            </span>
+            {meta.length > 0 ? <span className="truncate">{meta.join(" · ")}</span> : null}
+          </span>
+        </span>
+      </Link>
 
-      <div className="mt-3.5 flex flex-wrap items-center gap-2">
-        <Link
-          to="/vendedor/$slug"
-          params={{ slug: row.slug }}
-          className="inline-flex items-center gap-2 rounded-xl border border-border-strong px-3.5 py-2 text-[12px] font-medium text-foreground transition-colors hover:bg-surface-2"
+      <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1">
+        <button
+          type="button"
+          aria-label={
+            favorite ? `Quitar ${row.name} de favoritos` : `Marcar ${row.name} como favorito`
+          }
+          aria-pressed={favorite}
+          onClick={onToggleFavorite}
+          className={`tappable flex h-9 w-8 items-center justify-center rounded-xl ${
+            favorite ? "text-brand" : "text-faint hover:text-foreground"
+          }`}
         >
-          Ver stock →
-        </Link>
+          <Star className={`h-[17px] w-[17px] ${favorite ? "fill-brand" : ""}`} />
+        </button>
         {contact && row.phone ? (
           <a
             href={whatsappLink(row.phone, "Hola, vengo del comparador de precios.")}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-[12px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
+            aria-label={`Escribir a ${row.name} por WhatsApp`}
+            className="tappable ml-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-brand-ink"
           >
-            <MessageCircle className="h-4 w-4" strokeWidth={2.2} /> WhatsApp
+            <MessageCircle className="h-4 w-4" strokeWidth={2.3} />
           </a>
         ) : null}
+        <button
+          type="button"
+          aria-label={`Editar ${row.name}`}
+          onClick={() => onEdit({ kind: "edit", row })}
+          className="tappable flex h-9 w-8 items-center justify-center rounded-xl text-faint hover:text-foreground"
+        >
+          <Pencil className="h-[17px] w-[17px]" />
+        </button>
+        <button
+          type="button"
+          aria-label={`Eliminar ${row.name}`}
+          onClick={() => onEdit({ kind: "delete", row })}
+          className="tappable flex h-9 w-8 items-center justify-center rounded-xl text-faint hover:text-destructive"
+        >
+          <Trash2 className="h-[17px] w-[17px]" />
+        </button>
       </div>
     </div>
   );
 }
 
 const inputCls =
-  "h-11 w-full rounded-xl border border-input bg-surface-2 px-3 text-[16px] outline-none transition-colors focus:border-border-strong";
-const labelCls = "mb-1.5 block text-[11px] uppercase tracking-[0.16em] text-faint";
+  "h-12 w-full rounded-xl border border-input bg-surface-2 px-3.5 text-[16px] outline-none transition-all focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--brand-glow)]";
+const labelCls = "mb-1.5 block t-micro text-faint";
 
 function SellerModal({
   modal,
@@ -410,7 +477,7 @@ function SellerModal({
               <button
                 type="submit"
                 disabled={busy || !pin}
-                className="h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+                className="h-12 flex-1 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
               >
                 {busy ? "Verificando…" : "Entrar"}
               </button>
@@ -469,7 +536,7 @@ function SellerModal({
                 type="button"
                 disabled={busy || !name.trim()}
                 onClick={submit}
-                className="h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+                className="h-12 flex-1 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
               >
                 {busy ? "Guardando…" : "Guardar cambios"}
               </button>

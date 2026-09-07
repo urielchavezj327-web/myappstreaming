@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import {
@@ -17,7 +17,7 @@ import { AppWordmark } from "@/components/wordmark-app";
 import { BrandCard } from "@/components/brand-card";
 import { OfferGroups, SellerOffers } from "@/components/offer-list";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
-import { EmptyState, FilterChip, SectionRule } from "@/components/ui-kit";
+import { EmptyState, FilterChip, ResultSkeleton, SectionRule } from "@/components/ui-kit";
 
 type IndexSearch = { cat: string; q: string };
 type Results = { services: SearchServiceResult[]; sellers: SearchSellerResult[] };
@@ -125,6 +125,16 @@ function Index() {
   }, [categories]);
 
   const current = categories.find((c) => c.slug === cat) ?? categories[0];
+
+  const chipStrip = useRef<HTMLElement>(null);
+  const activeChip = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const strip = chipStrip.current;
+    const chip = activeChip.current;
+    if (!strip || !chip) return;
+    const left = chip.offsetLeft - (strip.clientWidth - chip.clientWidth) / 2;
+    strip.scrollTo({ left: Math.max(0, left), behavior: "auto" });
+  }, [current?.slug]);
   const nf = new Intl.NumberFormat("es-MX");
 
   return (
@@ -135,7 +145,7 @@ function Index() {
         <div className="mx-auto max-w-3xl px-4 pb-9 pt-11 sm:px-6 sm:pb-12 sm:pt-16">
           <AppWordmark />
 
-          <div className="relative mx-auto mt-9">
+          <div className="relative mx-auto mt-10">
             <Search
               className={`pointer-events-none absolute left-5 top-1/2 z-10 h-6 w-6 -translate-y-1/2 transition-colors sm:left-6 sm:h-7 sm:w-7 ${
                 loading ? "animate-pulse text-foreground" : "text-muted-foreground"
@@ -153,7 +163,7 @@ function Index() {
               spellCheck={false}
               aria-label="Buscar servicios, vendedores o precios"
               placeholder="Servicio, vendedor o teléfono…"
-              className="glass elev h-[4.25rem] w-full rounded-[1.5rem] pl-16 pr-14 text-[17px] outline-none transition-all placeholder:text-faint focus:border-border-strong sm:pl-[4.5rem] sm:text-[18px] [&::-webkit-search-cancel-button]:hidden"
+              className="frost h-[4.5rem] w-full rounded-[1.6rem] pl-16 pr-14 text-[17px] outline-none transition-all placeholder:text-faint focus:border-brand/60 focus:shadow-[var(--shadow-lift),0_0_0_4px_var(--brand-glow)] sm:pl-[4.5rem] sm:text-[18px] [&::-webkit-search-cancel-button]:hidden"
             />
             {draft ? (
               <button
@@ -172,9 +182,12 @@ function Index() {
             empujaban las tarjetas fuera de pantalla. La misma información cabe
             en una línea discreta.
           */}
-          <p className="mt-4 text-center text-[13.5px] tabular-nums text-faint">
-            {nf.format(totals.offers)} ofertas · {nf.format(totals.services)} servicios ·{" "}
-            {categories.length} categorías
+          <p className="mt-5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-center text-[13.5px] text-faint">
+            <Count value={nf.format(totals.offers)} label="ofertas" />
+            <span aria-hidden>·</span>
+            <Count value={nf.format(totals.services)} label="servicios" />
+            <span aria-hidden>·</span>
+            <Count value={String(categories.length)} label="categorías" />
           </p>
         </div>
       </section>
@@ -184,8 +197,11 @@ function Index() {
           <SearchResults results={results} loading={loading} query={q} />
         ) : (
           <>
+            {/* La tira se desplaza sola hasta la categoría activa: al entrar con
+                ?cat=otros la pastilla puesta quedaba fuera de pantalla. */}
             <nav
               aria-label="Categorías"
+              ref={chipStrip}
               className="no-scrollbar -mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
             >
               <div className="flex w-max min-w-full flex-nowrap gap-2.5">
@@ -193,6 +209,7 @@ function Index() {
                   <FilterChip
                     key={c.slug}
                     active={c.slug === (current?.slug ?? "")}
+                    {...(c.slug === (current?.slug ?? "") ? { ref: activeChip } : {})}
                     onClick={() =>
                       navigate({
                         search: (prev: IndexSearch) => ({ ...prev, cat: c.slug }),
@@ -220,13 +237,15 @@ function Index() {
   );
 }
 
-function SearchSkeleton() {
+/** Un contador: la cifra en tono pleno, la palabra en terciario. */
+function Count({ value, label }: { value: string; label: string }) {
   return (
-    <div className="space-y-4" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="skeleton h-28 rounded-2xl" />
-      ))}
-    </div>
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className="font-display text-[15px] font-bold tabular-nums text-muted-foreground">
+        {value}
+      </span>
+      {label}
+    </span>
   );
 }
 
@@ -239,7 +258,7 @@ function SearchResults({
   loading: boolean;
   query: string;
 }) {
-  if (loading && !results) return <SearchSkeleton />;
+  if (loading && !results) return <ResultSkeleton blocks={2} />;
 
   const services = results?.services ?? [];
   const sellers = results?.sellers ?? [];

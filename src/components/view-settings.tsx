@@ -142,7 +142,7 @@ export function ViewSettingsSheet({ onClose }: { onClose: () => void }) {
                       onClick={() => update(option.key, choice.value)}
                       className={`h-12 flex-1 rounded-xl border text-[15px] transition-all active:scale-[0.98] ${
                         active
-                          ? "border-transparent bg-primary font-semibold text-primary-foreground"
+                          ? "border-brand/45 bg-brand/15 font-bold text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]"
                           : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground"
                       }`}
                     >
