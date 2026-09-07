@@ -45,12 +45,46 @@ export const getAdminState = createServerFn({ method: "GET" }).handler(async () 
   return { unlocked: session.data.unlocked === true };
 });
 
+/**
+ * Freno a la fuerza bruta. El PIN es de cuatro dígitos: sin esto, probar las
+ * 10.000 combinaciones es cuestión de minutos. Cada fallo suma un retraso fijo
+ * y, a partir del quinto, bloquea el intento durante un tiempo creciente.
+ */
+const attempts = { failures: 0, blockedUntil: 0 };
+const BLOCK_STEPS_MS = [30_000, 2 * 60_000, 10 * 60_000, 30 * 60_000];
+
+function blockRemainingMs() {
+  return Math.max(0, attempts.blockedUntil - Date.now());
+}
+
+function registerFailure() {
+  attempts.failures += 1;
+  if (attempts.failures >= 5) {
+    const step = Math.min(attempts.failures - 5, BLOCK_STEPS_MS.length - 1);
+    attempts.blockedUntil = Date.now() + BLOCK_STEPS_MS[step]!;
+  }
+}
+
 export const unlockAdmin = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ pin: z.string().min(1).max(64) }).parse(input))
   .handler(async ({ data }) => {
+    const waitMs = blockRemainingMs();
+    if (waitMs > 0) {
+      return { ok: false as const, retryInSeconds: Math.ceil(waitMs / 1000) };
+    }
     const expected = process.env["ADMIN_PIN"];
     if (!expected) throw new Error("Falta configurar el PIN");
-    if (!pinMatches(data.pin, expected)) return { ok: false as const };
+    if (!pinMatches(data.pin, expected)) {
+      // Retraso constante: quita la ventaja de automatizar los intentos.
+      await new Promise((r) => setTimeout(r, 400));
+      registerFailure();
+      const blocked = blockRemainingMs();
+      return blocked > 0
+        ? { ok: false as const, retryInSeconds: Math.ceil(blocked / 1000) }
+        : { ok: false as const };
+    }
+    attempts.failures = 0;
+    attempts.blockedUntil = 0;
     const session = await useSession<AdminSession>(sessionConfig());
     await session.update({ unlocked: true });
     return { ok: true as const };
@@ -351,11 +385,12 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
           months: number | null;
           price: number | null;
           detail: string | null;
+          notes: string | null;
           available: boolean;
         }>((from, to) =>
           supabaseAdmin
             .from("stock_items")
-            .select("id,group_id,service_id,product_type,months,price,detail,available")
+            .select("id,group_id,service_id,product_type,months,price,detail,notes,available")
             .range(from, to),
         ),
       ]);
@@ -404,6 +439,7 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
           months: row.months,
           price: row.price === null ? null : Number(row.price),
           detail: row.detail,
+          offerVariant: row.notes,
           available: row.available,
           serviceName: s.name,
           serviceSlug: s.slug,
@@ -512,3 +548,204 @@ export const deleteOffer = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Herramientas de administración
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AdminSummary = {
+  offers: number;
+  services: number;
+  sellers: number;
+  withoutPrice: number;
+  soldOut: number;
+  servicesWithoutOffers: Array<{ name: string; category: string }>;
+  sellersWithoutPhone: string[];
+  duplicates: Array<{ service: string; seller: string; count: number }>;
+  recent: Array<{ service: string; seller: string; price: number | null; createdAt: string }>;
+};
+
+/**
+ * Radiografía del catálogo para el dueño: qué falta por completar y qué se
+ * cargó dos veces. Son los errores que en una carga manual pasan siempre y que
+ * de otra forma solo se descubren tropezando con ellos.
+ */
+export const getAdminSummary = createServerFn({ method: "GET" }).handler(
+  async (): Promise<AdminSummary> => {
+    await requireUnlocked();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [cats, services, groups, stock] = await Promise.all([
+      supabaseAdmin.from("categories").select("id,name"),
+      supabaseAdmin.from("services").select("id,name,category_id"),
+      supabaseAdmin.from("groups").select("id,name,kind,phone"),
+      pageAll<{
+        id: string;
+        service_id: string;
+        group_id: string;
+        product_type: string;
+        months: number | null;
+        price: number | null;
+        available: boolean;
+        created_at: string;
+      }>((from, to) =>
+        supabaseAdmin
+          .from("stock_items")
+          .select("id,service_id,group_id,product_type,months,price,available,created_at")
+          .range(from, to),
+      ),
+    ]);
+
+    const catName = new Map((cats.data ?? []).map((c) => [c.id, c.name]));
+    const svc = new Map((services.data ?? []).map((s) => [s.id, s]));
+    const grp = new Map((groups.data ?? []).map((g) => [g.id, g]));
+
+    const offersByService = new Set(stock.map((r) => r.service_id));
+    const seen = new Map<string, number>();
+    for (const r of stock) {
+      const key = `${r.service_id}|${r.group_id}|${r.product_type}|${r.months ?? "u"}|${r.price ?? "n"}`;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+
+    return {
+      offers: stock.length,
+      services: services.data?.length ?? 0,
+      sellers: groups.data?.length ?? 0,
+      withoutPrice: stock.filter((r) => r.price === null).length,
+      soldOut: stock.filter((r) => !r.available).length,
+      servicesWithoutOffers: (services.data ?? [])
+        .filter((s) => !offersByService.has(s.id))
+        .map((s) => ({ name: s.name, category: catName.get(s.category_id) ?? "—" })),
+      sellersWithoutPhone: (groups.data ?? [])
+        .filter((g) => g.kind === "venta_libre" && !(g.phone ?? "").trim())
+        .map((g) => g.name),
+      duplicates: [...seen.entries()]
+        .filter(([, n]) => n > 1)
+        .map(([key, n]) => {
+          const [serviceId, groupId] = key.split("|");
+          return {
+            service: svc.get(serviceId ?? "")?.name ?? "—",
+            seller: grp.get(groupId ?? "")?.name ?? "—",
+            count: n,
+          };
+        })
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 25),
+      recent: stock
+        .slice()
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, 8)
+        .map((r) => ({
+          service: svc.get(r.service_id)?.name ?? "—",
+          seller: grp.get(r.group_id)?.name ?? "—",
+          price: r.price === null ? null : Number(r.price),
+          createdAt: r.created_at,
+        })),
+    };
+  },
+);
+
+export const renameService = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), name: z.string().trim().min(2).max(60) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("services")
+      .update({ name: data.name })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/** Borra un servicio solo si ya no tiene ofertas: nunca arrastra stock. */
+export const deleteService = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const used = await supabaseAdmin
+      .from("stock_items")
+      .select("id")
+      .eq("service_id", data.id)
+      .limit(1);
+    if ((used.data ?? []).length > 0) {
+      throw new Error("Ese servicio todavía tiene ofertas: bórralas o muévelas antes.");
+    }
+    const { error } = await supabaseAdmin.from("services").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/**
+ * Respaldo completo en CSV. La base la administra Lovable, así que poder
+ * bajarse todo el stock desde el propio panel es la red de seguridad.
+ */
+export const exportStockCsv = createServerFn({ method: "GET" }).handler(async () => {
+  await requireUnlocked();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const [services, groups, cats, stock] = await Promise.all([
+    supabaseAdmin.from("services").select("id,name,category_id"),
+    supabaseAdmin.from("groups").select("id,name,kind,phone,parent_group"),
+    supabaseAdmin.from("categories").select("id,name"),
+    pageAll<{
+      product_type: string;
+      months: number | null;
+      price: number | null;
+      detail: string | null;
+      notes: string | null;
+      available: boolean;
+      service_id: string;
+      group_id: string;
+    }>((from, to) =>
+      supabaseAdmin
+        .from("stock_items")
+        .select("service_id,group_id,product_type,months,price,detail,notes,available")
+        .range(from, to),
+    ),
+  ]);
+  const catName = new Map((cats.data ?? []).map((c) => [c.id, c.name]));
+  const svc = new Map((services.data ?? []).map((s) => [s.id, s]));
+  const grp = new Map((groups.data ?? []).map((g) => [g.id, g]));
+
+  const cell = (v: unknown) => {
+    const text = v === null || v === undefined ? "" : String(v);
+    return /[";\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const header = [
+    "categoria",
+    "servicio",
+    "grupo_padre",
+    "vendedor",
+    "tipo_vendedor",
+    "telefono",
+    "tipo",
+    "meses",
+    "precio",
+    "variante",
+    "detalle",
+    "disponible",
+  ];
+  const rows = stock.map((r) => {
+    const s = svc.get(r.service_id);
+    const g = grp.get(r.group_id);
+    return [
+      catName.get(s?.category_id ?? "") ?? "",
+      s?.name ?? "",
+      g?.parent_group ?? "",
+      g?.name ?? "",
+      g?.kind ?? "",
+      g?.kind === "venta_libre" ? (g?.phone ?? "") : "",
+      r.product_type,
+      r.months ?? "",
+      r.price ?? "",
+      r.notes ?? "",
+      r.detail ?? "",
+      r.available ? "si" : "no",
+    ]
+      .map(cell)
+      .join(";");
+  });
+  return { csv: [header.join(";"), ...rows].join("\n"), rows: rows.length };
+});

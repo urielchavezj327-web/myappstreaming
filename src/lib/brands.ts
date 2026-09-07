@@ -31,6 +31,13 @@ export type Brand = {
   lines?: [string, string];
   /** Tarjeta de fondo claro (Peacock): invierte el degradado y la tinta. */
   light: boolean;
+  /**
+   * Servicio sin logotipo de marca (trámites y servicios propios). Recibe un
+   * degradado más claro y con más recorrido de tono: al no tener logotipo que
+   * los identifique, el color es lo único que los distingue y merecen el
+   * tratamiento más cuidado, no el más simple.
+   */
+  soft: boolean;
 };
 
 type BrandSpec = Partial<Omit<Brand, "colors">> & { colors: string[] };
@@ -49,6 +56,7 @@ function spec(s: BrandSpec): Brand {
     mark: s.mark ?? "none",
     ...(s.lines ? { lines: s.lines } : {}),
     light: s.light ?? false,
+    soft: s.soft ?? false,
   };
 }
 
@@ -655,14 +663,14 @@ const BRANDS: Array<[RegExp, Brand]> = [
  * misma saturación para que la categoría siga leyéndose como un sistema.
  */
 const TRAMITE_PALETTE: Record<string, string[]> = {
-  actas: ["#4F7CFF", "#2B4EAE", "#080D22"],
-  sat: ["#22C55E", "#15803D", "#04160B"],
-  salud: ["#06B6D4", "#0E7490", "#03151A"],
-  educacion: ["#F59E0B", "#B45309", "#1A1103"],
-  antecedentes: ["#A855F7", "#7E22CE", "#120722"],
-  vehiculos: ["#EF4444", "#B91C1C", "#1A0707"],
-  infonavit: ["#EC4899", "#BE185D", "#1A0713"],
-  citas: ["#84CC16", "#4D7C0F", "#0E1503"],
+  actas: ["#7E9BFF", "#4B5FD6", "#232A6B"],
+  sat: ["#5FD6A4", "#2A9C78", "#0F4A42"],
+  salud: ["#5AD2E8", "#2E93BE", "#123F5C"],
+  educacion: ["#FFC46B", "#DE8734", "#6B3612"],
+  antecedentes: ["#C6A0FF", "#8B5CF6", "#402472"],
+  vehiculos: ["#FF9E8C", "#EE5A5A", "#6E1F2D"],
+  infonavit: ["#FF9FC9", "#E85B9C", "#6B2148"],
+  citas: ["#BCE577", "#7FB233", "#334A14"],
 };
 
 /** Colores de las tarjetas de colección de "Otros" (agrupan varias fichas). */
@@ -671,7 +679,7 @@ const BUNDLE_PALETTE: Record<string, string[]> = {
   "servicios-vpn": ["#1EBFBF", "#0F766E", "#04161A"],
 };
 
-const TRAMITE_FALLBACK = ["#64B5F6", "#1E5F9E", "#080F1C"];
+const TRAMITE_FALLBACK = ["#8FB6FF", "#3F63C4", "#1B2450"];
 
 const cache = new Map<string, Brand>();
 
@@ -701,7 +709,12 @@ function computeBrand({ name, categorySlug, subcategorySlug, color, bundle }: Br
   // servicio que contienen. Solo aplica a la tarjeta agrupada, nunca a las
   // fichas individuales que viven dentro (Pornhub, NordVPN…).
   if (bundle && subcategorySlug && BUNDLE_PALETTE[subcategorySlug] && categorySlug === "otros") {
-    return spec({ colors: BUNDLE_PALETTE[subcategorySlug]!, font: "display", weight: 600 });
+    return spec({
+      colors: BUNDLE_PALETTE[subcategorySlug]!,
+      font: "display",
+      weight: 700,
+      soft: true,
+    });
   }
 
   // Trámites: no son marcas, se colorean por tipo de documento. Dentro de cada
@@ -710,12 +723,18 @@ function computeBrand({ name, categorySlug, subcategorySlug, color, bundle }: Br
   // nunca del tono que identifica al grupo.
   if (categorySlug === "tramites") {
     const palette = (subcategorySlug && TRAMITE_PALETTE[subcategorySlug]) || TRAMITE_FALLBACK;
-    const jitter = (hashOf(key(name)) % 9) / 100 - 0.04;
+    // Cada ficha gira el tono unos grados dentro de la familia de su
+    // subcategoría: se siguen leyendo como un grupo, pero ninguna tarjeta es
+    // idéntica a la de al lado.
+    const h = hashOf(key(name));
+    const turn = ((h % 25) - 12) * 1.1;
+    const jitter = ((h >> 5) % 9) / 100 - 0.035;
     return spec({
-      colors: palette.map((c, i) => (i === 0 ? shade(c, jitter) : c)),
+      colors: palette.map((c, i) => rotateHue(shade(c, i === 0 ? jitter : 0), turn)),
       font: "display",
-      weight: 600,
-      tracking: "-0.02em",
+      weight: 700,
+      tracking: "-0.025em",
+      soft: true,
     });
   }
 
@@ -766,6 +785,22 @@ function hslToHex(h: number, s: number, l: number): string {
     return Math.round(255 * v);
   };
   return rgbToHex([f(0), f(8), f(4)]);
+}
+
+/** Gira el tono de un color conservando saturación y luminosidad. */
+export function rotateHue(hex: string, degrees: number): string {
+  const [r, g, b] = hexToRgb(hex).map((c) => c / 255) as [number, number, number];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return hex;
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h: number;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+  else if (max === g) h = ((b - r) / d + 2) * 60;
+  else h = ((r - g) / d + 4) * 60;
+  return hslToHex((h + degrees + 360) % 360, s * 100, l * 100);
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -851,6 +886,8 @@ export type BrandSkin = {
   border: string;
   /** Brillo superior que da profundidad. */
   glow: string;
+  /** Destello diagonal; solo en las tarjetas sin logotipo. */
+  sheen: string | null;
   /** Color del nombre. */
   ink: string;
   /** Sombra/halo del nombre para asegurar legibilidad. */
@@ -861,6 +898,16 @@ export type BrandSkin = {
 
 const skinCache = new Map<string, BrandSkin>();
 
+/** Bandas de luminancia del degradado según el tipo de tarjeta. */
+const BANDS = {
+  card: [0.155, 0.085, 0.04],
+  hero: [0.2, 0.11, 0.05],
+  // Sin logotipo: más claro y con más recorrido, para que el color cargue con
+  // todo el peso de identificar la ficha.
+  softCard: [0.235, 0.135, 0.065],
+  softHero: [0.28, 0.16, 0.08],
+} as const;
+
 /**
  * Traduce una marca a los estilos de la tarjeta: degradado con los colores
  * reales del logotipo (principal primero) llevado a una banda de luminancia
@@ -868,12 +915,11 @@ const skinCache = new Map<string, BrandSkin>();
  * conjunto neutro de la interfaz.
  */
 export function brandSkin(brand: Brand, intensity: "card" | "hero" = "card"): BrandSkin {
-  const cacheKey = `${brand.colors.join()}|${brand.ink}|${brand.light}|${intensity}`;
+  const cacheKey = `${brand.colors.join()}|${brand.ink}|${brand.light}|${brand.soft}|${intensity}`;
   const hit = skinCache.get(cacheKey);
   if (hit) return hit;
 
   const [c0 = "#8A8A93", c1 = c0, c2 = c1, c3] = brand.colors;
-  const strong = intensity === "hero";
 
   let skin: BrandSkin;
   if (brand.light) {
@@ -884,24 +930,29 @@ export function brandSkin(brand: Brand, intensity: "card" | "hero" = "card"): Br
       wash: withAlpha("#FFFFFF", 0.5),
       border: withAlpha("#000000", 0.32),
       glow: `radial-gradient(120% 90% at 12% -10%, ${withAlpha("#FFFFFF", 0.85)}, transparent 70%)`,
+      sheen: null,
       ink: brand.ink,
       inkShadow: `0 1px 0 ${withAlpha("#FFFFFF", 0.65)}`,
       accent: c2,
     };
   } else {
-    const near = toLuminance(c0, strong ? 0.2 : 0.155);
-    const mid = toLuminance(c1, strong ? 0.11 : 0.085);
-    const far = toLuminance(c2, strong ? 0.05 : 0.04);
+    const band = BANDS[brand.soft ? (intensity === "hero" ? "softHero" : "softCard") : intensity];
+    const near = toLuminance(c0, band[0]);
+    const mid = toLuminance(c1, band[1]);
+    const far = toLuminance(c2, band[2]);
     const lift = shade(c0, luminance(c0) < 0.18 ? 0.5 : 0.18);
     skin = {
       background: c3
-        ? `linear-gradient(150deg, ${near} 0%, ${mid} 38%, ${toLuminance(c3, 0.09)} 70%, ${far} 100%)`
+        ? `linear-gradient(150deg, ${near} 0%, ${mid} 38%, ${toLuminance(c3, band[1])} 70%, ${far} 100%)`
         : `linear-gradient(150deg, ${near} 0%, ${mid} 52%, ${far} 100%)`,
       wash: withAlpha("#000000", 0.2),
-      border: withAlpha(lift, 0.32),
-      glow: `radial-gradient(125% 95% at 14% -14%, ${withAlpha(lift, strong ? 0.42 : 0.3)}, transparent 66%)`,
+      border: withAlpha(lift, brand.soft ? 0.4 : 0.32),
+      glow: `radial-gradient(125% 95% at 14% -14%, ${withAlpha(lift, intensity === "hero" ? 0.42 : 0.3)}, transparent 66%)`,
+      sheen: brand.soft
+        ? `linear-gradient(112deg, transparent 28%, ${withAlpha("#FFFFFF", 0.14)} 46%, transparent 62%)`
+        : null,
       ink: brand.ink,
-      inkShadow: `0 2px 20px ${withAlpha(lift, 0.5)}`,
+      inkShadow: `0 2px 22px ${withAlpha(shade(c2, -0.2), 0.6)}`,
       accent: lift,
     };
   }

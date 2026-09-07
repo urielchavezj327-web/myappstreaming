@@ -37,7 +37,7 @@ export const Route = createFileRoute("/servicio/$slug")({
         meta: [{ title: "Servicio no encontrado" }, { name: "robots", content: "noindex" }],
       };
     }
-    const title = `${name} — precios comparados por grupo`;
+    const title = `${name} — precios comparados | Stockdex`;
     const description = `Todos los precios de ${name} ordenados de menor a mayor, separados por tipo de producto y duración.`;
     return {
       meta: [
@@ -52,10 +52,10 @@ export const Route = createFileRoute("/servicio/$slug")({
   },
   component: ServicePage,
   errorComponent: ({ error }) => (
-    <div className="p-10 text-sm text-muted-foreground">No se pudo cargar: {error.message}</div>
+    <div className="p-10 t-meta text-muted-foreground">No se pudo cargar: {error.message}</div>
   ),
   notFoundComponent: () => (
-    <div className="p-10 text-sm text-muted-foreground">Ese servicio no existe.</div>
+    <div className="p-10 t-meta text-muted-foreground">Ese servicio no existe.</div>
   ),
 });
 
@@ -80,8 +80,8 @@ function ServicePage() {
     const priced = offers.filter((o) => o.price !== null).map((o) => o.price as number);
     return {
       min: priced.length ? Math.min(...priced) : null,
+      max: priced.length ? Math.max(...priced) : null,
       sellers: new Set(offers.map((o) => o.group.slug)).size,
-      priced: priced.length,
     };
   }, [offers]);
 
@@ -90,131 +90,139 @@ function ServicePage() {
   if (bundle) {
     for (const o of offers) {
       const key = o.serviceName ?? "—";
-      const list = bundleSections.get(key) ?? [];
-      list.push(o);
-      bundleSections.set(key, list);
+      bundleSections.set(key, [...(bundleSections.get(key) ?? []), o]);
     }
   }
 
   return (
-    <div className="min-h-screen">
+    <div
+      className="relative min-h-screen"
+      style={
+        { "--wordmark-ink": skin.ink, "--wordmark-shadow": skin.inkShadow } as React.CSSProperties
+      }
+    >
+      {/*
+        El color de la marca cubre la ficha entera, no solo el encabezado: se
+        pinta como capa fija y se desvanece hacia el fondo de la app, de modo
+        que la página completa queda teñida sin restar contraste a las listas.
+      */}
+      <div
+        className="pointer-events-none fixed inset-0 -z-20"
+        style={{ background: skin.background }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(to bottom, transparent 0%, var(--color-background) 74%, var(--color-background) 100%)",
+          opacity: 0.92,
+        }}
+        aria-hidden
+      />
+
       <SiteHeader />
 
-      <section
-        className="relative overflow-hidden border-b border-border"
-        style={
-          {
-            background: skin.background,
-            "--wordmark-ink": skin.ink,
-            "--wordmark-shadow": skin.inkShadow,
-          } as React.CSSProperties
-        }
-      >
+      <header className="relative overflow-hidden">
         <span
           className="pointer-events-none absolute inset-0"
           style={{ background: skin.glow }}
           aria-hidden
         />
-        <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-11">
+        <div className="relative mx-auto max-w-3xl px-4 pt-5 sm:px-6 sm:pt-7">
           {canGoBack ? (
             <button
               type="button"
               onClick={() => router.history.back()}
-              className="inline-flex items-center gap-2 text-[13px] transition-opacity hover:opacity-70"
-              style={{ color: skin.ink, opacity: 0.8 }}
+              className="inline-flex items-center gap-2 text-[14px] transition-opacity hover:opacity-70"
+              style={{ color: skin.ink, opacity: 0.78 }}
             >
-              <ArrowLeft className="h-4 w-4" /> Volver al catálogo
+              <ArrowLeft className="h-[18px] w-[18px]" /> Volver al catálogo
             </button>
           ) : (
             <Link
               to="/"
               search={{ cat: service.category, q: "" }}
-              className="inline-flex items-center gap-2 text-[13px] transition-opacity hover:opacity-70"
-              style={{ color: skin.ink, opacity: 0.8 }}
+              className="inline-flex items-center gap-2 text-[14px] transition-opacity hover:opacity-70"
+              style={{ color: skin.ink, opacity: 0.78 }}
             >
-              <ArrowLeft className="h-4 w-4" /> Volver al catálogo
+              <ArrowLeft className="h-[18px] w-[18px]" /> Volver al catálogo
             </Link>
           )}
 
-          <p className="mt-6 text-center t-label" style={{ color: skin.ink, opacity: 0.62 }}>
+          <p className="mt-7 text-center t-label" style={{ color: skin.ink, opacity: 0.6 }}>
             {service.categoryName}
           </p>
 
-          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+          {/* El logotipo manda en la ficha: ocupa el ancho y nada compite con él. */}
+          <div className="wordmark-box mt-4 flex justify-center pb-9">
             <Wordmark name={service.name} brand={brand} size="hero" />
-            <div
-              className="rounded-2xl border px-4 py-2 text-center"
-              style={{ borderColor: skin.border, background: skin.wash }}
-            >
-              <p
-                className="text-[10px] uppercase tracking-[0.18em]"
-                style={{ color: skin.ink, opacity: 0.65 }}
-              >
-                {summary.min === null ? "Precio" : "Desde"}
-              </p>
-              <p
-                className="text-[24px] font-semibold tabular-nums leading-tight tracking-tight"
-                style={{ color: skin.ink }}
-              >
-                {formatPrice(summary.min)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-3 gap-2 text-center" style={{ color: skin.ink }}>
-            <HeroStat label="Ofertas" value={offers.length} wash={skin.wash} />
-            <HeroStat label="Vendedores" value={summary.sellers} wash={skin.wash} />
-            <HeroStat label="Venta libre" value={free.length} wash={skin.wash} />
           </div>
         </div>
-      </section>
+      </header>
 
-      <main className="mx-auto max-w-6xl space-y-14 px-4 py-10 sm:px-6 sm:py-12">
-        {offers.length === 0 ? (
-          <div className="glass rounded-3xl px-6 py-16 text-center">
-            <p className="text-[15px] font-medium">Todavía no hay ofertas registradas aquí</p>
-            <p className="mt-1.5 text-[13px] text-faint">
-              En cuanto cargues stock de {service.name} aparecerá en esta ficha.
-            </p>
-            <Link
-              to="/agregar"
-              className="mt-5 inline-flex h-11 items-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
-            >
-              Agregar stock
-            </Link>
-          </div>
-        ) : bundle ? (
-          [...bundleSections.entries()].map(([name, list]) => (
-            <section key={name} className="rise">
-              <h2 className="border-b border-border pb-3 t-section">{name}</h2>
-              <div className="mt-5 space-y-12">
-                <OfferSection
-                  title="Mis Grupos"
-                  offers={list.filter((o) => o.group.kind === "interno")}
-                  accent={skin.accent}
-                />
-                <OfferSection
-                  title="Vendedores de Venta Libre"
-                  subtitle="Contacta directo al vendedor por WhatsApp"
-                  offers={list.filter((o) => o.group.kind !== "interno")}
-                  accent={skin.accent}
-                  freeMarket
-                />
-              </div>
-            </section>
-          ))
-        ) : (
-          <>
-            <OfferSection title="Mis Grupos" offers={internal} accent={skin.accent} />
-            <OfferSection
-              title="Vendedores de Venta Libre"
-              subtitle="Contacta directo al vendedor por WhatsApp"
-              offers={free}
-              accent={skin.accent}
-              freeMarket
-            />
-          </>
-        )}
+      <main className="relative mx-auto max-w-4xl px-4 pb-10 sm:px-6">
+        {offers.length > 0 ? (
+          <SummaryBar
+            min={summary.min}
+            max={summary.max}
+            offers={offers.length}
+            sellers={summary.sellers}
+            wash={skin.wash}
+            ink={skin.ink}
+            border={skin.border}
+          />
+        ) : null}
+
+        <div className="mt-12 space-y-14">
+          {offers.length === 0 ? (
+            <div className="glass rounded-3xl px-6 py-16 text-center">
+              <p className="text-[17px] font-semibold tracking-tight">
+                Todavía no hay ofertas registradas aquí
+              </p>
+              <p className="mt-2 t-meta text-faint">
+                En cuanto cargues stock de {service.name} aparecerá en esta ficha.
+              </p>
+              <Link
+                to="/agregar"
+                className="mt-6 inline-flex h-13 items-center rounded-xl bg-primary px-5 text-[15px] font-semibold text-primary-foreground"
+              >
+                Agregar stock
+              </Link>
+            </div>
+          ) : bundle ? (
+            [...bundleSections.entries()].map(([name, list]) => (
+              <section key={name} className="rise">
+                <h2 className="border-b border-border pb-3 t-section">{name}</h2>
+                <div className="mt-6 space-y-12">
+                  <OfferSection
+                    title="Mis Grupos"
+                    offers={list.filter((o) => o.group.kind === "interno")}
+                    accent={skin.accent}
+                  />
+                  <OfferSection
+                    title="Vendedores de Venta Libre"
+                    subtitle="Contacta directo por WhatsApp"
+                    offers={list.filter((o) => o.group.kind !== "interno")}
+                    accent={skin.accent}
+                    freeMarket
+                  />
+                </div>
+              </section>
+            ))
+          ) : (
+            <>
+              <OfferSection title="Mis Grupos" offers={internal} accent={skin.accent} />
+              <OfferSection
+                title="Vendedores de Venta Libre"
+                subtitle="Contacta directo por WhatsApp"
+                offers={free}
+                accent={skin.accent}
+                freeMarket
+              />
+            </>
+          )}
+        </div>
       </main>
 
       <SiteFooter />
@@ -222,11 +230,64 @@ function ServicePage() {
   );
 }
 
-function HeroStat({ label, value, wash }: { label: string; value: number; wash: string }) {
+/**
+ * Resumen de la ficha. El "Desde" vivía pegado al logotipo y le robaba el
+ * ancho; aquí encabeza la lista de precios, que es donde se usa.
+ */
+function SummaryBar({
+  min,
+  max,
+  offers,
+  sellers,
+  wash,
+  ink,
+  border,
+}: {
+  min: number | null;
+  max: number | null;
+  offers: number;
+  sellers: number;
+  wash: string;
+  ink: string;
+  border: string;
+}) {
+  const cells: Array<{ label: string; value: string; strong?: boolean }> = [
+    { label: min === null ? "Precio" : "Desde", value: formatPrice(min), strong: true },
+    ...(max !== null && max !== min ? [{ label: "Hasta", value: formatPrice(max) }] : []),
+    { label: "Ofertas", value: String(offers) },
+    { label: "Tiendas", value: String(sellers) },
+  ];
+
   return (
-    <div className="rounded-2xl px-2 py-2.5" style={{ background: wash }}>
-      <p className="text-[19px] font-semibold tabular-nums leading-none">{value}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-[0.14em] opacity-65">{label}</p>
+    <div
+      className="grid gap-px overflow-hidden rounded-2xl border"
+      style={{
+        borderColor: border,
+        background: border,
+        gridTemplateColumns: `repeat(${cells.length}, minmax(0,1fr))`,
+      }}
+    >
+      {cells.map((c) => (
+        <div
+          key={c.label}
+          className="min-w-0 px-2 py-3.5 text-center"
+          style={{ background: wash, color: ink }}
+        >
+          <p
+            className={`tabular-nums leading-none tracking-tight ${
+              c.strong ? "text-[25px] font-bold" : "text-[19px] font-semibold"
+            }`}
+          >
+            {c.value}
+          </p>
+          <p
+            className="mt-1.5 truncate text-[10.5px] uppercase tracking-[0.12em]"
+            style={{ opacity: 0.65 }}
+          >
+            {c.label}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }

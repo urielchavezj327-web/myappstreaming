@@ -74,23 +74,44 @@ export function OfferGroups({
             <div className="mt-4 space-y-5">
               {durations.map((key) => {
                 const rows = (byDuration.get(key) ?? []).slice().sort(byPriceAsc);
+                const variants = groupByVariant(rows);
+                const showDuration = durations.length > 1 || variants.length === 1;
                 return (
                   <div key={key}>
-                    <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-faint">
-                      {durationLabel(rows[0]?.months ?? null)}
-                    </p>
-                    <ul className="glass overflow-hidden rounded-2xl">
-                      {rows.map((o, i) => (
-                        <OfferRow
-                          key={o.id}
-                          offer={o}
-                          best={i === 0 && o.price !== null && rows.length > 1}
-                          freeMarket={freeMarket || o.group.kind === "venta_libre"}
-                          showService={showService}
-                          {...(action ? { action } : {})}
-                        />
+                    {showDuration ? (
+                      <p className="mb-2.5 text-[13px] font-semibold uppercase tracking-[0.15em] text-faint">
+                        {durationLabel(rows[0]?.months ?? null)}
+                      </p>
+                    ) : null}
+                    <div className={variants.length > 1 ? "space-y-5" : ""}>
+                      {variants.map((variant) => (
+                        <div key={variant.key}>
+                          {/*
+                            Cada variante compara precios contra las de su
+                            propio tipo: un clon no puede salir como "mejor
+                            precio" frente a un original de oficina.
+                          */}
+                          {variants.length > 1 ? (
+                            <p className="mb-2 inline-flex rounded-lg bg-surface-2 px-2.5 py-1 text-[12px] font-semibold tracking-wide text-muted-foreground">
+                              {variant.label || "Estándar"}
+                            </p>
+                          ) : null}
+                          <ul className="glass overflow-hidden rounded-2xl">
+                            {variant.offers.map((o, i) => (
+                              <OfferRow
+                                key={o.id}
+                                offer={o}
+                                best={i === 0 && o.price !== null && variant.offers.length > 1}
+                                freeMarket={freeMarket || o.group.kind === "venta_libre"}
+                                showService={showService}
+                                hideVariant
+                                {...(action ? { action } : {})}
+                              />
+                            ))}
+                          </ul>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 );
               })}
@@ -100,6 +121,27 @@ export function OfferGroups({
       })}
     </div>
   );
+}
+
+type VariantGroup = { key: string; label: string; offers: StockOffer[] };
+
+/**
+ * Reparte las ofertas por variante ("Con CURP", "Clon", "Primaria"…). Las
+ * fichas consolidadas guardan ahí qué versión del documento es cada oferta.
+ */
+function groupByVariant(rows: StockOffer[]): VariantGroup[] {
+  const map = new Map<string, StockOffer[]>();
+  for (const o of rows) {
+    const label = (o.offerVariant ?? "").trim();
+    map.set(label, [...(map.get(label) ?? []), o]);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([label, offers]) => ({
+      key: label || "—",
+      label,
+      offers: offers.slice().sort(byPriceAsc),
+    }));
 }
 
 /** Precio ascendente; las ofertas "A consultar" van al final. */
@@ -141,12 +183,15 @@ export function OfferRow({
   best,
   freeMarket,
   showService = false,
+  hideVariant = false,
   action,
 }: {
   offer: StockOffer;
   best: boolean;
   freeMarket: boolean;
   showService?: boolean;
+  /** La variante ya va como subtítulo del grupo: no repetirla en la fila. */
+  hideVariant?: boolean;
   action?: OfferAction;
 }) {
   // Regla permanente: el grupo, el teléfono y el aviso "Sin número publicado"
@@ -159,6 +204,7 @@ export function OfferRow({
   } else if (offer.group.variant) {
     meta.push(offer.group.variant);
   }
+  if (!hideVariant && offer.offerVariant) meta.push(offer.offerVariant);
   if (offer.detail) meta.push(offer.detail);
 
   const title = showService ? (offer.serviceName ?? offer.group.name) : offer.group.name;
@@ -365,6 +411,7 @@ function SellerOfferRow({
   action?: OfferAction;
 }) {
   const meta = [
+    offer.offerVariant,
     productLabel(offer.productType),
     showDuration ? durationLabel(offer.months) : null,
     offer.detail,

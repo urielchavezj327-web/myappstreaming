@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import { ScrollMemory } from "../components/scroll-memory";
+import { VIEW_SETTINGS_BOOTSTRAP } from "../components/view-settings";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -117,11 +118,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // El script de preferencias escribe atributos en <html> antes de hidratar:
+    // sin esto React avisa de una diferencia que es intencional.
+    <html lang="es" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
+        {/* Aplica las preferencias del dispositivo antes del primer pintado. */}
+        <script dangerouslySetInnerHTML={{ __html: VIEW_SETTINGS_BOOTSTRAP }} />
         {children}
         <Scripts />
       </body>

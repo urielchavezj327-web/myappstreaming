@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { getSellerCatalog, type SearchSellerResult } from "@/lib/catalog.functions";
 import { whatsappLink } from "@/lib/format";
 import { SellerOffers } from "@/components/offer-list";
+import { FilterChip } from "@/components/ui-kit";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 
 export const Route = createFileRoute("/vendedor/$slug")({
@@ -76,16 +77,16 @@ function SellerPage() {
             <button
               type="button"
               onClick={() => router.history.back()}
-              className="inline-flex items-center gap-2 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-2 text-[14px] text-muted-foreground transition-colors hover:text-foreground"
             >
-              <ArrowLeft className="h-4 w-4" /> Grupos y vendedores
+              <ArrowLeft className="h-[18px] w-[18px]" /> Grupos y vendedores
             </button>
           ) : (
             <Link
               to="/grupos"
-              className="inline-flex items-center gap-2 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-2 text-[14px] text-muted-foreground transition-colors hover:text-foreground"
             >
-              <ArrowLeft className="h-4 w-4" /> Grupos y vendedores
+              <ArrowLeft className="h-[18px] w-[18px]" /> Grupos y vendedores
             </Link>
           )}
 
@@ -96,7 +97,7 @@ function SellerPage() {
               <p className="t-label text-faint">Grupo interno</p>
             )}
             <h1 className="mt-2 t-display">{seller.name}</h1>
-            <p className="mt-2.5 text-[13px] text-muted-foreground">
+            <p className="mt-3 t-meta text-muted-foreground">
               {freeMarket ? (seller.phone ?? "Sin número publicado") : "Mis Grupos"} ·{" "}
               {seller.offers.length} oferta{seller.offers.length === 1 ? "" : "s"}
             </p>
@@ -105,9 +106,9 @@ function SellerPage() {
                 href={whatsappLink(seller.phone, "Hola, vengo del comparador de precios.")}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-[15px] font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
               >
-                <MessageCircle className="h-4 w-4" strokeWidth={2.2} /> WhatsApp
+                <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2.2} /> WhatsApp
               </a>
             ) : null}
           </header>
@@ -118,14 +119,14 @@ function SellerPage() {
         {categories.length > 1 ? (
           <div className="no-scrollbar -mx-4 mb-7 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <div className="flex w-max min-w-full flex-nowrap gap-2">
-              <Chip
+              <FilterChip
                 active={category === ""}
                 onClick={() => setCategory("")}
                 label="Todo"
                 count={seller.offers.length}
               />
               {categories.map(([slug, info]) => (
-                <Chip
+                <FilterChip
                   key={slug}
                   active={category === slug}
                   onClick={() => setCategory(slug)}
@@ -141,8 +142,10 @@ function SellerPage() {
           <SellerOffers offers={visible} freeMarket={freeMarket} />
         ) : (
           <div className="glass rounded-3xl px-6 py-14 text-center">
-            <p className="text-[15px] font-medium">Este vendedor todavía no tiene stock</p>
-            <p className="mt-1.5 text-[13px] text-faint">
+            <p className="text-[17px] font-semibold tracking-tight">
+              Este vendedor todavía no tiene stock
+            </p>
+            <p className="mt-2 t-meta text-faint">
               Cárgalo desde el panel y aparecerá aquí al instante.
             </p>
           </div>
@@ -151,39 +154,5 @@ function SellerPage() {
 
       <SiteFooter />
     </div>
-  );
-}
-
-function Chip({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-2xl border px-4 py-2.5 text-[14px] transition-all active:scale-[0.97] ${
-        active
-          ? "border-transparent bg-primary font-semibold text-primary-foreground"
-          : "border-border bg-surface text-muted-foreground hover:border-border-strong hover:text-foreground"
-      }`}
-    >
-      {label}
-      <span
-        className={`rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ${
-          active ? "bg-black/10" : "bg-surface-2"
-        }`}
-      >
-        {count}
-      </span>
-    </button>
   );
 }
