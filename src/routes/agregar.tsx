@@ -40,6 +40,7 @@ import { formatPrice, PRODUCT_LABELS } from "@/lib/format";
 import {
   ActionCard,
   EmptyState,
+  ResultSkeleton,
   FilterChip,
   GhostButton,
   PrimaryButton,
@@ -103,8 +104,8 @@ const emptyRow = (categoryId: string): Row => ({
 });
 
 const inputCls =
-  "h-12 w-full rounded-xl border border-input bg-surface px-3 text-[16px] outline-none transition-colors focus:border-border-strong";
-const labelCls = "mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-muted-foreground";
+  "h-12 w-full rounded-xl border border-input bg-surface-2 px-3.5 text-[16px] outline-none transition-all focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--brand-glow)]";
+const labelCls = "mb-1.5 block t-micro text-faint";
 
 function AddStockPage() {
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
@@ -175,10 +176,10 @@ function PinModal({ onUnlocked }: { onUnlocked: () => void }) {
         }}
       >
         <div className="mb-4 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-2">
-            <Lock className="h-4 w-4 text-faint" aria-hidden />
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface-2">
+            <Lock className="h-[18px] w-[18px] text-brand" aria-hidden />
           </span>
-          <h2 className="text-[16px] font-semibold tracking-tight">Acceso restringido</h2>
+          <h2 className="t-subtitle">Acceso restringido</h2>
         </div>
         <label className={labelCls} htmlFor="pin">
           PIN
@@ -194,13 +195,9 @@ function PinModal({ onUnlocked }: { onUnlocked: () => void }) {
           className={inputCls}
         />
         {error ? <p className="mt-2.5 text-[13px] text-destructive">{error}</p> : null}
-        <button
-          type="submit"
-          disabled={busy || pin.length === 0}
-          className="mt-4 h-12 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
-        >
+        <PrimaryButton type="submit" disabled={busy || pin.length === 0} className="mt-4 w-full">
           {busy ? "Verificando…" : "Entrar"}
-        </button>
+        </PrimaryButton>
       </form>
     </div>
   );
@@ -272,7 +269,13 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
     return map;
   }, [options]);
 
-  if (!options) return <p className="mt-8 text-sm text-muted-foreground">Cargando catálogo…</p>;
+  if (!options)
+    return (
+      <div className="mt-8 space-y-3" aria-hidden>
+        <div className="skeleton h-36 rounded-[1.35rem]" />
+        <div className="skeleton h-64 rounded-[1.35rem]" />
+      </div>
+    );
 
   const setRow = (i: number, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -365,7 +368,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
                 aria-pressed={sellerMode === m}
                 className={`rounded-full border px-4 py-2 text-[13px] transition-all active:scale-95 ${
                   sellerMode === m
-                    ? "border-transparent bg-primary font-semibold text-primary-foreground"
+                    ? "border-brand/45 bg-brand/15 font-bold text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]"
                     : "border-border text-muted-foreground"
                 }`}
               >
@@ -768,7 +771,7 @@ function NewServiceBox({
             setBusy(false);
           }
         }}
-        className="mt-3 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+        className="mt-3 h-12 w-full rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
       >
         {busy ? "Creando…" : "Crear y seleccionar"}
       </button>
@@ -877,7 +880,7 @@ function AdminSearch({
                   onClick={() => onCat(isActive && c.slug ? "" : c.slug)}
                   className={`shrink-0 whitespace-nowrap rounded-2xl border px-4 py-2.5 text-[14px] transition-colors ${
                     isActive
-                      ? "border-transparent bg-primary font-semibold text-primary-foreground"
+                      ? "border-brand/45 bg-brand/15 font-bold text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]"
                       : "border-border bg-surface text-muted-foreground hover:border-border-strong hover:text-foreground"
                   }`}
                 >
@@ -894,9 +897,8 @@ function AdminSearch({
           Escribe para buscar una oferta, un vendedor o un teléfono.
         </p>
       ) : loading && !results ? (
-        <div className="mt-5 space-y-3" aria-hidden>
-          <div className="skeleton h-24 rounded-2xl" />
-          <div className="skeleton h-24 rounded-2xl" />
+        <div className="mt-6">
+          <ResultSkeleton blocks={2} />
         </div>
       ) : empty ? (
         <p className="mt-5 rounded-2xl border border-dashed border-border px-4 py-8 text-center text-[13px] text-faint">
@@ -1043,7 +1045,7 @@ function OfferEditor({
               setBusy(false);
             }
           }}
-          className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+          className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-3.5 text-[13px]"
         >
           <Check className="h-4 w-4" /> Guardar
         </button>

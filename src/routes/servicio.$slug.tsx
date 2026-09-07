@@ -197,7 +197,7 @@ function ServicePage() {
               </p>
               <Link
                 to="/agregar"
-                className="mt-6 inline-flex h-13 items-center rounded-xl bg-primary px-5 text-[15px] font-semibold text-primary-foreground"
+                className="mt-6 inline-flex h-13 items-center rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-5 text-[15px]"
               >
                 Agregar stock
               </Link>

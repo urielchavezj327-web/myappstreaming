@@ -17,7 +17,7 @@ import { AppWordmark } from "@/components/wordmark-app";
 import { BrandCard } from "@/components/brand-card";
 import { OfferGroups, SellerOffers } from "@/components/offer-list";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
-import { EmptyState, FilterChip, SectionRule } from "@/components/ui-kit";
+import { EmptyState, FilterChip, ResultSkeleton, SectionRule } from "@/components/ui-kit";
 
 type IndexSearch = { cat: string; q: string };
 type Results = { services: SearchServiceResult[]; sellers: SearchSellerResult[] };
@@ -235,16 +235,6 @@ function Count({ value, label }: { value: string; label: string }) {
   );
 }
 
-function SearchSkeleton() {
-  return (
-    <div className="space-y-4" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="skeleton h-28 rounded-2xl" />
-      ))}
-    </div>
-  );
-}
-
 function SearchResults({
   results,
   loading,
@@ -254,7 +244,7 @@ function SearchResults({
   loading: boolean;
   query: string;
 }) {
-  if (loading && !results) return <SearchSkeleton />;
+  if (loading && !results) return <ResultSkeleton blocks={2} />;
 
   const services = results?.services ?? [];
   const sellers = results?.sellers ?? [];

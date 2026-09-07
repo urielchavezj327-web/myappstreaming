@@ -254,16 +254,17 @@ export function OfferRow({
             <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[12.5px] leading-relaxed text-faint">
               {meta.length > 0 ? <span>{meta.join(" · ")}</span> : null}
               {age ? (
-                <>
-                  {meta.length > 0 ? <span aria-hidden>·</span> : null}
-                  {/* Frescura del precio: un dato de hace meses ya no es un dato. */}
-                  <span
-                    className={age.stale ? "text-amber-400/70" : undefined}
-                    title={`Última actualización ${age.label}`}
-                  >
-                    {age.label}
-                  </span>
-                </>
+                /* Frescura del precio: un dato de hace meses ya no es un dato. */
+                <span
+                  className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
+                    age.stale
+                      ? "bg-amber-400/10 text-amber-300/80"
+                      : "bg-surface-2 text-muted-foreground"
+                  }`}
+                  title={`Última actualización: ${age.label}`}
+                >
+                  {age.label}
+                </span>
               ) : null}
             </p>
           ) : null}
@@ -309,7 +310,7 @@ export function WhatsAppButton({ phone, message }: { phone: string; message: str
       target="_blank"
       rel="noreferrer"
       aria-label="Contactar por WhatsApp"
-      className="tappable flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-brand-ink shadow-[0_6px_18px_-8px_var(--brand-glow)]"
+      className="glass tappable flex h-10 w-10 items-center justify-center rounded-xl text-brand"
     >
       <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2.3} />
     </a>

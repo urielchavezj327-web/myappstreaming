@@ -122,6 +122,44 @@ export function GhostButton({
 }
 
 /**
+ * Esqueleto de resultados.
+ *
+ * Dibuja la forma real de lo que va a llegar —encabezado de servicio y filas
+ * de oferta— en vez de rectángulos genéricos o la palabra «cargando»: la
+ * página no salta cuando entran los datos y la espera se lee como parte de la
+ * misma interfaz.
+ */
+export function ResultSkeleton({ blocks = 2 }: { blocks?: number }) {
+  return (
+    <div className="space-y-9" aria-hidden>
+      {Array.from({ length: blocks }, (_, b) => (
+        <div key={b}>
+          <div className="flex items-center gap-3">
+            <span className="skeleton h-2.5 w-2.5 rounded-full" />
+            <span className="skeleton h-5 w-32 rounded-md" />
+            <span className="skeleton h-5 w-9 rounded-full" />
+          </div>
+          <div className="glass mt-4 overflow-hidden rounded-[1.25rem]">
+            {Array.from({ length: 3 - b }, (_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between gap-3 border-b border-border px-4 py-4 last:border-b-0"
+              >
+                <div className="min-w-0 flex-1 space-y-2">
+                  <span className="skeleton block h-4 w-2/5 rounded-md" />
+                  <span className="skeleton block h-3 w-3/5 rounded-md" />
+                </div>
+                <span className="skeleton h-6 w-16 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Botón de acción destacada con línea de apoyo, para las acciones que abren un
  * panel entero («Crear servicio nuevo»). Ocupa el ancho porque es una decisión,
  * no un enlace suelto.

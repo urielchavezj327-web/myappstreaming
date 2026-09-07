@@ -430,6 +430,7 @@ export const searchAdminOffers = createServerFn({ method: "GET" })
             detail: row.detail,
             productType: row.product_type,
             months: row.months,
+            price: row.price === null ? null : Number(row.price),
           },
           parsed,
         );

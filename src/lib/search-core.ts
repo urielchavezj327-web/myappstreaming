@@ -78,6 +78,12 @@ export type ParsedQuery = {
   productTypes: string[];
   /** Términos con los que se pidieron, para poder buscarlos también por nombre. */
   productTerms: string[];
+  /**
+   * Rango de precio pedido en la propia búsqueda: "netflix menos de 100",
+   * "hbo 50 a 120", "spotify hasta 80". `null` en cualquiera de los dos
+   * extremos significa "sin tope por ese lado".
+   */
+  price: { min: number | null; max: number | null } | null;
 };
 
 export function parseQuery(raw: string): ParsedQuery {
@@ -90,9 +96,20 @@ export function parseQuery(raw: string): ParsedQuery {
       tokens: [],
       productTypes: [],
       productTerms: [],
+      price: null,
     };
 
   let text = norm(raw);
+
+  // Rango de precio dentro del texto. Se extrae antes de tokenizar para que
+  // los números no se busquen luego como si fueran parte de un nombre.
+  const price = takePriceRange(
+    () => text,
+    (next) => {
+      text = next;
+    },
+  );
+
   const sellerLetters: string[] = [];
   // "vendedor h" se trata como coincidencia EXACTA de letra, nunca como
   // dos palabras sueltas (la "h" sola coincidiría con casi todo).
@@ -114,8 +131,56 @@ export function parseQuery(raw: string): ParsedQuery {
 
   const tokens = text.split(/\s+/).filter((t) => t.length > 0);
   const empty =
-    sellerLetters.length === 0 && productTypes.length === 0 && tokens.join("").length < 2;
-  return { empty, phone: null, sellerLetters, tokens, productTypes, productTerms };
+    sellerLetters.length === 0 &&
+    productTypes.length === 0 &&
+    price === null &&
+    tokens.join("").length < 2;
+  return { empty, phone: null, sellerLetters, tokens, productTypes, productTerms, price };
+}
+
+/**
+ * Extrae un rango de precio del texto y lo borra de él.
+ *
+ * Se reconocen las formas en que se pide de viva voz: «menos de 100», «hasta
+ * 80», «más de 200», «desde 50», «50 a 120» y «50-120». El símbolo de pesos es
+ * opcional. Devuelve `null` si no hay ninguna.
+ */
+function takePriceRange(
+  get: () => string,
+  set: (next: string) => void,
+): { min: number | null; max: number | null } | null {
+  const N = String.raw`\$?\s*(\d{1,6})`;
+  const patterns: Array<
+    [RegExp, (m: RegExpExecArray) => { min: number | null; max: number | null }]
+  > = [
+    [
+      new RegExp(String.raw`\b(?:de\s+)?${N}\s*(?:a|-|hasta)\s*${N}\b`),
+      (m) => ({ min: Number(m[1]), max: Number(m[2]) }),
+    ],
+    [
+      new RegExp(String.raw`\b(?:menos de|menor a|hasta|maximo|max|bajo)\s+${N}\b`),
+      (m) => ({ min: null, max: Number(m[1]) }),
+    ],
+    [
+      new RegExp(String.raw`\b(?:mas de|mayor a|desde|minimo|min|arriba de)\s+${N}\b`),
+      (m) => ({ min: Number(m[1]), max: null }),
+    ],
+  ];
+
+  for (const [re, build] of patterns) {
+    const m = re.exec(get());
+    if (!m) continue;
+    const range = build(m);
+    // Un rango al revés ("120 a 50") se endereza en vez de no devolver nada.
+    if (range.min !== null && range.max !== null && range.min > range.max) {
+      const swap = range.min;
+      range.min = range.max;
+      range.max = swap;
+    }
+    set(get().replace(re, " ").replace(/\s+/g, " ").trim());
+    return range;
+  }
+  return null;
 }
 
 /**
@@ -165,6 +230,7 @@ export type MatchTarget = {
   detail: string | null;
   productType: string;
   months: number | null;
+  price: number | null;
 };
 
 /** Nombre normalizado del vendedor: "Vendedor H" -> letra "h". */
@@ -175,6 +241,14 @@ export function sellerLetterOf(groupName: string): string | null {
 
 export function matchesQuery(t: MatchTarget, q: ParsedQuery): boolean {
   if (q.phone) return phoneMatches(t.phone, q.phone);
+
+  if (q.price) {
+    // Una oferta "A consultar" no tiene precio con el que comparar: queda
+    // fuera en cuanto se pide un rango.
+    if (t.price === null) return false;
+    if (q.price.min !== null && t.price < q.price.min) return false;
+    if (q.price.max !== null && t.price > q.price.max) return false;
+  }
 
   if (q.sellerLetters.length > 0) {
     const letter = sellerLetterOf(t.groupName);
@@ -191,7 +265,8 @@ export function matchesQuery(t: MatchTarget, q: ParsedQuery): boolean {
     if (!q.productTerms.some((term) => identity.includes(term))) return false;
   }
 
-  if (q.tokens.length === 0) return q.sellerLetters.length > 0 || q.productTypes.length > 0;
+  if (q.tokens.length === 0)
+    return q.sellerLetters.length > 0 || q.productTypes.length > 0 || q.price !== null;
 
   const haystack = norm(
     [

@@ -45,7 +45,7 @@ function GroupsPage() {
   const { groups } = Route.useLoaderData() as { groups: GroupRow[] };
   const router = useRouter();
   const [modal, setModal] = useState<Modal>(null);
-  const { isFavorite, toggle } = useFavorites();
+  const { favorites, isFavorite, toggle } = useFavorites();
   const [filter, setFilter] = useState("");
 
   const query = norm(filter);
@@ -86,6 +86,13 @@ function GroupsPage() {
   const visibleParents = byParent
     .map(([parent, rows]) => [parent, rows.filter(matches)] as const)
     .filter(([, rows]) => rows.length > 0);
+
+  // Favoritos, en el orden en que se marcaron y respetando el filtro activo.
+  const favoriteRows = useMemo(
+    () => groups.filter((g) => favorites.includes(g.slug) && matches(g)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, favorites, query],
+  );
 
   const totalFree = free.length;
   const nothing = internal.length === 0 && visibleParents.length === 0;
@@ -137,6 +144,30 @@ function GroupsPage() {
               Prueba con el nombre del vendedor, su grupo o su teléfono.
             </p>
           </div>
+        ) : null}
+
+        {/*
+          Favoritos arriba del todo: con 56 vendedores, los cuatro o cinco a
+          los que de verdad se les escribe estaban repartidos por toda la
+          página. Se marcan con la estrella de cada tarjeta y viven en este
+          dispositivo, no en la base.
+        */}
+        {favoriteRows.length > 0 ? (
+          <section>
+            <GroupHeading title="Favoritos" count={favoriteRows.length} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {favoriteRows.map((g) => (
+                <SellerCard
+                  key={g.slug}
+                  row={g}
+                  contact={g.kind !== "interno"}
+                  onEdit={setModal}
+                  favorite
+                  onToggleFavorite={() => toggle(g.slug)}
+                />
+              ))}
+            </div>
+          </section>
         ) : null}
 
         {internal.length > 0 ? (
@@ -311,8 +342,8 @@ function SellerCard({
 }
 
 const inputCls =
-  "h-11 w-full rounded-xl border border-input bg-surface-2 px-3 text-[16px] outline-none transition-colors focus:border-border-strong";
-const labelCls = "mb-1.5 block text-[11px] uppercase tracking-[0.16em] text-faint";
+  "h-12 w-full rounded-xl border border-input bg-surface-2 px-3.5 text-[16px] outline-none transition-all focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--brand-glow)]";
+const labelCls = "mb-1.5 block t-micro text-faint";
 
 function SellerModal({
   modal,
@@ -446,7 +477,7 @@ function SellerModal({
               <button
                 type="submit"
                 disabled={busy || !pin}
-                className="h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+                className="h-12 flex-1 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
               >
                 {busy ? "Verificando…" : "Entrar"}
               </button>
@@ -505,7 +536,7 @@ function SellerModal({
                 type="button"
                 disabled={busy || !name.trim()}
                 onClick={submit}
-                className="h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+                className="h-12 flex-1 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
               >
                 {busy ? "Guardando…" : "Guardar cambios"}
               </button>
