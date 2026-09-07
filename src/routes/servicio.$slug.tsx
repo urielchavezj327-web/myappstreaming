@@ -120,8 +120,9 @@ function ServicePage() {
       <div
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
-          background:
-            "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--color-background) 62%, transparent) 38%, color-mix(in srgb, var(--color-background) 84%, transparent) 100%)",
+          background: brand.light
+            ? "linear-gradient(to bottom, transparent 0%, transparent 16%, color-mix(in srgb, var(--color-background) 92%, transparent) 46%, var(--color-background) 68%)"
+            : "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--color-background) 62%, transparent) 38%, color-mix(in srgb, var(--color-background) 84%, transparent) 100%)",
         }}
         aria-hidden
       />
@@ -179,9 +180,6 @@ function ServicePage() {
             max={summary.max}
             offers={offers.length}
             sellers={summary.sellers}
-            chrome={skin.chrome}
-            meta={skin.meta}
-            border={skin.border}
             accent={skin.accent}
           />
         ) : null}
@@ -213,7 +211,7 @@ function ServicePage() {
                     accent={skin.accent}
                   />
                   <OfferSection
-                    title="Vendedores de Venta Libre"
+                    title="Venta Libre"
                     subtitle="Contacta directo por WhatsApp"
                     offers={list.filter((o) => o.group.kind !== "interno")}
                     accent={skin.accent}
@@ -226,7 +224,7 @@ function ServicePage() {
             <>
               <OfferSection title="Mis Grupos" offers={internal} accent={skin.accent} />
               <OfferSection
-                title="Vendedores de Venta Libre"
+                title="Venta Libre"
                 subtitle="Contacta directo por WhatsApp"
                 offers={free}
                 accent={skin.accent}
@@ -259,18 +257,12 @@ function SummaryBar({
   max,
   offers,
   sellers,
-  chrome,
-  meta,
-  border,
   accent,
 }: {
   min: number | null;
   max: number | null;
   offers: number;
   sellers: number;
-  chrome: string;
-  meta: string;
-  border: string;
   accent: string;
 }) {
   const rest: Array<{ label: string; value: string }> = [
@@ -282,17 +274,14 @@ function SummaryBar({
   return (
     <div className="space-y-2.5">
       <div
-        className="lightedge relative overflow-hidden rounded-[1.5rem] border px-6 py-6"
+        className="lightedge relative overflow-hidden rounded-[1.5rem] border px-6 py-6 text-foreground"
         style={{
-          borderColor: border,
+          borderColor: `${accent}55`,
           background: `linear-gradient(152deg, ${accent}33, rgba(255,255,255,0.045) 58%)`,
-          color: chrome,
           boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 20px 46px -26px ${accent}`,
         }}
       >
-        <p className="t-micro" style={{ color: meta }}>
-          {min === null ? "Precio" : "Desde"}
-        </p>
+        <p className="t-micro text-muted-foreground">{min === null ? "Precio" : "Desde"}</p>
         <p className="mt-2.5 t-price text-[2.9rem] leading-[0.9]">{formatPrice(min)}</p>
       </div>
 
@@ -300,16 +289,9 @@ function SummaryBar({
         {rest.map((c) => (
           <div
             key={c.label}
-            className="lightedge relative overflow-hidden rounded-[1.2rem] border px-3.5 py-4"
-            style={{
-              borderColor: border,
-              background: "rgba(255,255,255,0.05)",
-              color: chrome,
-            }}
+            className="glass lightedge relative overflow-hidden rounded-[1.2rem] px-3.5 py-4 text-foreground"
           >
-            <p className="truncate t-micro" style={{ color: meta }}>
-              {c.label}
-            </p>
+            <p className="truncate t-micro text-muted-foreground">{c.label}</p>
             <p className="mt-1.5 t-price text-[1.45rem] leading-none">{c.value}</p>
           </div>
         ))}

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import {
@@ -125,6 +125,16 @@ function Index() {
   }, [categories]);
 
   const current = categories.find((c) => c.slug === cat) ?? categories[0];
+
+  const chipStrip = useRef<HTMLElement>(null);
+  const activeChip = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const strip = chipStrip.current;
+    const chip = activeChip.current;
+    if (!strip || !chip) return;
+    const left = chip.offsetLeft - (strip.clientWidth - chip.clientWidth) / 2;
+    strip.scrollTo({ left: Math.max(0, left), behavior: "auto" });
+  }, [current?.slug]);
   const nf = new Intl.NumberFormat("es-MX");
 
   return (
@@ -187,8 +197,11 @@ function Index() {
           <SearchResults results={results} loading={loading} query={q} />
         ) : (
           <>
+            {/* La tira se desplaza sola hasta la categoría activa: al entrar con
+                ?cat=otros la pastilla puesta quedaba fuera de pantalla. */}
             <nav
               aria-label="Categorías"
+              ref={chipStrip}
               className="no-scrollbar -mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
             >
               <div className="flex w-max min-w-full flex-nowrap gap-2.5">
@@ -196,6 +209,7 @@ function Index() {
                   <FilterChip
                     key={c.slug}
                     active={c.slug === (current?.slug ?? "")}
+                    {...(c.slug === (current?.slug ?? "") ? { ref: activeChip } : {})}
                     onClick={() =>
                       navigate({
                         search: (prev: IndexSearch) => ({ ...prev, cat: c.slug }),

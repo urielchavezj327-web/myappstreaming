@@ -11,6 +11,7 @@ import {
   whatsappLink,
 } from "@/lib/format";
 import { compareOffersByService } from "@/lib/search-core";
+import { brandAccent } from "@/lib/brands";
 
 const TYPE_ORDER = [
   "perfil",
@@ -174,9 +175,9 @@ export function OfferSection({
   if (offers.length === 0) return null;
   return (
     <section className="rise">
-      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3.5">
+      <div className="border-b border-border pb-3.5">
         <h2 className="t-section">{title}</h2>
-        {subtitle ? <p className="shrink-0 text-[12.5px] text-faint">{subtitle}</p> : null}
+        {subtitle ? <p className="mt-1 text-[13px] text-faint">{subtitle}</p> : null}
       </div>
       <div className="mt-5">
         <OfferGroups offers={offers} accent={accent} freeMarket={freeMarket} />
@@ -354,10 +355,12 @@ export function SellerOffers({
     <div className="space-y-8">
       {[...byCategory.entries()].map(([category, list]) => (
         <div key={category}>
-          <div className="mb-3 flex items-center gap-3">
+          <div className="mb-4 flex items-center gap-3">
             <p className="t-label text-faint">{category}</p>
             <span className="h-px flex-1 bg-border" aria-hidden />
-            <span className="text-[11px] tabular-nums text-faint">{list.length}</span>
+            <span className="text-[11.5px] font-semibold tabular-nums text-faint">
+              {list.length}
+            </span>
           </div>
           <div className="space-y-4">
             {groupByService(list).map((group) => (
@@ -403,24 +406,43 @@ function ServiceOfferGroup({
     durations.set(key, [...(durations.get(key) ?? []), o]);
   }
   const keys = [...durations.keys()].sort((a, b) => a - b);
+  const first = group.offers[0];
+  const accent = brandAccent({
+    name: group.name,
+    categorySlug: first?.categorySlug ?? null,
+    subcategorySlug: first?.subcategorySlug ?? null,
+  });
   // El subtítulo de duración solo aporta cuando hay más de una: en trámites
   // (todos "Único") sería ruido.
   const showDuration = keys.length > 1;
 
   return (
     <div>
-      <p className="mb-1.5 text-[14px] font-semibold tracking-tight">{group.name}</p>
+      {/* El punto lleva el color de la marca: en una lista de 103 ofertas de
+          un mismo vendedor es lo que deja distinguir un servicio de otro sin
+          repetir el logotipo entero en cada bloque. */}
+      <p className="mb-2 flex items-center gap-2.5 t-subtitle">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{
+            backgroundColor: accent,
+            boxShadow: `0 0 14px ${accent}`,
+          }}
+          aria-hidden
+        />
+        {group.name}
+      </p>
       <div className="space-y-2.5">
         {keys.map((key) => {
           const rows = (durations.get(key) ?? []).slice().sort(byPriceAsc);
           return (
             <div key={key}>
               {showDuration ? (
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-faint">
+                <p className="mb-1.5 t-micro text-faint">
                   {durationLabel(rows[0]?.months ?? null)}
                 </p>
               ) : null}
-              <ul className="glass overflow-hidden rounded-2xl">
+              <ul className="glass lightedge overflow-hidden rounded-[1.15rem]">
                 {rows.map((o) => (
                   <SellerOfferRow
                     key={o.id}

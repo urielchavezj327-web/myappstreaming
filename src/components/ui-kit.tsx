@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 
 /**
  * Piezas compartidas por todas las pantallas. Estaban duplicadas en la portada,
@@ -18,19 +18,18 @@ import type { ReactNode } from "react";
  * distingue de un vistazo cuál está puesta, incluso de reojo mientras se
  * desliza la tira.
  */
-export function FilterChip({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count?: number;
-}) {
+export const FilterChip = forwardRef<
+  HTMLButtonElement,
+  {
+    active: boolean;
+    onClick: () => void;
+    label: string;
+    count?: number;
+  }
+>(function FilterChip({ active, onClick, label, count }, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       aria-pressed={active}
@@ -52,7 +51,7 @@ export function FilterChip({
       ) : null}
     </button>
   );
-}
+});
 
 /** Encabezado de subsección con regla y conteo. */
 export function SectionRule({ label, count }: { label: string; count?: number }) {
