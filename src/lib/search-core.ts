@@ -118,6 +118,43 @@ export function parseQuery(raw: string): ParsedQuery {
   return { empty, phone: null, sellerLetters, tokens, productTypes, productTerms };
 }
 
+/**
+ * Sinónimos de los documentos que se conocen por sus siglas. La ficha conserva
+ * el nombre corto porque así se pide en la vida real ("NSS"), pero el buscador
+ * también responde al nombre completo. Se aplican sobre el nombre del servicio
+ * al construir el texto de búsqueda.
+ */
+const SYNONYMS: Array<[RegExp, string]> = [
+  [/\bnss\b/, "numero de seguridad social imss"],
+  [/\bcurp\b/, "clave unica de registro de poblacion"],
+  [/constancia de situacion fiscal/, "csf rfc sat constancia fiscal"],
+  [/cedula de identificacion fiscal/, "cif cedula fiscal sat"],
+  [/localizacion de idcif/, "idcif identificador cedula identificacion fiscal"],
+  [/\brepuve\b/, "registro publico vehicular consulta de auto robado"],
+  [/\brnoa\b/, "registro nacional de obligaciones alimentarias deudor alimentario"],
+  [/\bsindo\b/, "sistema de notificacion de documentos imss"],
+  [/ds 160|ds160/, "formulario visa americana embajada"],
+  [/carta de no antecedentes penales/, "antecedentes no penales constancia"],
+  [/constancia de no derechohabiencia/, "no derechohabiente imss issste issemym vigencia"],
+  [/receta medica/, "receta farmacia similares ahorro imss particular"],
+  [
+    /certificado de estudios/,
+    "certificado primaria secundaria preparatoria universidad normal inea",
+  ],
+  [/estado de cuenta infonavit/, "saldo infonavit historico precalificacion"],
+  [/opinion de cumplimiento/, "32d opinion positiva sat"],
+  [/recibo de luz cfe/, "comprobante de domicilio luz"],
+  [/recibo de nomina/, "comprobante de ingresos nomina"],
+];
+
+/** Texto extra de búsqueda para un servicio conocido por sus siglas. */
+export function synonymsFor(serviceName: string): string {
+  const key = norm(serviceName);
+  let out = "";
+  for (const [pattern, extra] of SYNONYMS) if (pattern.test(key)) out += ` ${extra}`;
+  return out;
+}
+
 export type MatchTarget = {
   serviceName: string;
   categoryName: string;
@@ -159,6 +196,7 @@ export function matchesQuery(t: MatchTarget, q: ParsedQuery): boolean {
   const haystack = norm(
     [
       t.serviceName,
+      synonymsFor(t.serviceName),
       t.categoryName,
       t.groupName,
       t.parentGroup ?? "",

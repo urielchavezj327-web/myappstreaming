@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Lock, LogOut, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Download,
+  Lock,
+  LogOut,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
@@ -10,17 +21,29 @@ import { brandSkin, resolveBrand } from "@/lib/brands";
 import {
   createService,
   deleteOffer,
+  deleteService,
+  exportStockCsv,
   getAdminOptions,
   getAdminState,
+  getAdminSummary,
   lockAdmin,
+  renameService,
   saveStock,
   searchAdminOffers,
   unlockAdmin,
   updateOffer,
   type AdminOptions,
+  type AdminSummary,
 } from "@/lib/admin.functions";
 import type { SearchSellerResult, SearchServiceResult, StockOffer } from "@/lib/catalog.functions";
-import { PRODUCT_LABELS } from "@/lib/format";
+import { formatPrice, PRODUCT_LABELS } from "@/lib/format";
+import {
+  EmptyState,
+  FilterChip,
+  GhostButton,
+  PrimaryButton,
+  SectionRule,
+} from "@/components/ui-kit";
 
 export const Route = createFileRoute("/agregar")({
   ssr: false,
@@ -97,9 +120,9 @@ function AddStockPage() {
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-5 sm:py-12">
         <p className="t-label text-faint">Panel privado</p>
-        <h1 className="t-display mt-2">Agregar stock</h1>
-        <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-          Captura los datos del vendedor una sola vez y agrega todas sus ofertas en la misma carga.
+        <h1 className="t-display mt-2.5">Administración</h1>
+        <p className="mt-3 t-meta max-w-lg text-muted-foreground">
+          Captura stock, corrige lo que ya está cargado y revisa qué falta por completar.
         </p>
         {unlocked === null ? (
           <div className="mt-8 space-y-3" aria-hidden>
@@ -126,7 +149,7 @@ function AddStockPage() {
 function PinModal({ onUnlocked }: { onUnlocked: () => void }) {
   const unlock = useServerFn(unlockAdmin);
   const [pin, setPin] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   return (
@@ -136,13 +159,15 @@ function PinModal({ onUnlocked }: { onUnlocked: () => void }) {
         onSubmit={async (e) => {
           e.preventDefault();
           setBusy(true);
-          setError(false);
+          setError(null);
           try {
             const res = await unlock({ data: { pin } });
             if (res.ok) onUnlocked();
-            else setError(true);
+            else if ("retryInSeconds" in res && res.retryInSeconds)
+              setError(`Demasiados intentos. Espera ${res.retryInSeconds} s.`);
+            else setError("PIN incorrecto.");
           } catch {
-            setError(true);
+            setError("PIN incorrecto.");
           } finally {
             setBusy(false);
           }
@@ -167,7 +192,7 @@ function PinModal({ onUnlocked }: { onUnlocked: () => void }) {
           onChange={(e) => setPin(e.target.value)}
           className={inputCls}
         />
-        {error ? <p className="mt-2 text-xs text-destructive">PIN incorrecto.</p> : null}
+        {error ? <p className="mt-2.5 text-[13px] text-destructive">{error}</p> : null}
         <button
           type="submit"
           disabled={busy || pin.length === 0}
@@ -203,6 +228,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [status, setStatus] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"capturar" | "buscar" | "revisar">("capturar");
 
   const active = offerQuery.trim().length > 1;
 
@@ -217,6 +243,10 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
       .catch(() => setResults({ services: [], sellers: [] }))
       .finally(() => setSearching(false));
   }, [active, loadOffers, offerQuery, offerCat]);
+
+  const reloadOptions = useCallback(() => {
+    loadOptions().then(setOptions);
+  }, [loadOptions]);
 
   useEffect(() => {
     loadOptions().then((o) => {
@@ -302,7 +332,27 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
 
   return (
     <div className="mt-8 space-y-12">
-      <form onSubmit={submit} className="space-y-8">
+      <div className="no-scrollbar -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="flex w-max min-w-full flex-nowrap gap-2.5">
+          <FilterChip
+            active={tab === "capturar"}
+            onClick={() => setTab("capturar")}
+            label="Capturar"
+          />
+          <FilterChip
+            active={tab === "buscar"}
+            onClick={() => setTab("buscar")}
+            label="Buscar y editar"
+          />
+          <FilterChip
+            active={tab === "revisar"}
+            onClick={() => setTab("revisar")}
+            label="Revisar catálogo"
+          />
+        </div>
+      </div>
+
+      <form onSubmit={submit} className={`space-y-8 ${tab === "capturar" ? "" : "hidden"}`}>
         <section className="glass rounded-2xl p-4 sm:p-5">
           <h2 className="t-title">Vendedor</h2>
           <div className="mt-4 flex gap-2">
@@ -551,37 +601,37 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
         ) : null}
 
         <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={busy}
-            className="h-12 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
-          >
+          <PrimaryButton type="submit" disabled={busy} className="flex-1">
             {busy ? "Guardando…" : "Guardar ofertas"}
-          </button>
-          <button
+          </PrimaryButton>
+          <GhostButton
             type="button"
             onClick={async () => {
               await lock();
               onLock();
             }}
-            className="inline-flex h-12 items-center gap-2 rounded-xl border border-border px-4 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-2"
           >
-            <LogOut className="h-4 w-4" /> Salir
-          </button>
+            <LogOut className="h-[18px] w-[18px]" /> Bloquear
+          </GhostButton>
         </div>
       </form>
 
-      <AdminSearch
-        query={offerQuery}
-        onQuery={setOfferQuery}
-        categories={options.categories}
-        cat={offerCat}
-        onCat={setOfferCat}
-        results={results}
-        loading={searching}
-        active={active}
-        onChanged={refresh}
-      />
+      <div className={tab === "buscar" ? "" : "hidden"}>
+        <AdminSearch
+          query={offerQuery}
+          onQuery={setOfferQuery}
+          categories={options.categories}
+          cat={offerCat}
+          onCat={setOfferCat}
+          results={results}
+          loading={searching}
+          active={active}
+          onChanged={refresh}
+        />
+      </div>
+
+      {tab === "revisar" ? <CatalogReview options={options} onChanged={reloadOptions} /> : null}
     </div>
   );
 }
@@ -1019,6 +1069,244 @@ function OfferEditor({
           <Trash2 className="h-4 w-4" /> Eliminar
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Revisión del catálogo: lo que hace falta completar y lo que se cargó dos
+ * veces, más el respaldo en CSV y la gestión de servicios. Son las tareas de
+ * dueño que antes solo se podían hacer entrando a la base de datos.
+ */
+function CatalogReview({ options, onChanged }: { options: AdminOptions; onChanged: () => void }) {
+  const loadSummary = useServerFn(getAdminSummary);
+  const exportCsv = useServerFn(exportStockCsv);
+  const rename = useServerFn(renameService);
+  const remove = useServerFn(deleteService);
+
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [filter, setFilter] = useState("");
+
+  useEffect(() => {
+    loadSummary()
+      .then(setSummary)
+      .catch(() => setSummary(null));
+  }, [loadSummary]);
+
+  const shown = options.services
+    .filter((s) => s.name.toLowerCase().includes(filter.trim().toLowerCase()))
+    .slice(0, filter.trim() ? 40 : 0);
+
+  const download = async () => {
+    const { csv, rows } = await exportCsv();
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stockdex-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setNote(`Respaldo descargado: ${rows} ofertas.`);
+  };
+
+  if (!summary) return <div className="skeleton h-40 rounded-2xl" aria-hidden />;
+
+  return (
+    <div className="space-y-10">
+      <section>
+        <SectionRule label="Estado del catálogo" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Metric label="Ofertas" value={summary.offers} />
+          <Metric label="Servicios" value={summary.services} />
+          <Metric
+            label="Sin precio"
+            value={summary.withoutPrice}
+            tone={summary.withoutPrice ? "warn" : "ok"}
+          />
+          <Metric label="Agotadas" value={summary.soldOut} tone={summary.soldOut ? "warn" : "ok"} />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          <PrimaryButton
+            type="button"
+            onClick={download}
+            className="inline-flex items-center gap-2"
+          >
+            <Download className="h-[18px] w-[18px]" /> Descargar respaldo CSV
+          </PrimaryButton>
+        </div>
+        {note ? <p className="mt-3 t-meta text-success">{note}</p> : null}
+      </section>
+
+      {summary.duplicates.length > 0 ? (
+        <section>
+          <SectionRule label="Posibles duplicados" count={summary.duplicates.length} />
+          <ul className="glass divide-y divide-border overflow-hidden rounded-2xl">
+            {summary.duplicates.map((d) => (
+              <li key={`${d.service}-${d.seller}`} className="flex items-center gap-3 px-4 py-3">
+                <AlertTriangle
+                  className="h-[18px] w-[18px] shrink-0 text-destructive"
+                  aria-hidden
+                />
+                <p className="min-w-0 flex-1 t-meta">
+                  <span className="font-semibold">{d.service}</span> · {d.seller}
+                </p>
+                <span className="shrink-0 text-[13px] tabular-nums text-faint">×{d.count}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2.5 t-meta text-faint">
+            Misma ficha, mismo vendedor, mismo tipo, misma duración y mismo precio. Búscalos en
+            “Buscar y editar” para borrar el sobrante.
+          </p>
+        </section>
+      ) : null}
+
+      {summary.servicesWithoutOffers.length > 0 ? (
+        <section>
+          <SectionRule label="Fichas sin ofertas" count={summary.servicesWithoutOffers.length} />
+          <ul className="glass divide-y divide-border overflow-hidden rounded-2xl">
+            {summary.servicesWithoutOffers.map((s) => (
+              <li key={s.name} className="flex items-center justify-between gap-3 px-4 py-3">
+                <p className="t-meta">{s.name}</p>
+                <span className="text-[13px] text-faint">{s.category}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {summary.sellersWithoutPhone.length > 0 ? (
+        <section>
+          <SectionRule
+            label="Venta libre sin teléfono"
+            count={summary.sellersWithoutPhone.length}
+          />
+          <p className="glass rounded-2xl px-4 py-3.5 t-meta text-muted-foreground">
+            {summary.sellersWithoutPhone.join(" · ")}
+          </p>
+        </section>
+      ) : null}
+
+      <section>
+        <SectionRule label="Últimas altas" />
+        <ul className="glass divide-y divide-border overflow-hidden rounded-2xl">
+          {summary.recent.map((r, i) => (
+            <li key={i} className="flex items-center justify-between gap-3 px-4 py-3">
+              <p className="min-w-0 truncate t-meta">
+                <span className="font-semibold">{r.service}</span> · {r.seller}
+              </p>
+              <span className="shrink-0 text-[15px] font-semibold tabular-nums">
+                {formatPrice(r.price)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <SectionRule label="Renombrar o borrar servicios" />
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          type="search"
+          placeholder="Escribe para encontrar un servicio…"
+          aria-label="Buscar servicio"
+          className={inputCls}
+        />
+        {shown.length > 0 ? (
+          <ul className="glass mt-3 divide-y divide-border overflow-hidden rounded-2xl">
+            {shown.map((svc) => (
+              <li key={svc.id} className="px-4 py-3">
+                {editing === svc.id ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      className="h-11 min-w-[12rem] flex-1 rounded-xl border border-input bg-surface px-3 text-[16px] outline-none"
+                      aria-label="Nuevo nombre"
+                    />
+                    <PrimaryButton
+                      type="button"
+                      onClick={async () => {
+                        await rename({ data: { id: svc.id, name: draft.trim() } });
+                        setEditing(null);
+                        onChanged();
+                        setNote("Servicio renombrado.");
+                      }}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <Check className="h-[18px] w-[18px]" /> Guardar
+                    </PrimaryButton>
+                    <GhostButton type="button" onClick={() => setEditing(null)}>
+                      Cancelar
+                    </GhostButton>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="min-w-0 truncate t-meta">{svc.name}</p>
+                    <div className="flex shrink-0 gap-1.5">
+                      <button
+                        type="button"
+                        aria-label={`Renombrar ${svc.name}`}
+                        onClick={() => {
+                          setEditing(svc.id);
+                          setDraft(svc.name);
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil className="h-[18px] w-[18px]" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Eliminar ${svc.name}`}
+                        onClick={async () => {
+                          try {
+                            await remove({ data: { id: svc.id } });
+                            onChanged();
+                            setNote("Servicio eliminado.");
+                          } catch (err) {
+                            setNote(err instanceof Error ? err.message : "No se pudo eliminar.");
+                          }
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-[18px] w-[18px]" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : filter.trim() ? (
+          <EmptyState title="Ningún servicio con ese nombre" />
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  tone = "ok",
+}: {
+  label: string;
+  value: number;
+  tone?: "ok" | "warn";
+}) {
+  return (
+    <div className="glass rounded-2xl px-4 py-3.5">
+      <p
+        className={`text-[26px] font-bold tabular-nums leading-none tracking-tight ${
+          tone === "warn" ? "text-destructive" : ""
+        }`}
+      >
+        {new Intl.NumberFormat("es-MX").format(value)}
+      </p>
+      <p className="mt-1.5 text-[11px] uppercase tracking-[0.16em] text-faint">{label}</p>
     </div>
   );
 }

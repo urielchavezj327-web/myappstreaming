@@ -171,6 +171,13 @@ export const getCatalog = createServerFn({ method: "GET" }).handler(async () => 
 
 export type StockOffer = {
   id: string;
+  /**
+   * Variante de la oferta dentro de su ficha: "Con CURP", "Clon", "Primaria"…
+   * Nace de consolidar en una sola ficha documentos que estaban partidos en
+   * varias, y es lo que permite que "Mejor precio" compare cada variante con
+   * las de su tipo y no un original de oficina contra un clon.
+   */
+  offerVariant?: string | null;
   productType: string;
   months: number | null;
   price: number | null;
@@ -212,6 +219,8 @@ type StockRowDb = {
   months: number | null;
   price: number | null;
   detail: string | null;
+  /** Variante de la oferta dentro de su ficha (ver `StockOffer.offerVariant`). */
+  notes: string | null;
   available: boolean;
 };
 
@@ -222,6 +231,7 @@ function toOffer(row: StockRowDb, g: GroupRowDb, serviceName?: string): StockOff
     months: row.months,
     price: row.price === null ? null : Number(row.price),
     detail: row.detail,
+    offerVariant: row.notes,
     available: row.available,
     ...(serviceName ? { serviceName } : {}),
     group: {
@@ -330,7 +340,7 @@ export const getServiceDetail = createServerFn({ method: "GET" })
       pageAll<StockRowDb>((from, to) =>
         supabase
           .from("stock_items")
-          .select("id,group_id,service_id,product_type,months,price,detail,available")
+          .select("id,group_id,service_id,product_type,months,price,detail,notes,available")
           .in("service_id", serviceIds)
           .range(from, to),
       ),
@@ -394,7 +404,7 @@ export const searchStock = createServerFn({ method: "GET" })
         pageAll<StockRowDb>((from, to) =>
           supabase
             .from("stock_items")
-            .select("id,group_id,service_id,product_type,months,price,detail,available")
+            .select("id,group_id,service_id,product_type,months,price,detail,notes,available")
             .range(from, to),
         ),
       ]);
@@ -560,7 +570,7 @@ export const getSellerCatalog = createServerFn({ method: "GET" })
       pageAll<StockRowDb>((from, to) =>
         supabase
           .from("stock_items")
-          .select("id,group_id,service_id,product_type,months,price,detail,available")
+          .select("id,group_id,service_id,product_type,months,price,detail,notes,available")
           .eq("group_id", g.id)
           .range(from, to),
       ),

@@ -142,6 +142,29 @@
   --wordmark-shadow: none;
 }
 
+/*
+ * Preferencias del lector (ver `view-settings.tsx`). Se aplican como atributos
+ * en <html> para que baste CSS: no hay que volver a renderizar el catálogo.
+ */
+:root[data-text="grande"] {
+  font-size: 112.5%;
+}
+
+:root[data-density="compacta"] {
+  --radius: 0.85rem;
+}
+:root[data-density="compacta"] main {
+  --density-gap: 0.75;
+}
+:root[data-density="compacta"] .rise {
+  animation: none;
+}
+
+:root[data-color="suave"] a[class*="wordmark-box"],
+:root[data-color="suave"] .wordmark-box {
+  filter: saturate(0.55) brightness(0.92);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -192,37 +215,44 @@
 /* Escala tipográfica */
 @utility t-display {
   font-family: var(--font-display);
-  font-size: clamp(1.8rem, 5.2vw, 2.7rem);
-  line-height: 1.04;
-  letter-spacing: -0.03em;
+  font-size: clamp(2.15rem, 7vw, 3.1rem);
+  line-height: 1.03;
+  letter-spacing: -0.035em;
+  font-weight: 700;
 }
 
 @utility t-section {
   font-family: var(--font-display);
-  font-size: clamp(1.35rem, 4.6vw, 1.75rem);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  font-weight: 600;
+  font-size: clamp(1.6rem, 5.6vw, 2.05rem);
+  line-height: 1.14;
+  letter-spacing: -0.025em;
+  font-weight: 700;
 }
 
 @utility t-title {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.45rem;
   line-height: 1.2;
-  letter-spacing: -0.02em;
-  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-weight: 700;
 }
 
 @utility t-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
 @utility t-meta {
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   line-height: 1.5;
+}
+
+/* Cuerpo de lectura de listas y filas. */
+@utility t-body {
+  font-size: 1rem;
+  line-height: 1.45;
 }
 
 /*
@@ -277,6 +307,24 @@
  * volver atrás el documento se encoge al tamaño declarado justo cuando el
  * router restaura el scroll, y la posición se pierde.
  */
+/*
+ * Caja de logotipo. `container-type: inline-size` habilita las unidades `cqw`,
+ * con las que el nombre de cada servicio se dimensiona para llenar su tarjeta
+ * en vez de usar un cuerpo fijo que dejaba huecos en unos y apretaba otros.
+ */
+/* Alturas y espaciados que la escala nueva usa repetidamente. */
+@utility h-13 {
+  height: 3.25rem;
+}
+
+@utility px-4\.5 {
+  padding-inline: 1.125rem;
+}
+
+@utility wordmark-box {
+  container-type: inline-size;
+}
+
 @utility cv-tile {
   content-visibility: auto;
   contain-intrinsic-size: auto 142px;

@@ -1,16 +1,21 @@
 import { memo } from "react";
 
-import type { Brand } from "@/lib/brands";
+import type { Brand, BrandFont } from "@/lib/brands";
 
 /**
  * Recrea el logotipo de cada servicio: familia, peso, caja y tracking propios
  * de la marca, más los elementos gráficos que la identifican (la curva de
  * Prime Video, la medialuna de Disney+, las dos líneas de HBO Max, el abanico
  * de Peacock). Cuando no hay logotipo reconocible —trámites, servicios
- * propios— cae en la tipografía display de la app con la misma composición.
+ * propios— usa la tipografía display de la app con la misma composición.
+ *
+ * El tamaño no es fijo: se calcula para que el nombre LLENE su tarjeta. Las
+ * medidas van en `cqw` (porcentaje del ancho del contenedor), así que la misma
+ * fórmula sirve para la tarjeta del mosaico, la fila de trámites y el
+ * encabezado de la ficha sin números mágicos por pantalla.
  */
 
-const FONTS: Record<Brand["font"], string> = {
+const FONTS: Record<BrandFont, string> = {
   display: "var(--font-display)",
   condensed: "var(--font-condensed)",
   script: "var(--font-script)",
@@ -18,34 +23,55 @@ const FONTS: Record<Brand["font"], string> = {
   sans: "var(--font-sans)",
 };
 
+/** Ancho medio de carácter en “em” por familia, para estimar el ajuste. */
+const CHAR_WIDTH: Record<BrandFont, number> = {
+  display: 0.6,
+  condensed: 0.45,
+  script: 0.44,
+  serif: 0.47,
+  sans: 0.56,
+};
+
 export type WordmarkSize = "tile" | "row" | "hero";
 
-/** Escala del nombre según el largo, para que nunca desborde la tarjeta. */
-function fontSize(text: string, size: WordmarkSize, font: Brand["font"]) {
-  const len = text.length;
-  const base =
-    size === "hero"
-      ? len > 26
-        ? 1.7
-        : len > 18
-          ? 2.05
-          : 2.6
-      : size === "row"
-        ? len > 30
-          ? 1.0
-          : len > 20
-            ? 1.12
-            : 1.24
-        : len > 26
-          ? 1.02
-          : len > 18
-            ? 1.18
-            : len > 11
-              ? 1.42
-              : 1.62;
-  // Las serif y las script tienen ojo pequeño: necesitan algo más de cuerpo.
-  const boost = font === "script" ? 1.24 : font === "serif" ? 1.12 : 1;
-  return `${(base * boost).toFixed(3)}rem`;
+/**
+ * Espacio disponible para el nombre, en porcentaje del ancho del contenedor.
+ * Las unidades `cqw` se miden contra la caja de contenido, así que el relleno
+ * de la tarjeta ya está descontado y el ancho útil es el 100 %.
+ */
+const BOX: Record<WordmarkSize, { width: number; height: number; max: number }> = {
+  // Tarjeta del mosaico: alto ≈ 82 % del ancho, menos el conteo de ofertas.
+  tile: { width: 100, height: 58, max: 34 },
+  // Fila ancha y baja de los trámites.
+  row: { width: 100, height: 24, max: 10 },
+  // Encabezado de la ficha, sobre el ancho de la página.
+  hero: { width: 100, height: 40, max: 21 },
+};
+
+/**
+ * Mayor tamaño de letra que cabe en la caja. Prueba repartir el nombre en 1 a 4
+ * líneas y se queda con el reparto que permite el cuerpo más grande.
+ */
+function fitSize(text: string, font: BrandFont, size: WordmarkSize): number {
+  const box = BOX[size];
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return box.max;
+  const longest = Math.max(...words.map((w) => w.length));
+  const charWidth = CHAR_WIDTH[font];
+  const maxLines = Math.min(4, words.length);
+
+  let best = 0;
+  for (let lines = 1; lines <= maxLines; lines++) {
+    // Ninguna línea puede ser más corta que la palabra más larga.
+    const perLine = Math.max(longest, Math.ceil(text.length / lines));
+    const byWidth = box.width / (perLine * charWidth);
+    const byHeight = box.height / (lines * 1.16);
+    // Pequeña penalización por línea extra: entre dos repartos parecidos gana
+    // el de menos líneas, que siempre se lee mejor.
+    const score = Math.min(byWidth, byHeight) * (1 - 0.07 * (lines - 1));
+    if (score > best) best = score;
+  }
+  return Math.min(best, box.max);
 }
 
 export const Wordmark = memo(function Wordmark({
@@ -61,19 +87,24 @@ export const Wordmark = memo(function Wordmark({
   const label = wantsPlus ? name.replace(/\s*\+\s*$/, "") : name;
   const hasPlus = wantsPlus && /\+\s*$/.test(name);
 
+  const twoLine = brand.mark === "twoLine" && brand.lines;
+  // En dos líneas la primera manda: se ajusta a ella y la segunda va escalada.
+  const measured = twoLine ? (brand.lines?.[0] ?? label) : label;
+  const cqw = fitSize(measured, brand.font, size) * (twoLine ? 0.86 : 1);
+
   const style: React.CSSProperties = {
     fontFamily: FONTS[brand.font],
     fontWeight: brand.weight,
     letterSpacing: brand.tracking,
     fontStyle: brand.italic ? "italic" : "normal",
     textTransform: brand.upper ? "uppercase" : "none",
-    fontSize: fontSize(label, size, brand.font),
+    fontSize: `${cqw.toFixed(2)}cqw`,
     color: "var(--wordmark-ink)",
     textShadow: "var(--wordmark-shadow)",
-    lineHeight: brand.font === "script" ? 1.1 : 1.05,
+    lineHeight: brand.font === "script" ? 1.12 : 1.04,
   };
 
-  if (brand.mark === "twoLine" && brand.lines) {
+  if (twoLine && brand.lines) {
     const [first, second] = brand.lines;
     return (
       <span className="flex flex-col items-center leading-none">
@@ -81,12 +112,12 @@ export const Wordmark = memo(function Wordmark({
         <span
           style={{
             ...style,
-            fontSize: `calc(${style.fontSize} * 0.62)`,
+            fontSize: `${(cqw * 0.58).toFixed(2)}cqw`,
             fontWeight: 300,
-            letterSpacing: "0.18em",
+            letterSpacing: "0.2em",
             textTransform: "uppercase",
-            marginTop: "0.12em",
-            opacity: 0.92,
+            marginTop: "0.14em",
+            opacity: 0.94,
           }}
         >
           {second}
@@ -96,10 +127,10 @@ export const Wordmark = memo(function Wordmark({
   }
 
   return (
-    <span className="relative inline-flex flex-col items-center">
+    <span className="relative inline-flex max-w-full flex-col items-center">
       {brand.mark === "peacock" ? <PeacockFan /> : null}
       {brand.mark === "arc" ? <DisneyArc /> : null}
-      <span className="inline-flex items-start">
+      <span className="inline-flex max-w-full items-start justify-center">
         <span style={style} className="text-balance">
           {label}
         </span>
@@ -108,12 +139,12 @@ export const Wordmark = memo(function Wordmark({
             style={{
               ...style,
               fontFamily: "var(--font-display)",
-              fontSize: `calc(${style.fontSize} * 0.56)`,
+              fontSize: `${(cqw * 0.52).toFixed(2)}cqw`,
               fontWeight: 600,
               letterSpacing: "0",
               fontStyle: "normal",
-              marginLeft: "0.08em",
-              marginTop: "0.04em",
+              marginLeft: "0.1em",
+              marginTop: "0.06em",
             }}
             aria-hidden
           >
@@ -131,7 +162,8 @@ function PrimeSmile() {
   return (
     <svg
       viewBox="0 0 120 16"
-      className="mt-[0.18em] h-[0.42em] w-[86%] overflow-visible"
+      className="mt-[0.16em] h-[0.4em] w-[88%] overflow-visible"
+      style={{ fontSize: "inherit" }}
       fill="none"
       aria-hidden
     >
@@ -151,7 +183,7 @@ function DisneyArc() {
   return (
     <svg
       viewBox="0 0 120 18"
-      className="mb-[-0.28em] h-[0.44em] w-[74%] overflow-visible"
+      className="mb-[-0.3em] h-[0.4em] w-[76%] overflow-visible"
       fill="none"
       aria-hidden
     >
@@ -169,7 +201,7 @@ function DisneyArc() {
 const PEACOCK = ["#FCB711", "#F37021", "#CC004C", "#6460AA", "#0089D0", "#0DB14B"];
 function PeacockFan() {
   return (
-    <svg viewBox="0 0 72 34" className="mb-1 h-6 w-16" fill="none" aria-hidden>
+    <svg viewBox="0 0 72 34" className="mb-[0.18em] h-[0.7em] w-[2em]" fill="none" aria-hidden>
       {PEACOCK.map((color, i) => (
         <path
           key={color}
