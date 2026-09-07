@@ -38,6 +38,7 @@ import {
 import type { SearchSellerResult, SearchServiceResult, StockOffer } from "@/lib/catalog.functions";
 import { formatPrice, PRODUCT_LABELS } from "@/lib/format";
 import {
+  ActionCard,
   EmptyState,
   FilterChip,
   GhostButton,
@@ -672,13 +673,14 @@ function NewServiceBox({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <Plus className="h-3.5 w-3.5" /> Crear servicio nuevo
-      </button>
+      <div className="mt-3">
+        <ActionCard
+          onClick={() => setOpen(true)}
+          icon={<Plus className="h-[22px] w-[22px]" strokeWidth={2.6} />}
+          title="Crear servicio nuevo"
+          hint={`Se agrega a ${category?.name ?? "la categoría"} con su color y logotipo`}
+        />
+      </div>
     );
   }
 
@@ -817,9 +819,10 @@ function AdminSearch({
         <button
           type="button"
           onClick={() => setEditing(offer.id)}
-          className="rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+          className="tappable inline-flex h-10 items-center gap-1.5 rounded-xl border border-border-strong bg-surface-2 px-3.5 text-[13.5px] font-semibold text-foreground"
         >
-          Editar
+          <Pencil className="h-[15px] w-[15px]" strokeWidth={2.2} aria-hidden />
+          Editar oferta
         </button>
       ),
     [editing, onChanged],

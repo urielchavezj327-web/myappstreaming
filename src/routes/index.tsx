@@ -135,7 +135,7 @@ function Index() {
         <div className="mx-auto max-w-3xl px-4 pb-9 pt-11 sm:px-6 sm:pb-12 sm:pt-16">
           <AppWordmark />
 
-          <div className="relative mx-auto mt-9">
+          <div className="relative mx-auto mt-10">
             <Search
               className={`pointer-events-none absolute left-5 top-1/2 z-10 h-6 w-6 -translate-y-1/2 transition-colors sm:left-6 sm:h-7 sm:w-7 ${
                 loading ? "animate-pulse text-foreground" : "text-muted-foreground"
@@ -153,7 +153,7 @@ function Index() {
               spellCheck={false}
               aria-label="Buscar servicios, vendedores o precios"
               placeholder="Servicio, vendedor o teléfono…"
-              className="glass elev h-[4.25rem] w-full rounded-[1.5rem] pl-16 pr-14 text-[17px] outline-none transition-all placeholder:text-faint focus:border-border-strong sm:pl-[4.5rem] sm:text-[18px] [&::-webkit-search-cancel-button]:hidden"
+              className="frost h-[4.5rem] w-full rounded-[1.6rem] pl-16 pr-14 text-[17px] outline-none transition-all placeholder:text-faint focus:border-brand/60 focus:shadow-[var(--shadow-lift),0_0_0_4px_var(--brand-glow)] sm:pl-[4.5rem] sm:text-[18px] [&::-webkit-search-cancel-button]:hidden"
             />
             {draft ? (
               <button
@@ -172,9 +172,12 @@ function Index() {
             empujaban las tarjetas fuera de pantalla. La misma información cabe
             en una línea discreta.
           */}
-          <p className="mt-4 text-center text-[13.5px] tabular-nums text-faint">
-            {nf.format(totals.offers)} ofertas · {nf.format(totals.services)} servicios ·{" "}
-            {categories.length} categorías
+          <p className="mt-5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-center text-[13.5px] text-faint">
+            <Count value={nf.format(totals.offers)} label="ofertas" />
+            <span aria-hidden>·</span>
+            <Count value={nf.format(totals.services)} label="servicios" />
+            <span aria-hidden>·</span>
+            <Count value={String(categories.length)} label="categorías" />
           </p>
         </div>
       </section>
@@ -217,6 +220,18 @@ function Index() {
 
       <SiteFooter />
     </div>
+  );
+}
+
+/** Un contador: la cifra en tono pleno, la palabra en terciario. */
+function Count({ value, label }: { value: string; label: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className="font-display text-[15px] font-bold tabular-nums text-muted-foreground">
+        {value}
+      </span>
+      {label}
+    </span>
   );
 }
 

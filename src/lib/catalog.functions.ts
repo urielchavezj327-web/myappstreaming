@@ -183,6 +183,12 @@ export type StockOffer = {
   price: number | null;
   detail: string | null;
   available: boolean;
+  /**
+   * Cuándo se cargó o actualizó por última vez esta oferta. Los precios de
+   * estos grupos cambian solos: saber si un dato es de ayer o de hace tres
+   * meses es lo que decide si vale la pena escribirle al vendedor.
+   */
+  updatedAt: string | null;
   serviceName?: string;
   serviceSlug?: string;
   serviceOrder?: number;
@@ -222,6 +228,7 @@ type StockRowDb = {
   /** Variante de la oferta dentro de su ficha (ver `StockOffer.offerVariant`). */
   notes: string | null;
   available: boolean;
+  updated_at: string | null;
 };
 
 function toOffer(row: StockRowDb, g: GroupRowDb, serviceName?: string): StockOffer {
@@ -233,6 +240,7 @@ function toOffer(row: StockRowDb, g: GroupRowDb, serviceName?: string): StockOff
     detail: row.detail,
     offerVariant: row.notes,
     available: row.available,
+    updatedAt: row.updated_at ?? null,
     ...(serviceName ? { serviceName } : {}),
     group: {
       slug: g.slug,
@@ -340,7 +348,9 @@ export const getServiceDetail = createServerFn({ method: "GET" })
       pageAll<StockRowDb>((from, to) =>
         supabase
           .from("stock_items")
-          .select("id,group_id,service_id,product_type,months,price,detail,notes,available")
+          .select(
+            "id,group_id,service_id,product_type,months,price,detail,notes,available,updated_at",
+          )
           .in("service_id", serviceIds)
           .range(from, to),
       ),
@@ -404,7 +414,9 @@ export const searchStock = createServerFn({ method: "GET" })
         pageAll<StockRowDb>((from, to) =>
           supabase
             .from("stock_items")
-            .select("id,group_id,service_id,product_type,months,price,detail,notes,available")
+            .select(
+              "id,group_id,service_id,product_type,months,price,detail,notes,available,updated_at",
+            )
             .range(from, to),
         ),
       ]);
@@ -570,7 +582,9 @@ export const getSellerCatalog = createServerFn({ method: "GET" })
       pageAll<StockRowDb>((from, to) =>
         supabase
           .from("stock_items")
-          .select("id,group_id,service_id,product_type,months,price,detail,notes,available")
+          .select(
+            "id,group_id,service_id,product_type,months,price,detail,notes,available,updated_at",
+          )
           .eq("group_id", g.id)
           .range(from, to),
       ),

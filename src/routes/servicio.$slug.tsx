@@ -98,13 +98,19 @@ function ServicePage() {
     <div
       className="relative min-h-screen"
       style={
-        { "--wordmark-ink": skin.ink, "--wordmark-shadow": skin.inkShadow } as React.CSSProperties
+        {
+          "--wordmark-ink": skin.ink,
+          "--wordmark-shadow": skin.inkShadow,
+          "--edge": skin.edge,
+        } as React.CSSProperties
       }
     >
       {/*
-        El color de la marca cubre la ficha entera, no solo el encabezado: se
-        pinta como capa fija y se desvanece hacia el fondo de la app, de modo
-        que la página completa queda teñida sin restar contraste a las listas.
+        El color de la marca cubre la ficha entera. Antes se desvanecía al 74%
+        y la página se partía en dos mitades: arriba la marca, abajo la app.
+        Ahora la capa de marca es fija y el velo que la cubre nunca llega a ser
+        opaco, así que el tono sigue presente hasta el pie sin restarle
+        contraste a las listas de precios.
       */}
       <div
         className="pointer-events-none fixed inset-0 -z-20"
@@ -115,47 +121,52 @@ function ServicePage() {
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
           background:
-            "linear-gradient(to bottom, transparent 0%, var(--color-background) 74%, var(--color-background) 100%)",
-          opacity: 0.92,
+            "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--color-background) 62%, transparent) 38%, color-mix(in srgb, var(--color-background) 84%, transparent) 100%)",
         }}
         aria-hidden
       />
 
       <SiteHeader />
 
-      <header className="relative overflow-hidden">
-        <span
-          className="pointer-events-none absolute inset-0"
-          style={{ background: skin.glow }}
-          aria-hidden
-        />
-        <div className="relative mx-auto max-w-3xl px-4 pt-5 sm:px-6 sm:pt-7">
+      <header className="relative">
+        <div className="relative mx-auto max-w-3xl px-4 pt-4 sm:px-6 sm:pt-6">
           {canGoBack ? (
             <button
               type="button"
               onClick={() => router.history.back()}
-              className="inline-flex items-center gap-2 text-[14px] transition-opacity hover:opacity-70"
-              style={{ color: skin.ink, opacity: 0.78 }}
+              className="tappable inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13.5px] font-medium"
+              style={{
+                color: skin.chrome,
+                borderColor: skin.border,
+                background: "rgba(255,255,255,0.07)",
+              }}
             >
-              <ArrowLeft className="h-[18px] w-[18px]" /> Volver al catálogo
+              <ArrowLeft className="h-4 w-4" /> Catálogo
             </button>
           ) : (
             <Link
               to="/"
               search={{ cat: service.category, q: "" }}
-              className="inline-flex items-center gap-2 text-[14px] transition-opacity hover:opacity-70"
-              style={{ color: skin.ink, opacity: 0.78 }}
+              className="tappable inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13.5px] font-medium"
+              style={{
+                color: skin.chrome,
+                borderColor: skin.border,
+                background: "rgba(255,255,255,0.07)",
+              }}
             >
-              <ArrowLeft className="h-[18px] w-[18px]" /> Volver al catálogo
+              <ArrowLeft className="h-4 w-4" /> Catálogo
             </Link>
           )}
 
-          <p className="mt-7 text-center t-label" style={{ color: skin.ink, opacity: 0.6 }}>
+          <p className="mt-10 text-center t-micro" style={{ color: skin.meta }}>
             {service.categoryName}
           </p>
 
-          {/* El logotipo manda en la ficha: ocupa el ancho y nada compite con él. */}
-          <div className="wordmark-box mt-4 flex justify-center pb-9">
+          {/*
+            El logotipo manda en la ficha. Ocupa todo el ancho útil y nada se
+            le acerca: el precio bajó al resumen, que es donde se consulta.
+          */}
+          <div className="wordmark-box mx-auto mt-6 w-full max-w-[19rem] pb-14 sm:max-w-[24rem]">
             <Wordmark name={service.name} brand={brand} size="hero" />
           </div>
         </div>
@@ -168,9 +179,10 @@ function ServicePage() {
             max={summary.max}
             offers={offers.length}
             sellers={summary.sellers}
-            wash={skin.wash}
-            ink={skin.ink}
+            chrome={skin.chrome}
+            meta={skin.meta}
             border={skin.border}
+            accent={skin.accent}
           />
         ) : null}
 
@@ -231,63 +243,77 @@ function ServicePage() {
 }
 
 /**
- * Resumen de la ficha. El "Desde" vivía pegado al logotipo y le robaba el
- * ancho; aquí encabeza la lista de precios, que es donde se usa.
+ * Resumen de la ficha, en rejilla bento.
+ *
+ * Las cajas translúcidas son la pieza que mejor funciona de toda la app, así
+ * que aquí mandan: «Desde» ocupa el doble de sitio, lleva el acento de la
+ * marca y un cuerpo de 44 px, porque es el número por el que se entra a esta
+ * pantalla. Los demás datos son contexto y quedan en una fila de tres.
+ *
+ * El texto va en blanco, no en el color de la marca: el tono de marca está en
+ * el fondo, y repetirlo en las cifras dejaba los precios de Netflix rojos
+ * sobre rojo.
  */
 function SummaryBar({
   min,
   max,
   offers,
   sellers,
-  wash,
-  ink,
+  chrome,
+  meta,
   border,
+  accent,
 }: {
   min: number | null;
   max: number | null;
   offers: number;
   sellers: number;
-  wash: string;
-  ink: string;
+  chrome: string;
+  meta: string;
   border: string;
+  accent: string;
 }) {
-  const cells: Array<{ label: string; value: string; strong?: boolean }> = [
-    { label: min === null ? "Precio" : "Desde", value: formatPrice(min), strong: true },
+  const rest: Array<{ label: string; value: string }> = [
     ...(max !== null && max !== min ? [{ label: "Hasta", value: formatPrice(max) }] : []),
     { label: "Ofertas", value: String(offers) },
     { label: "Tiendas", value: String(sellers) },
   ];
 
   return (
-    <div
-      className="grid gap-px overflow-hidden rounded-2xl border"
-      style={{
-        borderColor: border,
-        background: border,
-        gridTemplateColumns: `repeat(${cells.length}, minmax(0,1fr))`,
-      }}
-    >
-      {cells.map((c) => (
-        <div
-          key={c.label}
-          className="min-w-0 px-2 py-3.5 text-center"
-          style={{ background: wash, color: ink }}
-        >
-          <p
-            className={`tabular-nums leading-none tracking-tight ${
-              c.strong ? "text-[25px] font-bold" : "text-[19px] font-semibold"
-            }`}
+    <div className="space-y-2.5">
+      <div
+        className="lightedge relative overflow-hidden rounded-[1.5rem] border px-6 py-6"
+        style={{
+          borderColor: border,
+          background: `linear-gradient(152deg, ${accent}33, rgba(255,255,255,0.045) 58%)`,
+          color: chrome,
+          boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 20px 46px -26px ${accent}`,
+        }}
+      >
+        <p className="t-micro" style={{ color: meta }}>
+          {min === null ? "Precio" : "Desde"}
+        </p>
+        <p className="mt-2.5 t-price text-[2.9rem] leading-[0.9]">{formatPrice(min)}</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2.5">
+        {rest.map((c) => (
+          <div
+            key={c.label}
+            className="lightedge relative overflow-hidden rounded-[1.2rem] border px-3.5 py-4"
+            style={{
+              borderColor: border,
+              background: "rgba(255,255,255,0.05)",
+              color: chrome,
+            }}
           >
-            {c.value}
-          </p>
-          <p
-            className="mt-1.5 truncate text-[10.5px] uppercase tracking-[0.12em]"
-            style={{ opacity: 0.65 }}
-          >
-            {c.label}
-          </p>
-        </div>
-      ))}
+            <p className="truncate t-micro" style={{ color: meta }}>
+              {c.label}
+            </p>
+            <p className="mt-1.5 t-price text-[1.45rem] leading-none">{c.value}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
