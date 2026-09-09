@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import type { Brand, BrandFont } from "@/lib/brands";
 import { BrandSymbol } from "@/components/brand-symbols";
+import { BrandLogo } from "@/components/logos";
 
 /**
  * Logotipo de un servicio.
@@ -170,6 +171,30 @@ export const Wordmark = memo(function Wordmark({
   brand: Brand;
   size: WordmarkSize;
 }) {
+  /*
+   * Camino principal: la marca tiene su logotipo vectorizado. Se dibuja tal
+   * cual —símbolo y nombre son contorno, no tipografía— y no se compone nada
+   * más encima.
+   *
+   * Lo que sigue después de este bloque solo atiende a lo que NO es una marca:
+   * los servicios propios de «Otros» y los 59 trámites, donde la tipografía
+   * temática sí es el tratamiento correcto porque no hay logotipo que imitar.
+   */
+  if (brand.logo) {
+    return (
+      <span
+        className={
+          size === "row"
+            ? "flex min-w-0 flex-1 items-center"
+            : "flex w-full items-center justify-center"
+        }
+        style={size === "row" ? { maxWidth: "12rem" } : undefined}
+      >
+        <BrandLogo id={brand.logo} name={name} />
+      </span>
+    );
+  }
+
   // El «+» de Paramount+, Universal+ o Apple TV+ ya viene en el nombre del
   // servicio: se quita del texto para que lo dibuje `Suffix` con su propio
   // peso, pegado a la última letra y no en una línea aparte.
