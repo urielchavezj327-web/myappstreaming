@@ -43,7 +43,7 @@ export const FilterChip = forwardRef<
       {count !== undefined ? (
         <span
           className={`inline-flex h-6 min-w-6 items-center justify-center rounded-lg px-1.5 text-[12px] font-bold tabular-nums transition-colors ${
-            active ? "bg-brand text-brand-ink" : "bg-surface-2 text-faint"
+            active ? "metal text-brand-ink" : "bg-surface-2 text-faint"
           }`}
         >
           {count}
@@ -97,7 +97,7 @@ export function PrimaryButton({
   return (
     <button
       {...rest}
-      className={`tappable inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-brand px-5 text-[15px] font-bold text-brand-ink shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] disabled:opacity-45 disabled:shadow-none ${className}`}
+      className={`tappable inline-flex h-13 items-center justify-center gap-2 rounded-xl metal px-5 text-[15px] font-bold text-brand-ink shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] disabled:opacity-45 disabled:shadow-none ${className}`}
     >
       {children}
     </button>
@@ -179,7 +179,7 @@ export function ActionCard({
       {...rest}
       className="glass lightedge tappable flex w-full items-center gap-3.5 rounded-2xl px-4 py-4 text-left hover:border-brand/40"
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-ink shadow-[0_8px_22px_-10px_var(--brand-glow)]">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl metal text-brand-ink shadow-[0_8px_22px_-10px_var(--brand-glow)]">
         {icon}
       </span>
       <span className="min-w-0 flex-1">

@@ -228,10 +228,7 @@ export function OfferRow({
     >
       {/* Filo de acento a la izquierda: marca la fila ganadora sin gritar. */}
       {best ? (
-        <span
-          className="pointer-events-none absolute inset-y-0 left-0 w-[3px] bg-brand"
-          aria-hidden
-        />
+        <span className="pointer-events-none absolute inset-y-0 left-0 w-[3px] metal" aria-hidden />
       ) : null}
       <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4">
         <div className="min-w-0">
@@ -241,7 +238,7 @@ export function OfferRow({
               {title}
             </span>
             {best ? (
-              <span className="inline-flex items-center rounded-full bg-brand px-2.5 py-[3px] text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-brand-ink shadow-[0_0_20px_-4px_var(--brand-glow)]">
+              <span className="inline-flex items-center rounded-full metal px-2.5 py-[3px] text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-brand-ink shadow-[0_0_20px_-4px_var(--brand-glow)]">
                 Mejor precio
               </span>
             ) : null}

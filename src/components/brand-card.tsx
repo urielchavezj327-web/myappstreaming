@@ -47,7 +47,7 @@ export const BrandCard = memo(function BrandCard({
           "--edge": skin.edge,
         } as React.CSSProperties
       }
-      className={`wordmark-box lightedge tappable group relative isolate flex overflow-hidden border shadow-[0_2px_4px_-2px_rgba(0,0,0,0.6),0_18px_36px_-20px_rgba(0,0,0,0.9)] sm:hover:-translate-y-0.5 sm:hover:shadow-[0_2px_6px_-2px_rgba(0,0,0,0.6),0_28px_54px_-24px_rgba(0,0,0,0.95)] ${
+      className={`wordmark-box lightedge tappable group relative isolate flex overflow-hidden border ${brand.paper ? "paper" : ""} shadow-[0_2px_4px_-2px_rgba(0,0,0,0.6),0_18px_36px_-20px_rgba(0,0,0,0.9)] sm:hover:-translate-y-0.5 sm:hover:shadow-[0_2px_6px_-2px_rgba(0,0,0,0.6),0_28px_54px_-24px_rgba(0,0,0,0.95)] ${
         variant === "tile"
           ? "cv-tile aspect-[1/0.86] flex-col items-center justify-center rounded-[1.65rem] px-3.5 pb-3 pt-4"
           : "flex-row items-center gap-3 rounded-[1.15rem] px-4 py-3.5"

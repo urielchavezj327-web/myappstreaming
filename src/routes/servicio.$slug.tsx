@@ -128,12 +128,12 @@ function ServicePage() {
         contraste a las listas de precios.
       */}
       <div
-        className="pointer-events-none fixed inset-0 -z-20"
+        className="pointer-events-none absolute inset-0 -z-20"
         style={{ background: skin.background }}
         aria-hidden
       />
       <div
-        className="pointer-events-none fixed inset-0 -z-10"
+        className="pointer-events-none absolute inset-0 -z-10"
         style={{
           /*
             El velo solo asienta el color para que las listas de precios se
@@ -146,8 +146,8 @@ function ServicePage() {
             entera o las listas quedarían negro sobre gris.
           */
           background: brand.light
-            ? "linear-gradient(to bottom, transparent 0%, transparent 14%, color-mix(in srgb, var(--color-background) 90%, transparent) 44%, var(--color-background) 66%)"
-            : "linear-gradient(to bottom, transparent 0%, transparent 46%, color-mix(in srgb, var(--color-background) 34%, transparent) 78%, color-mix(in srgb, var(--color-background) 52%, transparent) 100%)",
+            ? "linear-gradient(to bottom, transparent 0%, transparent 10%, color-mix(in srgb, var(--color-background) 55%, transparent) 34%, color-mix(in srgb, var(--color-background) 78%, transparent) 62%, color-mix(in srgb, var(--color-background) 86%, transparent) 100%)"
+            : "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 16%, transparent) 88%, color-mix(in srgb, var(--color-background) 26%, transparent) 100%)",
         }}
         aria-hidden
       />
@@ -220,7 +220,7 @@ function ServicePage() {
               </p>
               <Link
                 to="/agregar"
-                className="mt-6 inline-flex h-13 items-center rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-5 text-[15px]"
+                className="mt-6 inline-flex h-13 items-center rounded-xl metal text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-5 text-[15px]"
               >
                 Agregar stock
               </Link>

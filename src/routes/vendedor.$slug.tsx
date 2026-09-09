@@ -106,7 +106,7 @@ function SellerPage() {
                 href={whatsappLink(seller.phone, "Hola, vengo del comparador de precios.")}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-5 py-3 text-[15px]"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl metal text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-5 py-3 text-[15px]"
               >
                 <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2.2} /> WhatsApp
               </a>

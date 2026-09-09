@@ -315,7 +315,7 @@ function SellerCard({
             target="_blank"
             rel="noreferrer"
             aria-label={`Escribir a ${row.name} por WhatsApp`}
-            className="tappable ml-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-brand-ink"
+            className="tappable ml-0.5 flex h-9 w-9 items-center justify-center rounded-xl metal text-brand-ink"
           >
             <MessageCircle className="h-4 w-4" strokeWidth={2.3} />
           </a>
@@ -477,7 +477,7 @@ function SellerModal({
               <button
                 type="submit"
                 disabled={busy || !pin}
-                className="h-12 flex-1 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
+                className="h-12 flex-1 rounded-xl metal text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
               >
                 {busy ? "Verificando…" : "Entrar"}
               </button>
@@ -536,7 +536,7 @@ function SellerModal({
                 type="button"
                 disabled={busy || !name.trim()}
                 onClick={submit}
-                className="h-12 flex-1 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
+                className="h-12 flex-1 rounded-xl metal text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
               >
                 {busy ? "Guardando…" : "Guardar cambios"}
               </button>
