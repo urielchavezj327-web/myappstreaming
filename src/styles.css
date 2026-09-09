@@ -165,7 +165,10 @@
   --brand-ink: #14161A;
   --brand-glow: oklch(0.93 0.006 265 / 20%);
   /* Las cuatro paradas del metal, a 135°: brillo, cuerpo, sombra y canto. */
-  --metal: linear-gradient(135deg, #F5F7FA 0%, #E8ECF1 34%, #A9B2BD 68%, #6E7681 100%);
+  /* El canto oscuro se corre al final: sobre él la tinta del botón bajaba de
+     4.5:1 y con las cuatro paradas repartidas a partes iguales ocupaba un
+     tercio de la superficie. */
+  --metal: linear-gradient(135deg, #F5F7FA 0%, #E8ECF1 40%, #A9B2BD 82%, #6E7681 100%);
   --metal-edge: linear-gradient(135deg, oklch(1 0 0 / 70%), oklch(1 0 0 / 12%) 46%, oklch(0 0 0 / 22%));
 
   --card: var(--surface);

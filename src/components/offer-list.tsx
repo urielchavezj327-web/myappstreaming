@@ -86,10 +86,20 @@ export function OfferGroups({
                 const showDuration = durations.length > 1 || variants.length === 1;
                 return (
                   <div key={key}>
+                    {/*
+                      El rótulo de duración separa bloques de precios: si va en
+                      cuerpo diminuto y pegado a la izquierda no separa nada. Va
+                      centrado, con filete a cada lado y a un tamaño que se lee
+                      de un vistazo mientras se baja la lista.
+                    */}
                     {showDuration ? (
-                      <p className="mb-2.5 t-micro text-faint">
-                        {durationLabel(rows[0]?.months ?? null)}
-                      </p>
+                      <div className="mb-3 flex items-center gap-3" aria-hidden={false}>
+                        <span className="h-px flex-1 bg-border" />
+                        <span className="text-[12.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                          {durationLabel(rows[0]?.months ?? null)}
+                        </span>
+                        <span className="h-px flex-1 bg-border" />
+                      </div>
                     ) : null}
                     <div className={variants.length > 1 ? "space-y-5" : ""}>
                       {variants.map((variant) => (

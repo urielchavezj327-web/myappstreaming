@@ -67,8 +67,10 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-border">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-3 px-4 py-10 sm:px-6">
+    // Antes eran 96 px de aire entre el final del contenido y el pie: en el
+    // celular se leía como que la página se había acabado dos veces.
+    <footer className="mt-10 border-t border-border">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-3 px-4 py-7 sm:px-6">
         <p className="t-meta max-w-md text-faint">
           Precios de referencia recopilados de grupos y vendedores de WhatsApp. Verifica
           disponibilidad y precio con el vendedor antes de pagar.

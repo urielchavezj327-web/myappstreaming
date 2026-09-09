@@ -332,28 +332,43 @@ function SummaryBar({
     { label: "Tiendas", value: String(sellers) },
   ];
 
+  // «A consultar» no es una cifra: a 2.9rem se sale de la pastilla. Cuando no
+  // hay precio, el texto baja a un cuerpo que sí cabe.
+  const price = formatPrice(min);
+  const priceSize = min === null ? "text-[1.7rem]" : "text-[2.9rem]";
+
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       <div
         className="lightedge relative overflow-hidden rounded-[1.5rem] border px-6 py-6 text-foreground"
         style={{
           borderColor: `${accent}55`,
           background: `linear-gradient(152deg, ${accent}33, rgba(255,255,255,0.045) 58%)`,
-          boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 20px 46px -26px ${accent}`,
+          boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 22px 50px -26px ${accent}`,
         }}
       >
         <p className="t-micro text-muted-foreground">{min === null ? "Precio" : "Desde"}</p>
-        <p className="mt-2.5 t-price text-[2.9rem] leading-[0.9]">{formatPrice(min)}</p>
+        <p className={`mt-2.5 t-price leading-[0.9] ${priceSize}`}>{price}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2.5">
+      {/*
+        Las tres pastillas flotan: llevan el tinte de la marca y una sombra
+        propia, así que se leen como piezas sueltas sobre el color de la ficha
+        y no como una barra pegada al bloque de arriba.
+      */}
+      <div className="grid grid-cols-3 gap-3">
         {rest.map((c) => (
           <div
             key={c.label}
-            className="glass lightedge relative overflow-hidden rounded-[1.2rem] px-3.5 py-4 text-foreground"
+            className="lightedge relative overflow-hidden rounded-[1.2rem] border px-3.5 py-4 text-foreground"
+            style={{
+              borderColor: `${accent}3D`,
+              background: `linear-gradient(152deg, ${accent}22, rgba(255,255,255,0.05) 64%)`,
+              boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.09), 0 14px 30px -20px ${accent}`,
+            }}
           >
             <p className="truncate t-micro text-muted-foreground">{c.label}</p>
-            <p className="mt-1.5 t-price text-[1.45rem] leading-none">{c.value}</p>
+            <p className="mt-1.5 truncate t-price text-[1.45rem] leading-none">{c.value}</p>
           </div>
         ))}
       </div>

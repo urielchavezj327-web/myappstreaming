@@ -48,13 +48,46 @@ function GroupsPage() {
   const { favorites, isFavorite, toggle } = useFavorites();
   const [filter, setFilter] = useState("");
 
+  /*
+   * El buscador de grupos, por palabras sueltas.
+   *
+   * Antes se comparaba la consulta entera contra cada campo por separado, y
+   * eso dejaba fuera lo que más se busca aquí: «Vendedor A C/V Xime», que es
+   * mitad nombre y mitad grupo padre. Ahora cada palabra tiene que aparecer en
+   * alguna parte de la ficha del grupo —nombre, grupo padre o teléfono—, y da
+   * igual el orden en que se escriban.
+   *
+   * El teléfono se compara solo por dígitos y solo si la palabra trae al menos
+   * tres, así que «+52 81 3914 7673», «8139147673» y «3914» encuentran lo
+   * mismo. El mínimo importa: sin él, cualquier palabra sin números dejaba una
+   * cadena vacía, y una cadena vacía está contenida en todos los teléfonos —el
+   * buscador devolvía la lista completa.
+   */
   const query = norm(filter);
-  const matches = (g: GroupRow) =>
-    query.length === 0 ||
-    norm(g.name).includes(query) ||
-    norm(g.parentGroup ?? "").includes(query) ||
-    (g.phone ?? "").replace(/\D/g, "").includes(query.replace(/\D/g, "")) ||
-    false;
+  const words = query.split(" ").filter(Boolean);
+  /*
+   * Un teléfono escrito con espacios —«+52 81 3914 7673»— no son cuatro
+   * palabras: es un número. Si lo escrito son solo dígitos y signos de
+   * teléfono, se juntan y se comparan los últimos diez, que es lo que no
+   * cambia lleve lada o no.
+   */
+  const phone = /^[+\d\s().-]+$/.test(filter.trim()) ? filter.replace(/\D/g, "") : "";
+  const tail = (value: string) => value.slice(-10);
+
+  const matches = (g: GroupRow) => {
+    if (phone.length >= 7) {
+      const d = (g.phone ?? "").replace(/\D/g, "");
+      return d.length > 0 && tail(d).includes(tail(phone));
+    }
+    if (words.length === 0) return true;
+    const haystack = `${norm(g.name)} ${norm(g.parentGroup ?? "")}`;
+    const digits = (g.phone ?? "").replace(/\D/g, "");
+    return words.every((word) => {
+      if (haystack.includes(word)) return true;
+      const asDigits = word.replace(/\D/g, "");
+      return asDigits.length >= 3 && digits.includes(asDigits);
+    });
+  };
 
   // "Mis Grupos" conserva el orden que tiene en la base: es un orden propio
   // (MonShop primero) y no hay vendedores "A, B, C" que reordenar.
