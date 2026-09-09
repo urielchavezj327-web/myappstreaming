@@ -187,8 +187,8 @@ function key(value: string) {
       accent: "#DCDCE6",
       deepEnd: "#0D0F1B",
       wash: 0.34,
-      secondary: ["#DCDCE6", "#8B94A8"],
-      mix: ["#00030C", "#0D0F1B", "#141826"],
+      secondary: ["#DCDCE6"],
+      mix: ["#00030C", "#0D0F1B"],
       logo: "hbomax",
     }),
   ],
@@ -1213,8 +1213,6 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
       ? mix.map((c, i) => `${c} ${Math.round((i / (mix.length - 1)) * 100)}%`).join(", ")
       : `${c0} 0%, ${c0} 24%, ${c1} 100%`;
 
-  /* Los secundarios —los cinco puntos de Peacock, el dorado de Plex— entran
-     como manchas anchas: presentes en la mezcla, nunca de protagonistas. */
   const blobs = (brand.secondary ?? []).map((c, i) => {
     /*
      * Los secundarios son LUZ sobre el campo, no manchitas de adorno. En un
@@ -1222,14 +1220,21 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
      * la única forma honesta de mezclar los dos colores: cualquier punto
      * intermedio entre negro y blanco es gris, y gris no es de nadie.
      *
-     * Van repartidos por la mitad de abajo. Arriba se cruzarían con el
-     * logotipo, y en los que son icono de aplicación —Duolingo— dibujarían el
-     * canto del cuadro.
+     * Y entra CENTRADA. Colocada a un lado se lee como una lámpara puesta a la
+     * izquierda, que es un efecto de otra cosa y no el color de la marca: el
+     * primero va al centro y los demás se abren en pares simétricos, así que
+     * el conjunto sigue leyéndose como una luz general.
+     *
+     * El núcleo va a alfa alta y cae rápido. Un blanco al 40 % plano sobre
+     * negro no se lee blanco, se lee plateado.
      */
-    const x = 10 + ((i * 37) % 76);
-    const y = 56 + ((i * 19) % 38);
-    const alpha = i === 0 ? 0.5 : 0.34;
-    return `radial-gradient(86vw 46vh at ${x}vw ${y}vh, ${rgba(c, alpha)}, transparent 70%)`;
+    const x = i === 0 ? 50 : 50 + (i % 2 === 1 ? 1 : -1) * (12 + i * 3);
+    const y = 76 + (i === 0 ? 0 : 6 + (i % 3) * 7);
+    const alpha = i === 0 ? 0.56 : 0.26;
+    return (
+      `radial-gradient(112vw 52vh at ${x}vw ${y}vh, ${rgba(c, alpha)}, ` +
+      `${rgba(c, alpha * 0.22)} 30%, transparent 66%)`
+    );
   });
 
   const layers = hero
@@ -1259,17 +1264,16 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
     /*
      * Relieve del canto de la tarjeta.
      *
-     * Plana se veía como una calcomanía: un rectángulo de color y nada más.
-     * Son tres cosas a la vez —un filo interior de luz arriba, una sombra
-     * interior abajo y un halo exterior del propio color de la marca— y juntas
-     * le dan grosor sin sacarla del lenguaje de vidrio del resto de la app.
+     * Plana se veía como una calcomanía: un rectángulo de color y nada más. Va
+     * ENTERO POR FUERA —un filete y dos halos del propio color de la marca—.
+     * Hacia dentro tapaba el fondo del logotipo, que es justo lo que no se
+     * puede tocar.
      */
     relief: [
-      `inset 0 1px 0 0 ${rgba(surfaceLight ? "#FFFFFF" : "#FFFFFF", surfaceLight ? 0.5 : 0.22)}`,
-      `inset 0 -1px 0 0 ${rgba("#000000", surfaceLight ? 0.12 : 0.3)}`,
-      `inset 0 0 26px -8px ${rgba(a, 0.34)}`,
       "0 2px 4px -2px rgba(0,0,0,0.6)",
-      `0 20px 40px -22px ${rgba(a, 0.55)}`,
+      `0 0 0 1px ${rgba(a, 0.18)}`,
+      `0 10px 24px -10px ${rgba(a, 0.5)}`,
+      `0 26px 54px -26px ${rgba(a, 0.62)}`,
     ].join(", "),
     ink: brand.ink,
     inkGrad: brand.inkGrad,

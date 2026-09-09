@@ -365,14 +365,20 @@ function SummaryBar({
      * y ninguna destaca. En círculos flotantes la forma ya separa las piezas
      * del resto de la página, y el de «Desde» va aparte y al doble de tamaño
      * porque es el dato que se viene a consultar; los otros dos acompañan.
+     *
+     * El relleno es vidrio neutro, no el color de la marca: teñido del mismo
+     * color que tiene detrás, el círculo desaparecía. Y sin filete de luz
+     * arriba, que sobre una forma redonda se lee como una raya suelta.
      */
     <div className="flex flex-col items-center gap-4">
       <div
-        className="lightedge relative flex aspect-square w-[46%] max-w-[11rem] flex-col items-center justify-center rounded-full border text-center text-foreground"
+        className="relative flex aspect-square w-[46%] max-w-[11rem] flex-col items-center justify-center rounded-full border text-center text-foreground"
         style={{
-          borderColor: `${accent}5C`,
-          background: `radial-gradient(120% 120% at 50% 0%, ${accent}3D, rgba(255,255,255,0.05) 72%)`,
-          boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.14), 0 18px 44px -22px ${accent}`,
+          borderColor: "rgba(255,255,255,0.34)",
+          background:
+            "linear-gradient(168deg, rgba(255,255,255,0.22), rgba(255,255,255,0.07) 52%, rgba(0,0,0,0.16))",
+          boxShadow:
+            "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -10px 20px -12px rgba(0,0,0,0.5), 0 14px 34px -16px rgba(0,0,0,0.6)",
         }}
       >
         <p className="t-micro text-muted-foreground">{min === null ? "Precio" : "Desde"}</p>
@@ -383,11 +389,13 @@ function SummaryBar({
         {rest.map((c) => (
           <div
             key={c.label}
-            className="lightedge relative flex aspect-square w-[28%] max-w-[7rem] flex-col items-center justify-center rounded-full border text-center text-foreground"
+            className="relative flex aspect-square w-[28%] max-w-[7rem] flex-col items-center justify-center rounded-full border text-center text-foreground"
             style={{
-              borderColor: `${accent}42`,
-              background: `radial-gradient(120% 120% at 50% 0%, ${accent}26, rgba(255,255,255,0.045) 74%)`,
-              boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 12px 28px -18px ${accent}`,
+              borderColor: "rgba(255,255,255,0.24)",
+              background:
+                "linear-gradient(168deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05) 54%, rgba(0,0,0,0.14))",
+              boxShadow:
+                "inset 0 1px 0 0 rgba(255,255,255,0.28), inset 0 -8px 16px -10px rgba(0,0,0,0.45), 0 10px 24px -14px rgba(0,0,0,0.55)",
             }}
           >
             <p className="t-micro text-muted-foreground">{c.label}</p>

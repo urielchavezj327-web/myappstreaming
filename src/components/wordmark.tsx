@@ -169,7 +169,13 @@ export const Wordmark = memo(function Wordmark({
         className={
           size === "row"
             ? "flex min-w-0 flex-1 items-center"
-            : "flex w-full items-center justify-center"
+            : size === "tile"
+              ? // `-mx-1.5` recupera parte del acolchado de la tarjeta: los
+                // logotipos muy anchos —F1 TV, HIDIVE— topaban con él y no
+                // podían crecer más aunque les sobrara alto. En la ficha no
+                // hace falta: ahí la caja ya tiene su propio ancho máximo.
+                "-mx-1.5 flex w-[calc(100%+0.75rem)] items-center justify-center"
+              : "flex w-full items-center justify-center"
         }
         style={size === "row" ? { maxWidth: "12rem" } : undefined}
       >
