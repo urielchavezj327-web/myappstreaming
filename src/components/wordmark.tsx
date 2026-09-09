@@ -126,45 +126,6 @@ function fit(text: string, brand: Brand, box: Box, availableHeight: number) {
   return { lines: winner.lines, size: Math.max(box.min, winner.size) };
 }
 
-/**
- * «Disney» recreado en vector.
- *
- * La tipografía del logotipo es un lettering propio, no una fuente: ninguna
- * familia de Google se le acerca, así que va dibujada a trazo — un monolineal
- * con la bandera de la D y la cola larga de la y, que son los dos rasgos por
- * los que se reconoce.
- */
-function DisneyScript({ width, color }: { width: string; color: string }) {
-  return (
-    <svg
-      viewBox="0 0 492 158"
-      width={width}
-      style={{ display: "block", overflow: "visible" }}
-      aria-hidden
-      focusable="false"
-    >
-      <g fill="none" stroke={color} strokeWidth={12} strokeLinecap="round" strokeLinejoin="round">
-        {/* D: asta con bandera, y bombo */}
-        <path d="M92 116 C 86 72, 84 38, 62 27 C 40 16, 24 36, 40 51 C 56 66, 90 60, 116 47" />
-        <path d="M98 48 C 136 33, 176 47, 178 79 C 180 108, 144 124, 104 116" />
-        {/* i */}
-        <path d="M206 70 C 202 86, 202 100, 209 108 C 214 114, 222 111, 229 102" />
-        <circle cx="209" cy="47" r="7" fill={color} stroke="none" />
-        {/* s */}
-        <path d="M264 74 C 258 65, 245 65, 243 76 C 241 89, 265 91, 265 103 C 265 114, 250 116, 243 107" />
-        {/* n */}
-        <path d="M283 110 C 283 92, 285 78, 288 70 C 290 82, 295 85, 301 76 C 310 64, 326 67, 326 82 C 326 93, 324 101, 324 110" />
-        {/* e */}
-        <path d="M341 94 C 355 92, 369 87, 369 78 C 369 69, 358 67, 351 76 C 342 88, 345 108, 360 110 C 369 111, 378 105, 385 96" />
-        {/* y, con la cola que vuelve por debajo */}
-        <path d="M396 70 C 396 86, 400 100, 408 104 C 415 107, 421 99, 423 84 C 424 74, 424 70, 424 70 C 424 70, 425 100, 419 122 C 412 148, 392 154, 378 146 C 368 141, 368 129, 378 126" />
-        {/* El «+» va dentro del vector: así nunca se despega del nombre. */}
-        <path d="M462 30 v46 M439 53 h46" strokeWidth={11} />
-      </g>
-    </svg>
-  );
-}
-
 export const Wordmark = memo(function Wordmark({
   name,
   brand,
@@ -188,8 +149,16 @@ export const Wordmark = memo(function Wordmark({
     // sangre: llenan la caja entera y su propio fondo hace de fondo. Encajarlo
     // en un cuadro más chico dentro de la tarjeta es lo que lo hacía parecer
     // una imagen pegada encima.
-    if (isTileLogo(brand.logo) && size !== "hero") {
-      return (
+    // El icono de aplicación se sirve a sangre en los dos sitios. En la
+    // tarjeta llena la tarjeta; en la ficha, el ancho de la pantalla. En los
+    // dos casos sus cantos rectos quedan fuera de vista, que es lo que hace
+    // que se vea el dibujo y no una imagen pegada.
+    if (isTileLogo(brand.logo)) {
+      return size === "hero" ? (
+        <span className="block w-full">
+          <BrandLogo id={brand.logo} name={name} contain hero />
+        </span>
+      ) : (
         <span className="absolute inset-0 block">
           <BrandLogo id={brand.logo} name={name} />
         </span>
@@ -200,15 +169,17 @@ export const Wordmark = memo(function Wordmark({
         className={
           size === "row"
             ? "flex min-w-0 flex-1 items-center"
-            : "flex w-full items-center justify-center"
+            : size === "tile"
+              ? // `-mx-1.5` recupera parte del acolchado de la tarjeta: los
+                // logotipos muy anchos —F1 TV, HIDIVE— topaban con él y no
+                // podían crecer más aunque les sobrara alto. En la ficha no
+                // hace falta: ahí la caja ya tiene su propio ancho máximo.
+                "-mx-1.5 flex w-[calc(100%+0.75rem)] items-center justify-center"
+              : "flex w-full items-center justify-center"
         }
         style={size === "row" ? { maxWidth: "12rem" } : undefined}
       >
-        <BrandLogo
-          id={brand.logo}
-          name={name}
-          {...(isTileLogo(brand.logo) ? { contain: true } : {})}
-        />
+        <BrandLogo id={brand.logo} name={name} {...(size === "hero" ? { hero: true } : {})} />
       </span>
     );
   }
@@ -262,8 +233,7 @@ export const Wordmark = memo(function Wordmark({
   }
 
   const box = BOX[size];
-  const symbolSide =
-    brand.symbol || brand.font === "script" ? box.symbol * (brand.symbolScale ?? 0.7) : 0;
+  const symbolSide = brand.symbol ? box.symbol * (brand.symbolScale ?? 0.7) : 0;
   const gap = symbolSide * 0.22;
   // Lo que queda para el nombre tras descontar el símbolo y su separación.
   const available = box.height > 0 ? Math.max(box.height - symbolSide - gap, 12) : 0;
@@ -271,9 +241,7 @@ export const Wordmark = memo(function Wordmark({
 
   return (
     <span className="flex flex-col items-center" style={{ gap: `${gap}cqw` }}>
-      {brand.font === "script" ? (
-        <DisneyScript width={`${box.width * 0.94}cqw`} color={brand.ink} />
-      ) : brand.symbol ? (
+      {brand.symbol ? (
         <BrandSymbol
           id={brand.symbol}
           size={`${symbolSide}cqw`}

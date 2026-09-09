@@ -83,11 +83,12 @@ export type Brand = {
   /** Fondo claro: el resto de la interfaz de la tarjeta se oscurece. */
   light: boolean;
   /**
-   * Cuánto pesa el acento en el difuminado de la ficha, de 0 a 1. Por omisión
-   * 1. Se baja cuando el color principal es casi blanco —el metal de HBO Max—
-   * porque a plena intensidad no se lee como plata sino como una página gris.
+   * Los colores EXACTOS del logotipo, en orden de peso. Es con lo que se pinta
+   * la ficha: los dos primeros arman el degradado de base y del tercero en
+   * adelante entran como manchas suaves. Nada que no esté aquí toca la ficha,
+   * y eso incluye el negro: si el logotipo no lo lleva, la ficha tampoco.
    */
-  fade?: number;
+  mix?: string[];
   /**
    * Textura de papel apenas perceptible. Va en Trámites y en los servicios
    * temáticos de «Otros»: son los que no representan a ninguna marca, y la
@@ -105,7 +106,7 @@ function spec(s: Spec): Brand {
     ...(s.logo ? { logo: s.logo } : {}),
     ...(s.secondary ? { secondary: s.secondary } : {}),
     ...(s.deepEnd ? { deepEnd: s.deepEnd } : {}),
-    ...(s.fade === undefined ? {} : { fade: s.fade }),
+    ...(s.mix ? { mix: s.mix } : {}),
     ...(s.paper ? { paper: true } : {}),
     bg: s.bg,
     ink: s.ink,
@@ -156,6 +157,7 @@ function key(value: string) {
       accent: "#E50914",
       deepEnd: "#101010",
       wash: 0.58,
+      mix: ["#101010", "#101010", "#E50914", "#E50914"],
       logo: "netflix",
     }),
   ],
@@ -169,6 +171,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#04BCBA",
       wash: 0.3,
+      mix: ["#073545", "#0A5864", "#04BCBA", "#5AF3F1"],
       logo: "disneyplus",
     }),
   ],
@@ -183,10 +186,9 @@ function key(value: string) {
       ink: "#E7E7EF",
       accent: "#DCDCE6",
       deepEnd: "#0D0F1B",
-      // El metal es casi blanco: a plena intensidad la ficha sale gris en vez
-      // de azul de tinta con luz de plata encima.
-      fade: 0.3,
       wash: 0.34,
+      secondary: ["#DCDCE6"],
+      mix: ["#00030C", "#0D0F1B"],
       logo: "hbomax",
     }),
   ],
@@ -197,6 +199,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#0779FF",
       wash: 0.3,
+      mix: ["#0779FF", "#0779FF", "#5BA6FF", "#BCD9FF"],
       logo: "primevideo",
     }),
   ],
@@ -207,6 +210,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#006FFD",
       wash: 0.24,
+      mix: ["#006FFD", "#3E8FFE", "#8FC0FF", "#DCEBFF"],
       logo: "paramountplus",
     }),
   ],
@@ -217,9 +221,9 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FFFFFF",
       deepEnd: "#0D0D0D",
-      fade: 0.5,
-      secondary: ["#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
+      secondary: ["#FFFFFF", "#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
       wash: 0.3,
+      mix: ["#0D0D0D", "#141414"],
       logo: "peacock",
     }),
   ],
@@ -231,6 +235,8 @@ function key(value: string) {
       accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.26,
+      secondary: ["#C3C3CC"],
+      mix: ["#000000", "#0A0A0C"],
       logo: "appletv",
     }),
   ],
@@ -243,6 +249,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FF5E00",
       wash: 0.2,
+      mix: ["#FF5E00", "#FF5E00", "#FF9455", "#FFD3B4"],
       logo: "crunchyroll",
     }),
   ],
@@ -259,6 +266,7 @@ function key(value: string) {
       accent: "#FD6E39",
       deepEnd: "#FF4712",
       wash: 0.16,
+      mix: ["#FF587E", "#FE685D", "#FD6E4A", "#FD6E39", "#FD672A", "#FF4A14", "#FF4712"],
       logo: "vix",
     }),
   ],
@@ -272,6 +280,8 @@ function key(value: string) {
       accent: "#E1251B",
       deepEnd: "#000000",
       wash: 0.5,
+      secondary: ["#E1251B", "#FFFFFF"],
+      mix: ["#000000", "#0A0A0C"],
       logo: "clarovideo",
     }),
   ],
@@ -282,8 +292,10 @@ function key(value: string) {
       ink: "#15151E",
       accent: "#E10600",
       wash: 0.28,
+      // Rojo y negro, sus dos colores. Con el blanco de fondo la ficha se veía
+      // de la app y no de la marca; con el negro se ve de F1.
+      mix: ["#FFFFFF", "#F6C7C4", "#E10600", "#E10600"],
       logo: "f1tv",
-      light: true,
     }),
   ],
   [
@@ -294,6 +306,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FFFFFF",
       wash: 0.26,
+      secondary: ["#FFFFFF"],
+      mix: ["#000000", "#0C0E12"],
       logo: "foxone",
     }),
   ],
@@ -304,6 +318,7 @@ function key(value: string) {
       ink: "#000000",
       accent: "#04AFEF",
       wash: 0.2,
+      mix: ["#72EFFF", "#2FA9DE", "#0E1013"],
       logo: "hidive",
       light: true,
     }),
@@ -316,6 +331,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#3B7BFF",
       wash: 0.22,
+      mix: ["#1AAEFF", "#3B7BFF", "#5B37E0"],
       logo: "iptv",
     }),
   ],
@@ -327,6 +343,7 @@ function key(value: string) {
       accent: "#7B3BA8",
       deepEnd: "#121212",
       wash: 0.4,
+      mix: ["#572978", "#3B1C52", "#7B3BA8"],
       logo: "kocowa",
     }),
   ],
@@ -337,6 +354,7 @@ function key(value: string) {
       ink: "#001E3C",
       accent: "#BA001E",
       wash: 0.24,
+      mix: ["#FFFFFF", "#E4EAF3", "#C3CFE2"],
       logo: "mlbtv",
       light: true,
     }),
@@ -348,6 +366,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#001DFF",
       wash: 0.26,
+      mix: ["#001DFF", "#001DFF", "#5B72FF", "#C3CBFF"],
       logo: "mubi",
     }),
   ],
@@ -360,13 +379,10 @@ function key(value: string) {
       bg: "#070708",
       ink: "#FFFFFF",
       accent: "#FFFFFF",
-      secondary: ["#EFAE02"],
+      secondary: ["#FFFFFF", "#EFAE02"],
       deepEnd: "#070708",
-      // El blanco manda en el difuminado, pero sobre el negro del logotipo: a
-      // plena intensidad la ficha se volvía gris y «plex», que es blanco,
-      // desaparecía dentro de ella.
-      fade: 0.42,
       wash: 0.4,
+      mix: ["#070708", "#0C0C0E"],
       logo: "plex",
     }),
   ],
@@ -377,6 +393,7 @@ function key(value: string) {
       ink: "#000000",
       accent: "#FBCC11",
       wash: 0.18,
+      mix: ["#FBCC11", "#FBCC11", "#FDDD62", "#FEF0B5"],
       logo: "universalplus",
       light: true,
     }),
@@ -388,6 +405,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#0C9BFF",
       wash: 0.2,
+      mix: ["#0C9BFF", "#0C9BFF", "#63BEFF", "#C6E5FF"],
       logo: "viki",
     }),
   ],
@@ -398,6 +416,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#00DC5B",
       wash: 0.18,
+      mix: ["#00DC5B", "#00DC5B", "#5CE99A", "#BDF6D4"],
       logo: "iqiyi",
     }),
   ],
@@ -411,6 +430,8 @@ function key(value: string) {
       accent: "#1DB954",
       deepEnd: "#191414",
       wash: 0.6,
+      secondary: ["#1DB954"],
+      mix: ["#191414", "#1E1A1A"],
       logo: "spotify",
     }),
   ],
@@ -423,6 +444,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FB5C74",
       wash: 0.18,
+      mix: ["#FB5C74", "#FA4B62", "#FC97A4"],
       logo: "applemusic",
     }),
   ],
@@ -433,6 +455,7 @@ function key(value: string) {
       ink: "#282828",
       accent: "#FF0000",
       wash: 0.3,
+      mix: ["#FFFFFF", "#F3DADA", "#E9BFBF"],
       logo: "youtube",
       light: true,
     }),
@@ -444,6 +467,7 @@ function key(value: string) {
       ink: "#000000",
       accent: "#25D2D9",
       wash: 0.18,
+      mix: ["#25D2D9", "#25D2D9", "#7BE5EA", "#CFF6F8"],
       logo: "amazonmusic",
       light: true,
     }),
@@ -456,6 +480,8 @@ function key(value: string) {
       accent: "#A237FF",
       deepEnd: "#000000",
       wash: 0.55,
+      secondary: ["#A237FF"],
+      mix: ["#000000", "#0A0A0C"],
       logo: "deezer",
     }),
   ],
@@ -467,6 +493,8 @@ function key(value: string) {
       accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.22,
+      secondary: ["#C9CFD6"],
+      mix: ["#000000", "#0A0A0C"],
       logo: "tidal",
     }),
   ],
@@ -478,6 +506,8 @@ function key(value: string) {
       accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.22,
+      secondary: ["#B9C2CC"],
+      mix: ["#000000", "#0A0A0C"],
       logo: "qobuz",
     }),
   ],
@@ -490,6 +520,7 @@ function key(value: string) {
       ink: "#31A8FF",
       accent: "#31A8FF",
       wash: 0.45,
+      mix: ["#001E36", "#31A8FF"],
       logo: "photoshop",
     }),
   ],
@@ -552,6 +583,8 @@ function key(value: string) {
       accent: "#FFFFFF",
       deepEnd: "#0A0A0C",
       wash: 0.16,
+      secondary: ["#FFFFFF"],
+      mix: ["#0A0A0C", "#101014"],
       logo: "capcut",
       suffix: "Pro",
     }),
@@ -566,8 +599,9 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FFFFFF",
       deepEnd: "#000000",
-      fade: 0.22,
       wash: 0.5,
+      secondary: ["#FFFFFF"],
+      mix: ["#000000", "#0A0A0A"],
       logo: "chatgpt",
     }),
   ],
@@ -597,6 +631,7 @@ function key(value: string) {
       secondary: ["#C4667F"],
       deepEnd: "#EDEFF3",
       wash: 0.45,
+      mix: ["#F8F9FA", "#D8E4FB", "#E3DAF2", "#F7DDE4"],
       logo: "gemini",
       light: true,
     }),
@@ -609,6 +644,8 @@ function key(value: string) {
       accent: "#E0518C",
       deepEnd: "#141416",
       wash: 0.42,
+      secondary: ["#0A91E1", "#F2C230", "#E0518C"],
+      mix: ["#141416", "#1A1A1E"],
       logo: "microsoft365",
     }),
   ],
@@ -622,6 +659,7 @@ function key(value: string) {
       accent: "#0179D4",
       deepEnd: "#E6F1FB",
       wash: 0.46,
+      mix: ["#FFFFFF", "#DCEBFA", "#9CCBEE"],
       logo: "onedrive",
       light: true,
     }),
@@ -637,6 +675,7 @@ function key(value: string) {
       secondary: ["#EA4335", "#FBBC04", "#34A853"],
       deepEnd: "#E8EAED",
       wash: 0.4,
+      mix: ["#FFFFFF", "#B7CDFB", "#F7B4AA", "#FCDF95", "#ADDCBE"],
       logo: "googleone",
       light: true,
     }),
@@ -652,9 +691,13 @@ function key(value: string) {
       bg: "#77C801",
       ink: "#FFFFFF",
       accent: "#77C801",
-      secondary: ["#FFFFFF", "#FEC200", "#F38003"],
+      secondary: ["#8FDF02", "#FEC200", "#F38003", "#FFFFFF"],
       deepEnd: "#8FDF02",
       wash: 0.18,
+      // Plano en el mismo verde del cuadro del icono: cualquier variación
+      // detrás de él dibujaría el canto del cuadro. Los otros colores entran
+      // por abajo, donde el icono ya no está.
+      mix: ["#77C801", "#77C801"],
       logo: "duolingo",
     }),
   ],
@@ -670,6 +713,7 @@ function key(value: string) {
       secondary: ["#01FDEE"],
       deepEnd: "#7949D0",
       wash: 0.22,
+      mix: ["#D302BF", "#9039CC", "#36ABE0", "#01FDEE"],
       logo: "picsart",
     }),
   ],
@@ -680,6 +724,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#0A8648",
       wash: 0.2,
+      mix: ["#0A8648", "#0A8648", "#4FB07F", "#B3D9C4"],
       logo: "scribd",
     }),
   ],
@@ -692,6 +737,7 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#5865F2",
       wash: 0.18,
+      mix: ["#5865F2", "#5865F2", "#94A0F7", "#D2D7FC"],
       logo: "discord",
     }),
   ],
@@ -723,6 +769,8 @@ function key(value: string) {
       accent: "#FBBA00",
       deepEnd: "#000000",
       wash: 0.4,
+      secondary: ["#FBBA00"],
+      mix: ["#000000", "#0A0A0C"],
       logo: "smartfit",
     }),
   ],
@@ -734,6 +782,8 @@ function key(value: string) {
       accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.24,
+      secondary: ["#FFFFFF"],
+      mix: ["#000000", "#0A0A0C"],
       logo: "roblox",
     }),
   ],
@@ -825,11 +875,13 @@ function sobrio(
     bg: t.card,
     ink: t.ink,
     accent: t.ink,
+    // La ficha es la misma pizarra de la tarjeta llevada hacia su color: al
+    // entrar se ve lo mismo que se venía viendo, un punto más encendido.
+    mix: [t.card, mixHex(t.card, t.ink, 0.34)],
     // Resplandor muy bajo: el color lo pone la tinta, no un halo detrás. Y en
     // la ficha el color entra apenas teñido, para que al entrar se vea la
     // misma pizarra que en la tarjeta y no una pantalla del color del texto.
     wash: 0.16,
-    fade: 0.2,
     font: "display",
     weight: 600,
     paper: true,
@@ -839,50 +891,101 @@ function sobrio(
   });
 }
 
+/*
+ * Los quince servicios temáticos de «Otros».
+ *
+ * Ninguno es una marca, así que aquí la tipografía SÍ es el logotipo: es lo
+ * único que distingue una ficha de otra. Cada una lleva la de su asunto —la
+ * condensada de una placa para los videojuegos y el transporte, la de billete
+ * de avión para los viajes, la manuscrita de una carta para la comida, la
+ * serif de una marquesina para el cine y los libros, la geométrica de un
+ * recibo para pagos y recargas—, con el mismo molde de color para todos.
+ */
 const OWN: Array<[RegExp, Brand]> = [
-  [/^pagos de servicios/, sobrio("ocre", "card", 0.56)],
-  [/^compras con descuento/, sobrio("granate", "bag", 0.56)],
-  [/^abonos|liquidacion de creditos/, sobrio("oliva", "coins", 0.56)],
-  [/^recargas/, sobrio("acero", "phone", 0.5)],
-  [/^comida/, sobrio("teja", "cutlery", 0.52)],
-  [/^hospedaje|boletos y viajes/, sobrio("acero", "plane", 0.54)],
-  [/^seguro de autos/, sobrio("tinta", "carShield", 0.56)],
-  [/^videojuegos/, sobrio("purpura", "gamepad", 0.56)],
-  [/^peliculas|libros y pdf/, sobrio("granate", "book", 0.54)],
-  [/^bots para grupos/, sobrio("botella", "bot", 0.54)],
-  [/^seguidores/, sobrio("purpura", "users", 0.54)],
-  [/^numeros virtuales/, sobrio("acero", "hash", 0.5)],
-  [/^recuperacion de cuentas/, sobrio("ocre", "key", 0.52)],
-  [/^paneles y metodos/, sobrio("tinta", "grid", 0.52)],
-  [/^robux|pavos/, sobrio("pizarra", "coins", 0.52)],
+  [/^pagos de servicios/, sobrio("ocre", "card", 0.56, { font: "geometric", weight: 600 })],
+  [
+    /^compras con descuento/,
+    sobrio("granate", "bag", 0.56, { font: "display", weight: 800, tracking: "-0.04em" }),
+  ],
+  [
+    /^abonos|liquidacion de creditos/,
+    sobrio("oliva", "coins", 0.56, { font: "grotesk", weight: 700, tracking: "-0.02em" }),
+  ],
+  [/^recargas/, sobrio("acero", "phone", 0.5, { font: "geometric", weight: 600 })],
+  [/^comida/, sobrio("teja", "cutlery", 0.52, { font: "script", weight: 400, tracking: "0em" })],
+  [
+    /^hospedaje|boletos y viajes/,
+    sobrio("acero", "plane", 0.54, {
+      font: "condensed",
+      weight: 500,
+      upper: true,
+      tracking: "0.1em",
+    }),
+  ],
+  [
+    /^seguro de autos/,
+    sobrio("tinta", "carShield", 0.56, {
+      font: "condensed",
+      weight: 600,
+      upper: true,
+      tracking: "0.08em",
+    }),
+  ],
+  [
+    /^videojuegos/,
+    sobrio("purpura", "gamepad", 0.56, {
+      font: "condensed",
+      weight: 700,
+      upper: true,
+      tracking: "0.14em",
+    }),
+  ],
+  [
+    /^peliculas|libros y pdf/,
+    sobrio("granate", "book", 0.54, { font: "serif", weight: 600, tracking: "0.02em" }),
+  ],
+  [/^bots para grupos/, sobrio("botella", "bot", 0.54, { font: "geometric", weight: 600 })],
+  [
+    /^seguidores/,
+    sobrio("purpura", "users", 0.54, { font: "display", weight: 800, tracking: "-0.045em" }),
+  ],
+  [
+    /^numeros virtuales/,
+    sobrio("acero", "hash", 0.5, { font: "geometric", weight: 600, tracking: "0.02em" }),
+  ],
+  [
+    /^recuperacion de cuentas/,
+    sobrio("ocre", "key", 0.52, { font: "grotesk", weight: 700, tracking: "-0.02em" }),
+  ],
+  [
+    /^paneles y metodos/,
+    sobrio("tinta", "grid", 0.52, { font: "geometric", weight: 600, tracking: "0.02em" }),
+  ],
+  [
+    /^transporte/,
+    sobrio("pizarra", "grid", 0.52, {
+      font: "condensed",
+      weight: 600,
+      upper: true,
+      tracking: "0.1em",
+    }),
+  ],
+  [
+    /^robux|pavos/,
+    sobrio("pizarra", "coins", 0.52, { font: "display", weight: 800, tracking: "-0.04em" }),
+  ],
 ];
 
 /** Colecciones de «Otros»: agrupan varios servicios, no son una marca. */
 const BUNDLES: Array<[RegExp, Brand]> = [
-  [
-    /adultos/,
-    spec({
-      bg: "#1A060D",
-      ink: "#FF8FA8",
-      accent: "#E23B63",
-      wash: 0.26,
-      symbol: "playCircle",
-      symbolScale: 0.5,
-      font: "display",
-      weight: 600,
-    }),
-  ],
+  [/adultos/, sobrio("granate", "playCircle", 0.5, { font: "display", weight: 700 })],
   [
     /vpn/,
-    spec({
-      bg: "#07202B",
-      ink: "#7FE0EE",
-      accent: "#2CAFC4",
-      wash: 0.26,
-      symbol: "shield",
-      symbolScale: 0.5,
-      font: "display",
+    sobrio("acero", "shield", 0.5, {
+      font: "condensed",
       weight: 600,
+      upper: true,
+      tracking: "0.1em",
     }),
   ],
 ];
@@ -975,10 +1078,10 @@ function compute(input: BrandInput): Brand {
       bg: t.bg,
       ink: PAPEL,
       accent: t.ink,
+      mix: [t.bg, mixHex(t.bg, t.ink, 0.3)],
       // El acento vive solo en el icono y en el filo de arriba.
       symbolInk: t.ink,
       wash: 0.16,
-      fade: 0.24,
       font: "display",
       weight: 600,
       tracking: "-0.02em",
@@ -1014,12 +1117,16 @@ export function brandAccent(input: BrandInput): string {
 // ── Composición de la superficie ────────────────────────────────────────────
 
 export type BrandSkin = {
+  /** ¿Esta superficie quedó clara? Se decide por superficie, no por marca. */
+  light: boolean;
   /** Fondo completo de la tarjeta o de la ficha. */
   background: string;
   /** Borde. */
   border: string;
   /** Filo de luz superior. */
   edge: string;
+  /** Sombras en capas del canto de la tarjeta, para que no se vea plana. */
+  relief: string;
   /** Tinta del logotipo. */
   ink: string;
   /** Degradado de la tinta, si la marca lo lleva. */
@@ -1063,96 +1170,111 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
    *    marca, que es lo que hace que la pantalla completa se sienta suya.
    */
   /*
-   * En la ficha, la capa de marca mide lo que mide la PÁGINA —puede ser de
-   * once mil píxeles—, así que todo lo que sea un efecto de entrada tiene que
-   * ir en `vh` y no en porcentaje: un 46 % de once mil píxeles no es una luz
-   * cenital, es un velo blanco sobre la mitad del documento. Ese fue el motivo
-   * de que HBO Max saliera gris.
+   * La ficha es la MEZCLA de los colores exactos del logotipo, y esa mezcla no
+   * cambia al bajar.
+   *
+   * Dos errores seguidos hasta llegar aquí. El primero fue armar el degradado
+   * con un color de protagonista y el otro de extremo profundo: la ficha
+   * entraba de un color y terminaba de otro, o sea que se iba oscureciendo. El
+   * segundo fue medir esa capa contra la página: con una lista de once mil
+   * píxeles, bajar el dedo era ver cómo el color se apagaba.
+   *
+   * La referencia es ViX y siempre lo fue: su ficha es su propio degradado
+   * —rosa y naranja, sus dos colores— anclado a la PANTALLA, así que se ve
+   * igual estés donde estés en el scroll. Eso es lo que se generaliza:
+   *
+   *  · `mix` son los colores exactos del logotipo, en orden de peso. Los dos
+   *    primeros arman el degradado de base en diagonal; del tercero en
+   *    adelante entran como manchas grandes y suaves para que estén presentes
+   *    sin robarle el sitio a nadie.
+   *  · Ningún color que no esté en el logotipo. Si Google One no lleva negro,
+   *    su ficha no lleva negro.
+   *  · La capa va fija a la pantalla, no a la página.
    */
+  const mix = brand.mix ?? [a, brand.deepEnd ?? a];
+  const c0 = mix[0] as string;
+  const c1 = (mix[1] ?? mix[0]) as string;
+
   const skylight = hero
-    ? `radial-gradient(120vw 38vh at 50% -6vh, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`
+    ? `radial-gradient(120vw 38vh at 50% -6vh, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.04 : 0.06)}, transparent 64%)`
     : `radial-gradient(132% 62% at 50% -14%, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`;
 
-  /*
-   * En la ficha manda el color PRINCIPAL del logotipo, no su fondo.
-   *
-   * Es la diferencia entre una página viva y una apagada: el fondo del
-   * logotipo de Netflix es negro y el de Peacock también, pero lo que
-   * identifica a esas marcas es el rojo y el blanco. Si el negro domina, la
-   * ficha se ve muerta. Así que el acento cubre la parte alta y el fondo real
-   * queda como extremo profundo.
-   *
-   * Los colores secundarios —los cinco puntos de Peacock— entran después, en
-   * dosis pequeñas, como acentos y no como protagonistas.
-   */
   const deep = shade(a, -0.66);
 
   /*
-   * Cuánto pesa el acento en el difuminado. Ver `Brand.fade`.
-   *
-   * Por omisión sale de la luminancia del propio acento, y no es un capricho:
-   * un rojo al 82 % se lee como rojo, pero un blanco al 82 % no se lee como
-   * blanco sino como una página gris. Cuanto más claro es el color principal,
-   * menos alfa necesita para mandar. Las marcas de fondo claro apenas tiñen:
-   * ahí el color ya lo pone su propio fondo.
+   * Con dos colores, el primero se sostiene la primera cuarta parte y de ahí
+   * baja al segundo: esa reserva es la que le devuelve fondo al logotipo —el
+   * rojo de Netflix necesita negro debajo para leerse— sin que el negro se
+   * coma la ficha. Con tres o más, las paradas se reparten parejas y el
+   * degradado los recorre todos, que es exactamente lo que hace ViX.
    */
-  const f =
-    brand.fade ?? (brand.light ? 0.14 : Math.min(1, Math.max(0.24, 1 - (lum(a) - 0.55) * 1.7)));
+  const stops =
+    mix.length >= 3
+      ? mix.map((c, i) => `${c} ${Math.round((i / (mix.length - 1)) * 100)}%`).join(", ")
+      : `${c0} 0%, ${c0} 24%, ${c1} 100%`;
 
-  /*
-   * Halo bajo el logotipo, del propio extremo profundo de la marca.
-   *
-   * Sin él, un wordmark del mismo color que su acento se pierde en su propia
-   * ficha: el rojo de Netflix sobre un fondo rojo, el blanco de Peacock sobre
-   * uno blanco. En las marcas cuyo extremo profundo es su fondo oscuro —que
-   * son justo esas— devuelve el suelo sobre el que el logotipo fue dibujado, y
-   * en las demás es un tono más del mismo color y no se nota.
-   */
-  const deepIsDark = lum(brand.deepEnd ?? a) < 0.24;
-  const halo = deepIsDark
-    ? `radial-gradient(96vw 22vh at 50% 22vh, ${rgba(shade(brand.deepEnd ?? a, -0.2), 0.5)}, transparent 74%)`
-    : // Marca sin fondo oscuro: no hay suelo que devolver y un halo aquí solo
-      // dejaría un cerco alrededor del logotipo.
-      "none";
+  const blobs = (brand.secondary ?? []).map((c, i) => {
+    /*
+     * Los secundarios son LUZ sobre el campo, no manchitas de adorno. En un
+     * logotipo de campo oscuro con letras claras —Fox One, Plex, HBO Max— es
+     * la única forma honesta de mezclar los dos colores: cualquier punto
+     * intermedio entre negro y blanco es gris, y gris no es de nadie.
+     *
+     * Y entra CENTRADA. Colocada a un lado se lee como una lámpara puesta a la
+     * izquierda, que es un efecto de otra cosa y no el color de la marca: el
+     * primero va al centro y los demás se abren en pares simétricos, así que
+     * el conjunto sigue leyéndose como una luz general.
+     *
+     * El núcleo va a alfa alta y cae rápido. Un blanco al 40 % plano sobre
+     * negro no se lee blanco, se lee plateado.
+     */
+    const x = i === 0 ? 50 : 50 + (i % 2 === 1 ? 1 : -1) * (12 + i * 3);
+    const y = 76 + (i === 0 ? 0 : 6 + (i % 3) * 7);
+    const alpha = i === 0 ? 0.56 : 0.26;
+    return (
+      `radial-gradient(112vw 52vh at ${x}vw ${y}vh, ${rgba(c, alpha)}, ` +
+      `${rgba(c, alpha * 0.22)} 30%, transparent 66%)`
+    );
+  });
 
-  /*
-   * El difuminado de la ficha es UNO SOLO y es el mismo de arriba abajo.
-   *
-   * La referencia es ViX: la ficha entera es el degradado del propio logotipo,
-   * del color de su fondo al color de sus letras, y se mantiene igual hasta el
-   * final del scroll. No hay una primera pantalla vistosa y un pie oscuro —eso
-   * partía la ficha en dos— ni negro añadido por nosotros: si la marca no lleva
-   * negro, su ficha tampoco.
-   *
-   * Todo lo que sí es un efecto de entrada —la luz cenital y el halo bajo el
-   * logotipo— se mide en `vh`, porque la capa de marca mide lo que mide la
-   * página y un porcentaje sobre once mil píxeles no es un reflejo, es un velo.
-   */
   const layers = hero
-    ? [
-        skylight,
-        halo,
-        ...(brand.secondary ?? []).map(
-          (c, i) =>
-            `radial-gradient(62vw 20vh at ${14 + i * 18}vw ${9 + (i % 2) * 7}vh, ${rgba(c, 0.26)}, transparent 64%)`,
-        ),
-        // El color del logotipo, parejo. Solo cede seis puntos de aquí al pie,
-        // lo justo para que la página tenga profundidad y no se vea plana.
-        `linear-gradient(180deg, ${rgba(a, 0.82 * f)} 0%, ${rgba(a, 0.78 * f)} 38%, ${rgba(a, 0.72 * f)} 72%, ${rgba(a, 0.68 * f)} 100%)`,
-        // Profundidad, no oscuridad: es el propio color de la marca apenas
-        // rebajado, y nunca llega a un tercio de presencia.
-        `linear-gradient(180deg, transparent 0%, ${rgba(shade(brand.deepEnd ?? a, -0.28), 0.18)} 55%, ${rgba(shade(brand.deepEnd ?? a, -0.28), 0.3)} 100%)`,
-        brand.bg,
-      ]
+    ? [skylight, ...blobs, `linear-gradient(158deg, ${stops})`]
     : [skylight, brand.bg];
 
+  /*
+   * Claro u oscuro se decide por superficie, no por marca. F1 TV tiene la
+   * tarjeta blanca —el fondo de su archivo— y la ficha en rojo y negro, que
+   * son sus dos colores; las dos cosas son ciertas a la vez. En la tarjeta
+   * manda `brand.light`; en la ficha, la luminancia del color que de verdad
+   * queda arriba.
+   */
+  // El umbral va alto a propósito: un verde vivo tiene luminancia alta y aun
+  // así no es una superficie clara. Solo vuelcan a texto oscuro los fondos de
+  // verdad pálidos —blanco, gris 50, amarillo Universal—.
+  const surfaceLight = hero ? lum(c0) > 0.78 : brand.light;
+
   return {
+    light: surfaceLight,
     background: layers.join(", "),
     // Neutro, no del color de la marca: un borde rojo alrededor de Netflix se
     // lee como resplandor y rompe el negro plano de su logotipo. El marco es
     // del sistema de vidrio de la app; el color es del fondo y del logotipo.
-    border: rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.12 : 0.14),
-    edge: rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.12 : 0.34),
+    border: rgba(surfaceLight ? "#000000" : "#FFFFFF", surfaceLight ? 0.12 : 0.14),
+    edge: rgba(surfaceLight ? "#000000" : "#FFFFFF", surfaceLight ? 0.12 : 0.34),
+    /*
+     * Relieve del canto de la tarjeta.
+     *
+     * Plana se veía como una calcomanía: un rectángulo de color y nada más. Va
+     * ENTERO POR FUERA —un filete y dos halos del propio color de la marca—.
+     * Hacia dentro tapaba el fondo del logotipo, que es justo lo que no se
+     * puede tocar.
+     */
+    relief: [
+      "0 2px 4px -2px rgba(0,0,0,0.6)",
+      `0 0 0 1px ${rgba(a, 0.18)}`,
+      `0 10px 24px -10px ${rgba(a, 0.5)}`,
+      `0 26px 54px -26px ${rgba(a, 0.62)}`,
+    ].join(", "),
     ink: brand.ink,
     inkGrad: brand.inkGrad,
     symbolInk: brand.symbolInk ?? brand.ink,
@@ -1162,8 +1284,10 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
     // Neutro a propósito: el color de la marca es del fondo y del logotipo.
     // Si además tiñera los textos de apoyo, el rojo de Netflix se comería la
     // legibilidad de «81 ofertas» y de los precios.
-    meta: brand.light ? rgba("#000000", 0.6) : rgba("#FFFFFF", 0.66),
-    chrome: brand.light ? "#101014" : "#FFFFFF",
+    // El contador de ofertas se perdía contra los fondos con más color. Sube lo
+    // justo: tiene que leerse de reojo, no competir con el logotipo.
+    meta: surfaceLight ? rgba("#000000", 0.72) : rgba("#FFFFFF", 0.82),
+    chrome: surfaceLight ? "#101014" : "#FFFFFF",
   };
 }
 
@@ -1203,6 +1327,13 @@ function rgba(hex: string, alpha: number) {
 function lum(hex: string) {
   const [r, g, b] = parse(hex);
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
+/** Mezcla dos colores. `t` es cuánto del segundo entra, de 0 a 1. */
+function mixHex(a: string, b: string, t: number) {
+  const [r1, g1, b1] = parse(a);
+  const [r2, g2, b2] = parse(b);
+  return toHex(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t);
 }
 
 function shade(hex: string, amount: number) {

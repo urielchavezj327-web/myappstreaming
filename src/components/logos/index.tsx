@@ -32,6 +32,12 @@ export type LogoSpec =
       key: string;
       grad?: Gradient;
       recolor?: Record<string, string>;
+      /**
+       * Recoloreado solo para la ficha. Hace falta cuando la tarjeta y la
+       * ficha tienen fondos opuestos: el «TV» de F1 es negro y se lee sobre su
+       * tarjeta blanca, pero desaparece sobre su ficha en rojo y negro.
+       */
+      recolorHero?: Record<string, string>;
       /** Ajuste fino sobre el tamaño que da la tinta. 1 = sin ajuste. */
       scale?: number;
       /**
@@ -116,7 +122,8 @@ export const LOGOS = {
   // ── Logotipo completo en un solo trazado ────────────────────────────────
   netflix: { kind: "full", key: "netflixword" },
   // Apilado —«HBO» sobre «max»—, de una sola pieza, con el metal de la marca.
-  hbomax: { kind: "full", key: "hbomax", grad: HBOMAX },
+  // apilado y macizo: con el reparto por tinta salía a media tarjeta
+  hbomax: { kind: "full", key: "hbomax", grad: HBOMAX, scale: 2.1 },
   // apilado en dos líneas más la sonrisa
   primevideo: { kind: "full", key: "primevideo", scale: 1.1 },
   vix: { kind: "full", key: "vix" },
@@ -126,9 +133,9 @@ export const LOGOS = {
   peacock: { kind: "full", key: "peacock" },
   crunchyroll: { kind: "full", key: "crunchyroll" },
   clarovideo: { kind: "full", key: "clarovideo" },
-  f1tv: { kind: "full", key: "f1tv" },
-  hidive: { kind: "full", key: "hidive", scale: 1.7 },
-  iptv: { kind: "full", key: "iptv", scale: 1.3 },
+  f1tv: { kind: "full", key: "f1tv", scale: 1.6 },
+  hidive: { kind: "full", key: "hidive", scale: 2.4 },
+  iptv: { kind: "full", key: "iptv", scale: 1.55 },
   kocowa: { kind: "full", key: "kocowa" },
   // el emblema y «MLB.tv» dejan mucho aire entre sí
   mlbtv: { kind: "full", key: "mlbtv", scale: 1.9 },
@@ -187,14 +194,14 @@ export const LOGOS = {
     dir: "col",
     a: { traced: "spotifymark" },
     b: { traced: "spotifyword" },
-    sizes: [38, 17],
+    sizes: [44, 20],
   },
   deezer: {
     kind: "compose",
     dir: "col",
     a: { traced: "deezerheart" },
     b: { traced: "deezerword" },
-    sizes: [40, 14],
+    sizes: [46, 15],
   },
   foxone: { kind: "full", key: "foxone" },
   // El nudo de OpenAI trazado de tu imagen, encima del nombre. El nombre va en
@@ -206,7 +213,7 @@ export const LOGOS = {
     b: { text: "ChatGPT" },
     // El símbolo pesa más que el nombre porque es lo que se reconoce. El nudo
     // es de trazo fino y en la cuadrícula pesaba menos que cualquier otro.
-    sizes: [46, 16],
+    sizes: [54, 19],
     recolor: { "#000000": "#FFFFFF" },
   },
   discord: {
@@ -245,8 +252,10 @@ export function isTileLogo(id: LogoId): boolean {
  * contra los topes de la tarjeta, conservando la proporción.
  */
 const INK_AREA = 1420; // cqw² de trazo; el resto lo decide la proporción
-const MAX_W = 99;
-const MAX_H = 64;
+// El ancho lo acaba fijando la caja del logotipo dentro de la tarjeta; el
+// alto, lo que sobra bajo el contador de ofertas.
+const MAX_W = 104;
+const MAX_H = 62;
 
 function fitBox(
   logo: { viewBox: string; coverage: number },
@@ -332,6 +341,7 @@ function PieceView({
   height,
   scale,
   tile,
+  full,
   label,
   grad,
   recolor,
@@ -340,6 +350,8 @@ function PieceView({
   height: number;
   scale?: number;
   tile?: boolean;
+  /** Ancho completo de la caja, sin recorte y sin normalizar por tinta. */
+  full?: boolean;
   label?: string;
   grad?: Gradient;
   recolor?: Record<string, string>;
@@ -347,19 +359,28 @@ function PieceView({
   // `height` sigue mandando en las piezas compuestas, donde la proporción
   // entre símbolo y nombre la fija la marca; las piezas sueltas se normalizan
   // por área.
-  // A sangre: el icono cubre la caja entera aunque tenga que recortarse por los
-  // lados, que es justo lo que hace el icono real dentro de su cuadro.
-  const box = tile
-    ? { width: "100%", height: "100%" }
-    : height > 0
-      ? { width: "100%", height: `${height}cqw` }
-      : fitBox(
-          ("traced" in piece ? TRACED[piece.traced] : undefined) ?? {
-            viewBox: "0 0 1 1",
-            coverage: 0.3,
-          },
-          scale,
-        );
+  /*
+   * Dos maneras de servir el icono de aplicación, las dos a sangre:
+   *
+   *  · `full` — todo el ancho de la caja y el alto que le toque. Es la ficha:
+   *    la caja es el ancho de la pantalla, así que los cantos rectos del
+   *    cuadro caen fuera y solo se ve el dibujo.
+   *  · `tile` — cubre la caja entera aunque tenga que recortarse por los
+   *    lados. Es la tarjeta, que tiene proporción fija.
+   */
+  const box = full
+    ? { width: "100%", height: "auto" }
+    : tile
+      ? { width: "100%", height: "100%" }
+      : height > 0
+        ? { width: "100%", height: `${height}cqw` }
+        : fitBox(
+            ("traced" in piece ? TRACED[piece.traced] : undefined) ?? {
+              viewBox: "0 0 1 1",
+              coverage: 0.3,
+            },
+            scale,
+          );
   const common = {
     preserveAspectRatio: (tile ? "xMidYMid slice" : "xMidYMid meet") as
       "xMidYMid slice" | "xMidYMid meet",
@@ -428,25 +449,29 @@ export const BrandLogo = memo(function BrandLogo({
   id,
   name,
   contain = false,
+  hero = false,
 }: {
   id: LogoId;
   name: string;
   /** Contener el icono en vez de servirlo a sangre. Solo afecta a los `tile`. */
   contain?: boolean;
+  /** Se está pintando dentro de la ficha, no en la tarjeta. */
+  hero?: boolean;
 }) {
   const spec = LOGOS[id] as LogoSpec;
 
   if (spec.kind === "full") {
+    const recolor = (hero && spec.recolorHero) || spec.recolor;
     return (
       <PieceView
         piece={{ traced: spec.key }}
         height={0}
         {...(spec.scale ? { scale: spec.scale } : {})}
         {...(spec.tile && !contain ? { tile: true } : {})}
-        {...(spec.tile && contain ? { scale: 3.4 } : {})}
+        {...(spec.tile && contain ? { full: true } : {})}
         label={name}
         {...(spec.grad ? { grad: spec.grad } : {})}
-        {...(spec.recolor ? { recolor: spec.recolor } : {})}
+        {...(recolor ? { recolor } : {})}
       />
     );
   }
