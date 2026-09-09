@@ -175,26 +175,33 @@ export function hasLogo(id: string): id is LogoId {
 }
 
 /**
- * Tamaño de un logotipo dentro de su caja, normalizado por **área óptica**.
+ * Tamaño de un logotipo, igualado por **cantidad de trazo**.
  *
- * Ajustar por altura fija —que es lo que hacía antes— rompe la cuadrícula: los
- * logotipos de esta app van de proporción 0.5 (Google One, vertical) a 7.5
- * (Microsoft 365, muy apaisado). Con una altura común, ViX salía al 147 % del
- * ancho y Prime Video al 54 %, o sea uno enorme y el otro diminuto.
+ * Dos intentos anteriores fallaron por medir lo que no era. Con altura fija,
+ * ViX (proporción 2.7) salía al 147 % del ancho y Prime Video (1.0) al 54 %.
+ * Igualando el área del rectángulo tampoco: dos logotipos del mismo tamaño
+ * pueden tener muy distinta densidad —ViX cubre el 61 % de su encuadre con
+ * trazo y Disney+ solo el 16.6 %—, así que el macizo seguía viéndose enorme y
+ * el aireado diminuto.
  *
- * La media geométrica sí conserva el peso visual: cada logotipo ocupa la misma
- * superficie aparente, y solo después se recorta contra los topes de ancho y
- * alto de la tarjeta, manteniendo su proporción.
+ * Lo que sí iguala el peso visual es la superficie de TINTA: se despeja el
+ * alto de `ancho · alto · cobertura = constante` y solo después se recorta
+ * contra los topes de la tarjeta, conservando la proporción.
  */
-const OPTICAL_AREA = 2300; // cqw², equivale a un logotipo cuadrado de ~48cqw
-const MAX_W = 94;
-const MAX_H = 56;
+const INK_AREA = 975; // cqw² de trazo; el resto lo decide la proporción
+const MAX_W = 96;
+const MAX_H = 58;
 
-function fitBox(viewBox: string): { width: string; height: string } {
-  const [, , vw, vh] = viewBox.split(" ").map(Number);
+function fitBox(logo: { viewBox: string; coverage: number }): {
+  width: string;
+  height: string;
+} {
+  const [, , vw, vh] = logo.viewBox.split(" ").map(Number);
   const ratio = (vw ?? 1) / (vh ?? 1);
-  let w = Math.sqrt(OPTICAL_AREA * ratio);
-  let h = Math.sqrt(OPTICAL_AREA / ratio);
+  // Cobertura mínima para que un logotipo muy vacío no crezca sin freno.
+  const ink = Math.max(logo.coverage || 0.3, 0.12);
+  let h = Math.sqrt(INK_AREA / (ratio * ink));
+  let w = h * ratio;
   if (w > MAX_W) {
     w = MAX_W;
     h = w / ratio;
@@ -283,7 +290,12 @@ function PieceView({
   const box =
     height > 0
       ? { width: "100%", height: `${height}cqw` }
-      : fitBox("traced" in piece ? (TRACED[piece.traced]?.viewBox ?? "0 0 1 1") : "0 0 1 1");
+      : fitBox(
+          ("traced" in piece ? TRACED[piece.traced] : undefined) ?? {
+            viewBox: "0 0 1 1",
+            coverage: 0.3,
+          },
+        );
   const common = {
     preserveAspectRatio: "xMidYMid meet" as const,
     style: { display: "block", margin: "0 auto", ...box },

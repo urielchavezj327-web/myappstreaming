@@ -345,8 +345,11 @@
    superior, el degradado vertical y las sombras en capas — sobre obsidiana el
    desenfoque no aportaría nada visible. */
 @utility glass {
+  /* El brillo se puede apagar por contexto: sobre el color de marca de una
+     ficha, el velo blanco deja los paneles casi invisibles. */
   background:
-    linear-gradient(180deg, oklch(1 0 0 / 7%), oklch(1 0 0 / 2.5%)), var(--color-surface);
+    linear-gradient(180deg, oklch(1 0 0 / var(--glass-sheen, 7%)), oklch(1 0 0 / calc(var(--glass-sheen, 7%) / 2.8))),
+    var(--color-surface);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft);
 }

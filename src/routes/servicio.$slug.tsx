@@ -102,6 +102,21 @@ function ServicePage() {
           "--wordmark-ink": skin.ink,
           "--wordmark-shadow": skin.inkShadow,
           "--edge": skin.edge,
+          /*
+            Sobre el color de marca, el vidrio claro del sistema deja el texto
+            blanco casi ilegible. Dentro de la ficha —y solo aquí— los paneles
+            se vuelven vidrio OSCURO y los tonos de texto suben: así el fondo
+            sigue siendo el de la marca y el contenido se lee igual de bien en
+            una ficha rosa que en una negra.
+          */
+          "--surface": "rgba(0,0,0,0.44)",
+          "--surface-2": "rgba(0,0,0,0.55)",
+          "--surface-3": "rgba(0,0,0,0.66)",
+          "--border": "rgba(255,255,255,0.16)",
+          "--border-strong": "rgba(255,255,255,0.28)",
+          "--muted-foreground": "rgba(255,255,255,0.88)",
+          "--faint": "rgba(255,255,255,0.72)",
+          "--glass-sheen": "1.5%",
         } as React.CSSProperties
       }
     >
@@ -120,9 +135,19 @@ function ServicePage() {
       <div
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
+          /*
+            El velo solo asienta el color para que las listas de precios se
+            lean; no lo apaga. El color de marca manda en la parte alta y el
+            extremo profundo es su propio tono oscurecido, que ya viene en el
+            fondo de abajo — por eso aquí basta con muy poca opacidad.
+
+            Las marcas de fondo claro (Peacock, YouTube, MLB, F1, Universal+)
+            sí necesitan cerrar antes: su blanco no puede cubrir la página
+            entera o las listas quedarían negro sobre gris.
+          */
           background: brand.light
-            ? "linear-gradient(to bottom, transparent 0%, transparent 16%, color-mix(in srgb, var(--color-background) 92%, transparent) 46%, var(--color-background) 68%)"
-            : "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--color-background) 62%, transparent) 38%, color-mix(in srgb, var(--color-background) 84%, transparent) 100%)",
+            ? "linear-gradient(to bottom, transparent 0%, transparent 14%, color-mix(in srgb, var(--color-background) 90%, transparent) 44%, var(--color-background) 66%)"
+            : "linear-gradient(to bottom, transparent 0%, transparent 46%, color-mix(in srgb, var(--color-background) 34%, transparent) 78%, color-mix(in srgb, var(--color-background) 52%, transparent) 100%)",
         }}
         aria-hidden
       />

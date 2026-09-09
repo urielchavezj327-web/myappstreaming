@@ -123,7 +123,18 @@ def trace(file, name, layers, box=1000, crop=None, maxside=900, turd=8):
     w, h = xs.max() - ox + 1, ys.max() - oy + 1
     scale = box / max(w, h)
 
-    result = {"viewBox": f"0 0 {round(w * scale, 1)} {round(h * scale, 1)}", "layers": []}
+    # Cobertura de tinta dentro del encuadre. Es lo que permite igualar el
+    # PESO VISUAL entre logotipos: dos con el mismo rectángulo pueden tener
+    # muy distinta cantidad de trazo (la montaña de Paramount+ está llena de
+    # aire; las letras de ViX son macizas), y si solo se iguala el rectángulo
+    # uno se ve enorme y el otro diminuto.
+    coverage = round(float(union[oy : oy + h, ox : ox + w].mean()), 4)
+
+    result = {
+        "viewBox": f"0 0 {round(w * scale, 1)} {round(h * scale, 1)}",
+        "coverage": coverage,
+        "layers": [],
+    }
     for spec, mask in masks:
         # Dos detalles de potrace, los dos aprendidos a golpes:
         #  · la máscara va booleana — con enteros compara contra `blacklevel`
@@ -304,8 +315,7 @@ if __name__ == "__main__":
         try:
             r = trace(file, n, layers, crop=crop)
             result[n] = r
-            total = sum(len(l["d"]) for l in r["layers"])
-            print(f"  {n:16s} {len(r['layers'])} capa(s)  viewBox {r['viewBox']}  {total} chars")
+            print(f"  {n:18s} tinta {r['coverage'] * 100:5.1f}%  viewBox {r['viewBox']}")
         except Exception as e:  # noqa: BLE001
             print(f"  {n:16s} FALLÓ: {e}")
     with open(OUT + "traced.json", "w") as f:

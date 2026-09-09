@@ -1047,6 +1047,12 @@ export type BrandSkin = {
   inkShadow: string;
   /** Acento de la marca, para contadores y detalles. */
   accent: string;
+  /**
+   * Extremo profundo del degradado de la ficha: el color de la marca muy
+   * oscurecido, NUNCA negro. Si una marca no lleva negro —ViX, Crunchyroll,
+   * Universal+— su ficha tampoco debe llevarlo.
+   */
+  deep: string;
   /** Color legible para texto secundario sobre esta superficie. */
   meta: string;
   /** Color del texto de interfaz (no del logotipo) sobre esta superficie. */
@@ -1075,11 +1081,20 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
    */
   const skylight = `radial-gradient(${hero ? "120% 46%" : "132% 62%"} at 50% ${hero ? "-8%" : "-14%"}, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`;
 
+  /*
+   * El extremo profundo se saca del propio color de la marca, no del fondo de
+   * la app. Antes la ficha de ViX terminaba en marrón sucio porque por debajo
+   * asomaba el negro del sistema: ViX no lleva negro en ningún lado.
+   */
+  const deep = shade(a, -0.66);
+
   const layers = hero
     ? [
         skylight,
-        `radial-gradient(110% 62% at 82% 96%, ${rgba(a, brand.wash)}, transparent 62%)`,
-        `radial-gradient(76% 44% at 6% 8%, ${rgba(a, brand.wash * 0.55)}, transparent 60%)`,
+        // La tinta del logotipo entra en la mezcla, que es lo que pide la
+        // regla: se difuminan el color del fondo y el de las letras.
+        `radial-gradient(120% 58% at 50% 4%, ${rgba(brand.ink, 0.14)}, transparent 60%)`,
+        `radial-gradient(150% 88% at 50% 112%, ${deep}, transparent 66%)`,
         brand.bg,
       ]
     : [skylight, brand.bg];
@@ -1096,6 +1111,7 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
     symbolInk: brand.symbolInk ?? brand.ink,
     inkShadow: "none",
     accent: a,
+    deep,
     // Neutro a propósito: el color de la marca es del fondo y del logotipo.
     // Si además tiñera los textos de apoyo, el rojo de Netflix se comería la
     // legibilidad de «81 ofertas» y de los precios.

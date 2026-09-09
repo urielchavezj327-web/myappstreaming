@@ -52,7 +52,7 @@ const out = `// GENERADO por scripts/logos/emit.mjs — no editar a mano.
 // un solo color. Sirven de símbolo, nunca de logotipo completo.
 
 export type TracedLayer = { fill: string; d: string };
-export type TracedLogo = { viewBox: string; layers: TracedLayer[] };
+export type TracedLogo = {\n  viewBox: string;\n  /** Fracción del encuadre realmente cubierta por trazo, de 0 a 1. */\n  coverage: number;\n  layers: TracedLayer[];\n};
 
 export const TRACED: Record<string, TracedLogo> = ${JSON.stringify(traced, null, 0)};
 
