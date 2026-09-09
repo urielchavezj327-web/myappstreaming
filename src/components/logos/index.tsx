@@ -123,7 +123,7 @@ export const LOGOS = {
   netflix: { kind: "full", key: "netflixword" },
   // Apilado —«HBO» sobre «max»—, de una sola pieza, con el metal de la marca.
   // apilado y macizo: con el reparto por tinta salía a media tarjeta
-  hbomax: { kind: "full", key: "hbomax", grad: HBOMAX, scale: 2.1 },
+  hbomax: { kind: "full", key: "hbomax", grad: HBOMAX, scale: 1.5 },
   // apilado en dos líneas más la sonrisa
   primevideo: { kind: "full", key: "primevideo", scale: 1.1 },
   vix: { kind: "full", key: "vix" },
@@ -186,7 +186,7 @@ export const LOGOS = {
 
   // ── Símbolo de simple-icons que ya incluye el nombre ────────────────────
   // solo la manzana y «tv»: con el tamaño común se pierde
-  appletv: { kind: "solo", key: "appletv", ink: "#FFFFFF", scale: 1.8 },
+  appletv: { kind: "solo", key: "appletv", ink: "#FFFFFF", scale: 1.55 },
 
   // ── Compuestos ─────────────────────────────────────────────────────────
   spotify: {

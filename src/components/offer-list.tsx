@@ -266,8 +266,10 @@ export function OfferRow({
                 <span
                   /* Vidrio translúcido, no un bloque oscuro: sobre el color de
                      marca de una ficha, una pastilla opaca se lee como mancha. */
-                  className={`rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-semibold ${
-                    age.stale ? "text-amber-500" : "text-muted-foreground"
+                  // Sin fondo propio: resaltada se leía como el dato más
+                  // importante de la fila, y es el menos importante.
+                  className={`text-[11px] font-semibold ${
+                    age.stale ? "text-amber-500" : "text-faint"
                   }`}
                   title={`Última actualización: ${age.label}`}
                 >

@@ -268,18 +268,21 @@ export const Wordmark = memo(function Wordmark({
           ...inkStyle,
         }}
       >
-        {brand.font === "script"
-          ? null
-          : lines.map((line, i) => (
-              <span key={i} className="block">
-                {line}
-                {/* El sufijo corto va pegado a la última línea, no debajo. */}
-                {brand.suffix && brand.suffix.length <= 3 && i === lines.length - 1 ? (
-                  <Suffix brand={brand} fontSize={fontSize} />
-                ) : null}
-              </span>
-            ))}
-        {brand.suffix && brand.suffix.length > 3 && brand.font !== "script" ? (
+        {/*
+          El nombre se dibuja siempre. Antes se saltaba con la manuscrita
+          porque el wordmark de Disney venía en un SVG aparte; retirado aquel,
+          «Comida a Domicilio» se quedaba sin rótulo.
+        */}
+        {lines.map((line, i) => (
+          <span key={i} className="block">
+            {line}
+            {/* El sufijo corto va pegado a la última línea, no debajo. */}
+            {brand.suffix && brand.suffix.length <= 3 && i === lines.length - 1 ? (
+              <Suffix brand={brand} fontSize={fontSize} />
+            ) : null}
+          </span>
+        ))}
+        {brand.suffix && brand.suffix.length > 3 ? (
           <Suffix brand={brand} fontSize={fontSize} />
         ) : null}
       </span>
