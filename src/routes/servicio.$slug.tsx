@@ -6,6 +6,7 @@ import { getServiceDetail, type StockOffer } from "@/lib/catalog.functions";
 import { brandSkin, resolveBrand } from "@/lib/brands";
 import { formatPrice } from "@/lib/format";
 import { Wordmark } from "@/components/wordmark";
+import { isTileLogo } from "@/components/logos";
 import { OfferSection } from "@/components/offer-list";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 
@@ -72,6 +73,7 @@ function ServicePage() {
     bundle: Boolean(bundle),
   });
   const skin = brandSkin(brand, "hero");
+  const tileLogo = brand.logo !== undefined && isTileLogo(brand.logo);
 
   const internal = offers.filter((o) => o.group.kind === "interno");
   const free = offers.filter((o) => o.group.kind !== "interno");
@@ -115,7 +117,7 @@ function ServicePage() {
             la plata del acento, que sobre blanco desaparece: pasa a un acero
             oscuro con la letra en blanco.
           */
-          ...(brand.light
+          ...(skin.light
             ? {
                 // `color` además del token: los títulos heredan el color del
                 // `body`, que se resolvió con el tema oscuro mucho antes de
@@ -157,13 +159,18 @@ function ServicePage() {
         opaco, así que el tono sigue presente hasta el pie sin restarle
         contraste a las listas de precios.
       */}
+      {/*
+        Fija a la PANTALLA, no a la página. Es lo que hace que la mezcla se vea
+        igual estés donde estés en el scroll: medida contra un documento de
+        once mil píxeles, bajar el dedo era ver cómo el color se apagaba.
+      */}
       <div
-        className="pointer-events-none absolute inset-0 -z-20"
+        className="pointer-events-none fixed inset-0 -z-20"
         style={{ background: skin.background }}
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-0 -z-10"
+        className="pointer-events-none fixed inset-0 -z-10"
         style={{
           /*
             El velo solo asienta el color para que las listas de precios se
@@ -181,7 +188,7 @@ function ServicePage() {
             llega a cubrir. En las marcas de fondo claro no hay velo oscuro
             ninguno —oscurecerlas sería contradecir su propio logotipo.
           */
-          background: brand.light
+          background: skin.light
             ? "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%)"
             : "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%)",
         }}
@@ -228,9 +235,22 @@ function ServicePage() {
             El logotipo manda en la ficha. Ocupa todo el ancho útil y nada se
             le acerca: el precio bajó al resumen, que es donde se consulta.
           */}
-          <div className="wordmark-box mx-auto mt-6 w-full max-w-[19rem] pb-14 sm:max-w-[24rem]">
-            <Wordmark name={service.name} brand={brand} size="hero" />
-          </div>
+          {tileLogo ? (
+            /*
+              El icono de aplicación va de borde a borde de la pantalla. Su
+              cuadro tiene cantos rectos —la cabeza del búho se sale por los
+              lados— y encajado en una caja más chica esos cantos se ven, que
+              es lo que lo hacía parecer una imagen pegada encima. A sangre,
+              los cantos caen fuera de la pantalla y solo se ve el dibujo.
+            */
+            <div className="wordmark-box -mx-4 mt-4 pb-10 sm:-mx-6">
+              <Wordmark name={service.name} brand={brand} size="hero" />
+            </div>
+          ) : (
+            <div className="wordmark-box mx-auto mt-6 w-full max-w-[19rem] pb-14 sm:max-w-[24rem]">
+              <Wordmark name={service.name} brand={brand} size="hero" />
+            </div>
+          )}
         </div>
       </header>
 
@@ -332,43 +352,46 @@ function SummaryBar({
     { label: "Tiendas", value: String(sellers) },
   ];
 
-  // «A consultar» no es una cifra: a 2.9rem se sale de la pastilla. Cuando no
-  // hay precio, el texto baja a un cuerpo que sí cabe.
+  // «A consultar» no es una cifra: dentro de un círculo hay menos sitio aún, y
+  // por eso baja a un cuerpo que sí cabe y se parte en dos renglones.
   const price = formatPrice(min);
-  const priceSize = min === null ? "text-[1.7rem]" : "text-[2.9rem]";
+  const priceSize = min === null ? "text-[1.05rem] leading-tight" : "text-[2.5rem] leading-[0.9]";
 
   return (
-    <div className="space-y-3">
+    /*
+     * El resumen son círculos, no una tabla.
+     *
+     * Tres cifras en tres rectángulos iguales se leen como una hoja de cálculo
+     * y ninguna destaca. En círculos flotantes la forma ya separa las piezas
+     * del resto de la página, y el de «Desde» va aparte y al doble de tamaño
+     * porque es el dato que se viene a consultar; los otros dos acompañan.
+     */
+    <div className="flex flex-col items-center gap-4">
       <div
-        className="lightedge relative overflow-hidden rounded-[1.5rem] border px-6 py-6 text-foreground"
+        className="lightedge relative flex aspect-square w-[46%] max-w-[11rem] flex-col items-center justify-center rounded-full border text-center text-foreground"
         style={{
-          borderColor: `${accent}55`,
-          background: `linear-gradient(152deg, ${accent}33, rgba(255,255,255,0.045) 58%)`,
-          boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 22px 50px -26px ${accent}`,
+          borderColor: `${accent}5C`,
+          background: `radial-gradient(120% 120% at 50% 0%, ${accent}3D, rgba(255,255,255,0.05) 72%)`,
+          boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.14), 0 18px 44px -22px ${accent}`,
         }}
       >
         <p className="t-micro text-muted-foreground">{min === null ? "Precio" : "Desde"}</p>
-        <p className={`mt-2.5 t-price leading-[0.9] ${priceSize}`}>{price}</p>
+        <p className={`mt-1 t-price ${priceSize}`}>{price}</p>
       </div>
 
-      {/*
-        Las tres pastillas flotan: llevan el tinte de la marca y una sombra
-        propia, así que se leen como piezas sueltas sobre el color de la ficha
-        y no como una barra pegada al bloque de arriba.
-      */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="flex w-full items-start justify-center gap-3">
         {rest.map((c) => (
           <div
             key={c.label}
-            className="lightedge relative overflow-hidden rounded-[1.2rem] border px-3.5 py-4 text-foreground"
+            className="lightedge relative flex aspect-square w-[28%] max-w-[7rem] flex-col items-center justify-center rounded-full border text-center text-foreground"
             style={{
-              borderColor: `${accent}3D`,
-              background: `linear-gradient(152deg, ${accent}22, rgba(255,255,255,0.05) 64%)`,
-              boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.09), 0 14px 30px -20px ${accent}`,
+              borderColor: `${accent}42`,
+              background: `radial-gradient(120% 120% at 50% 0%, ${accent}26, rgba(255,255,255,0.045) 74%)`,
+              boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 12px 28px -18px ${accent}`,
             }}
           >
-            <p className="truncate t-micro text-muted-foreground">{c.label}</p>
-            <p className="mt-1.5 truncate t-price text-[1.45rem] leading-none">{c.value}</p>
+            <p className="t-micro text-muted-foreground">{c.label}</p>
+            <p className="mt-0.5 t-price text-[1.15rem] leading-none">{c.value}</p>
           </div>
         ))}
       </div>

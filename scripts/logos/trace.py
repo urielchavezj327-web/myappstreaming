@@ -365,6 +365,10 @@ JOBS = {
             {"match": near("#4B4B4B", 46), "fill": "#4B4B4B"},
             {"match": near("#FEC200", 58), "fill": "#FEC200"},
             {"match": near("#F38003", 58), "fill": "#F38003"},
+            # El reflejo del pico es un amarillo más claro que no caía en
+            # ninguna de las dos capas anteriores: quedaba un agujero y por él
+            # se veía el verde de la cabeza, o sea un lunar verde en el pico.
+            {"match": near("#FEE545", 50), "fill": "#FEE545"},
         ],
         None,
     ),
