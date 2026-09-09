@@ -237,13 +237,20 @@ JOBS = {
         ],
         (0.2, 0.25, 0.8, 0.75),
     ),
-    "deezer": (
+    # En dos piezas. El archivo deja mucho aire entre el corazón y el nombre, y
+    # trazado de una sola pieza ese hueco se come la mitad de la caja: el
+    # nombre quedaba diminuto. Compuestas se controla cuánto pesa cada una.
+    "deezerheart": (
         "994e13a4-image.jpg",
-        [
-            {"match": near("#A237FF", 115), "fill": "#A237FF"},
-            {"match": both(light(200), notf(saturated(40))), "fill": "#FFFFFF"},
-        ],
-        (0.17, 0.16, 0.83, 0.85),
+        [{"match": near("#A237FF", 115), "fill": "#A237FF"}],
+        (0.17, 0.16, 0.83, 0.72),
+    ),
+    "deezerword": (
+        "994e13a4-image.jpg",
+        [{"match": both(light(200), notf(saturated(40))), "fill": "#FFFFFF"}],
+        # Dentro de la placa negra: el archivo trae página blanca alrededor y
+        # el recorte anterior se llevaba sus esquinas redondeadas.
+        (0.16, 0.7, 0.84, 0.818),
     ),
     # Las cuatro caras de la nube y el nombre son todas azules y muy juntas:
     # por distancia de color el azul oscuro de la nube se metía en la capa del

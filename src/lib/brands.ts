@@ -195,7 +195,7 @@ function key(value: string) {
     spec({
       bg: "#0779FF",
       ink: "#FFFFFF",
-      accent: "#9FCCFF",
+      accent: "#0779FF",
       wash: 0.3,
       logo: "primevideo",
     }),
@@ -205,7 +205,7 @@ function key(value: string) {
     spec({
       bg: "#006FFD",
       ink: "#FFFFFF",
-      accent: "#8FC3FF",
+      accent: "#006FFD",
       wash: 0.24,
       logo: "paramountplus",
     }),
@@ -228,7 +228,7 @@ function key(value: string) {
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#C3C3CC",
+      accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.26,
       logo: "appletv",
@@ -241,7 +241,7 @@ function key(value: string) {
     spec({
       bg: "#FF5E00",
       ink: "#FFFFFF",
-      accent: "#FFB784",
+      accent: "#FF5E00",
       wash: 0.2,
       logo: "crunchyroll",
     }),
@@ -292,7 +292,7 @@ function key(value: string) {
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#9AA6B8",
+      accent: "#FFFFFF",
       wash: 0.26,
       logo: "foxone",
     }),
@@ -346,7 +346,7 @@ function key(value: string) {
     spec({
       bg: "#001DFF",
       ink: "#FFFFFF",
-      accent: "#7F92FF",
+      accent: "#001DFF",
       wash: 0.26,
       logo: "mubi",
     }),
@@ -362,6 +362,10 @@ function key(value: string) {
       accent: "#FFFFFF",
       secondary: ["#EFAE02"],
       deepEnd: "#070708",
+      // El blanco manda en el difuminado, pero sobre el negro del logotipo: a
+      // plena intensidad la ficha se volvía gris y «plex», que es blanco,
+      // desaparecía dentro de ella.
+      fade: 0.42,
       wash: 0.4,
       logo: "plex",
     }),
@@ -371,7 +375,7 @@ function key(value: string) {
     spec({
       bg: "#FBCC11",
       ink: "#000000",
-      accent: "#8A6E00",
+      accent: "#FBCC11",
       wash: 0.18,
       logo: "universalplus",
       light: true,
@@ -382,7 +386,7 @@ function key(value: string) {
     spec({
       bg: "#0C9BFF",
       ink: "#FFFFFF",
-      accent: "#9AD4FF",
+      accent: "#0C9BFF",
       wash: 0.2,
       logo: "viki",
     }),
@@ -392,7 +396,7 @@ function key(value: string) {
     spec({
       bg: "linear-gradient(180deg,#00DC5B,#00C251 60%,#00B74C)",
       ink: "#FFFFFF",
-      accent: "#7BF0AC",
+      accent: "#00DC5B",
       wash: 0.18,
       logo: "iqiyi",
     }),
@@ -417,7 +421,7 @@ function key(value: string) {
     spec({
       bg: "linear-gradient(160deg,#FB5C74,#FA2337 55%,#D50F2C)",
       ink: "#FFFFFF",
-      accent: "#FFB3BE",
+      accent: "#FB5C74",
       wash: 0.18,
       logo: "applemusic",
     }),
@@ -438,7 +442,7 @@ function key(value: string) {
     spec({
       bg: "#25D2D9",
       ink: "#000000",
-      accent: "#0B6E73",
+      accent: "#25D2D9",
       wash: 0.18,
       logo: "amazonmusic",
       light: true,
@@ -460,7 +464,7 @@ function key(value: string) {
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#C9CFD6",
+      accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.22,
       logo: "tidal",
@@ -471,7 +475,7 @@ function key(value: string) {
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#B9C2CC",
+      accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.22,
       logo: "qobuz",
@@ -674,7 +678,7 @@ function key(value: string) {
     spec({
       bg: "#0A8648",
       ink: "#FFFFFF",
-      accent: "#5FD79B",
+      accent: "#0A8648",
       wash: 0.2,
       logo: "scribd",
     }),
@@ -686,7 +690,7 @@ function key(value: string) {
     spec({
       bg: "#5865F2",
       ink: "#FFFFFF",
-      accent: "#C3C8FF",
+      accent: "#5865F2",
       wash: 0.18,
       logo: "discord",
     }),
@@ -727,7 +731,7 @@ function key(value: string) {
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#8E9AAE",
+      accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.24,
       logo: "roblox",
@@ -1079,8 +1083,17 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
    */
   const deep = shade(a, -0.66);
 
-  /** Cuánto pesa el acento en el difuminado. Ver `Brand.fade`. */
-  const f = brand.fade ?? (brand.light ? 0.14 : 1);
+  /*
+   * Cuánto pesa el acento en el difuminado. Ver `Brand.fade`.
+   *
+   * Por omisión sale de la luminancia del propio acento, y no es un capricho:
+   * un rojo al 82 % se lee como rojo, pero un blanco al 82 % no se lee como
+   * blanco sino como una página gris. Cuanto más claro es el color principal,
+   * menos alfa necesita para mandar. Las marcas de fondo claro apenas tiñen:
+   * ahí el color ya lo pone su propio fondo.
+   */
+  const f =
+    brand.fade ?? (brand.light ? 0.14 : Math.min(1, Math.max(0.24, 1 - (lum(a) - 0.55) * 1.7)));
 
   /*
    * Halo bajo el logotipo, del propio extremo profundo de la marca.

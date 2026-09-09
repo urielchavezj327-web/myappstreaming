@@ -121,25 +121,26 @@ export const LOGOS = {
   primevideo: { kind: "full", key: "primevideo", scale: 1.1 },
   vix: { kind: "full", key: "vix" },
   disneyplus: { kind: "full", key: "disneyplus" },
-  paramountplus: { kind: "full", key: "paramountplus" },
+  // la montaña deja mucho aire alrededor de la estrella
+  paramountplus: { kind: "full", key: "paramountplus", scale: 1.2 },
   peacock: { kind: "full", key: "peacock" },
   crunchyroll: { kind: "full", key: "crunchyroll" },
   clarovideo: { kind: "full", key: "clarovideo" },
   f1tv: { kind: "full", key: "f1tv" },
   hidive: { kind: "full", key: "hidive", scale: 1.7 },
-  iptv: { kind: "full", key: "iptv" },
+  iptv: { kind: "full", key: "iptv", scale: 1.3 },
   kocowa: { kind: "full", key: "kocowa" },
   // el emblema y «MLB.tv» dejan mucho aire entre sí
   mlbtv: { kind: "full", key: "mlbtv", scale: 1.9 },
   universalplus: { kind: "full", key: "universalplus" },
-  viki: { kind: "full", key: "viki" },
+  viki: { kind: "full", key: "viki", scale: 1.28 },
   iqiyi: { kind: "full", key: "iqiyi" },
   mubi: { kind: "full", key: "mubi" },
   tidal: { kind: "full", key: "tidal" },
   youtube: { kind: "full", key: "youtube" },
   applemusic: { kind: "full", key: "applemusic" },
   amazonmusic: { kind: "full", key: "amazonmusic" },
-  deezer: { kind: "full", key: "deezer", scale: 1.1 },
+
   // símbolo arriba y nombre abajo, muy separados
   qobuz: { kind: "full", key: "qobuz", scale: 1.2 },
   gemini: { kind: "full", key: "geminiword", grad: GEMINI },
@@ -186,7 +187,14 @@ export const LOGOS = {
     dir: "col",
     a: { traced: "spotifymark" },
     b: { traced: "spotifyword" },
-    sizes: [30, 15],
+    sizes: [38, 17],
+  },
+  deezer: {
+    kind: "compose",
+    dir: "col",
+    a: { traced: "deezerheart" },
+    b: { traced: "deezerword" },
+    sizes: [40, 14],
   },
   foxone: { kind: "full", key: "foxone" },
   // El nudo de OpenAI trazado de tu imagen, encima del nombre. El nombre va en
@@ -196,8 +204,9 @@ export const LOGOS = {
     dir: "col",
     a: { traced: "chatgptmark" },
     b: { text: "ChatGPT" },
-    // El símbolo pesa más que el nombre porque es lo que se reconoce.
-    sizes: [38, 15],
+    // El símbolo pesa más que el nombre porque es lo que se reconoce. El nudo
+    // es de trazo fino y en la cuadrícula pesaba menos que cualquier otro.
+    sizes: [46, 16],
     recolor: { "#000000": "#FFFFFF" },
   },
   discord: {
@@ -237,7 +246,7 @@ export function isTileLogo(id: LogoId): boolean {
  */
 const INK_AREA = 1420; // cqw² de trazo; el resto lo decide la proporción
 const MAX_W = 99;
-const MAX_H = 62;
+const MAX_H = 64;
 
 function fitBox(
   logo: { viewBox: string; coverage: number },
