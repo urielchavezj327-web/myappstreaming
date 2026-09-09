@@ -123,7 +123,8 @@ function key(value: string) {
   [
     /^netflix/,
     spec({
-      bg: "#000000",
+      // Muestreado de tu imagen: el fondo del logotipo es #101010, plano.
+      bg: "#101010",
       ink: "#E50914",
       accent: "#E50914",
       wash: 0.58,
@@ -1060,25 +1061,40 @@ export type BrandSkin = {
  */
 export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSkin {
   const hero = size === "hero";
-  const w = brand.wash * (hero ? 1.15 : 1);
   const a = brand.accent;
 
-  // Capas, de arriba abajo: luz cenital, acento de marca, fondo real.
-  const layers = [
-    `radial-gradient(${hero ? "120% 46%" : "132% 62%"} at 50% ${hero ? "-8%" : "-14%"}, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.06 : 0.11)}, transparent 64%)`,
-    `radial-gradient(${hero ? "110% 62%" : "128% 96%"} at ${hero ? "82% 96%" : "50% 118%"}, ${rgba(a, w)}, transparent 62%)`,
-    `radial-gradient(${hero ? "76% 44%" : "92% 70%"} at ${hero ? "6% 8%" : "8% 4%"}, ${rgba(a, w * 0.55)}, transparent 60%)`,
-    brand.bg,
-  ];
+  /*
+   * La tarjeta y la ficha no se pintan igual, y es a propósito:
+   *
+   *  · **Tarjeta** — el fondo EXACTO del logotipo, plano. Si el logotipo de
+   *    Netflix es negro, la tarjeta es negra; no se le inventa un resplandor
+   *    rojo. Lo único que se le suma es la luz cenital del sistema de vidrio,
+   *    que es del lenguaje de la app y no del color de la marca.
+   *  · **Ficha** — ahí sí entra el difuminado con los colores reales de la
+   *    marca, que es lo que hace que la pantalla completa se sienta suya.
+   */
+  const skylight = `radial-gradient(${hero ? "120% 46%" : "132% 62%"} at 50% ${hero ? "-8%" : "-14%"}, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`;
+
+  const layers = hero
+    ? [
+        skylight,
+        `radial-gradient(110% 62% at 82% 96%, ${rgba(a, brand.wash)}, transparent 62%)`,
+        `radial-gradient(76% 44% at 6% 8%, ${rgba(a, brand.wash * 0.55)}, transparent 60%)`,
+        brand.bg,
+      ]
+    : [skylight, brand.bg];
 
   return {
     background: layers.join(", "),
-    border: rgba(brand.light ? "#000000" : a, brand.light ? 0.14 : 0.3),
+    // Neutro, no del color de la marca: un borde rojo alrededor de Netflix se
+    // lee como resplandor y rompe el negro plano de su logotipo. El marco es
+    // del sistema de vidrio de la app; el color es del fondo y del logotipo.
+    border: rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.12 : 0.14),
     edge: rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.12 : 0.34),
     ink: brand.ink,
     inkGrad: brand.inkGrad,
     symbolInk: brand.symbolInk ?? brand.ink,
-    inkShadow: brand.light ? "none" : `0 2px 18px ${rgba(a, 0.34)}`,
+    inkShadow: "none",
     accent: a,
     // Neutro a propósito: el color de la marca es del fondo y del logotipo.
     // Si además tiñera los textos de apoyo, el rojo de Netflix se comería la

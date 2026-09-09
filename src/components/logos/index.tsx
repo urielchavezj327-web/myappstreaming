@@ -174,6 +174,38 @@ export function hasLogo(id: string): id is LogoId {
   return id in LOGOS;
 }
 
+/**
+ * Tamaño de un logotipo dentro de su caja, normalizado por **área óptica**.
+ *
+ * Ajustar por altura fija —que es lo que hacía antes— rompe la cuadrícula: los
+ * logotipos de esta app van de proporción 0.5 (Google One, vertical) a 7.5
+ * (Microsoft 365, muy apaisado). Con una altura común, ViX salía al 147 % del
+ * ancho y Prime Video al 54 %, o sea uno enorme y el otro diminuto.
+ *
+ * La media geométrica sí conserva el peso visual: cada logotipo ocupa la misma
+ * superficie aparente, y solo después se recorta contra los topes de ancho y
+ * alto de la tarjeta, manteniendo su proporción.
+ */
+const OPTICAL_AREA = 2300; // cqw², equivale a un logotipo cuadrado de ~48cqw
+const MAX_W = 94;
+const MAX_H = 56;
+
+function fitBox(viewBox: string): { width: string; height: string } {
+  const [, , vw, vh] = viewBox.split(" ").map(Number);
+  const ratio = (vw ?? 1) / (vh ?? 1);
+  let w = Math.sqrt(OPTICAL_AREA * ratio);
+  let h = Math.sqrt(OPTICAL_AREA / ratio);
+  if (w > MAX_W) {
+    w = MAX_W;
+    h = w / ratio;
+  }
+  if (h > MAX_H) {
+    h = MAX_H;
+    w = h * ratio;
+  }
+  return { width: `${w.toFixed(1)}cqw`, height: `${h.toFixed(1)}cqw` };
+}
+
 function Defs({ grad }: { grad: Gradient }) {
   const a = ((grad.angle ?? 135) * Math.PI) / 180;
   return (
@@ -245,9 +277,16 @@ function PieceView({
   grad?: Gradient;
   recolor?: Record<string, string>;
 }) {
+  // `height` sigue mandando en las piezas compuestas, donde la proporción
+  // entre símbolo y nombre la fija la marca; las piezas sueltas se normalizan
+  // por área.
+  const box =
+    height > 0
+      ? { width: "100%", height: `${height}cqw` }
+      : fitBox("traced" in piece ? (TRACED[piece.traced]?.viewBox ?? "0 0 1 1") : "0 0 1 1");
   const common = {
     preserveAspectRatio: "xMidYMid meet" as const,
-    style: { display: "block", width: "100%", height: `${height}cqw` },
+    style: { display: "block", margin: "0 auto", ...box },
   };
 
   if ("text" in piece) {
@@ -309,7 +348,7 @@ export const BrandLogo = memo(function BrandLogo({ id, name }: { id: LogoId; nam
     return (
       <PieceView
         piece={{ traced: spec.key }}
-        height={54}
+        height={0}
         label={name}
         {...(spec.grad ? { grad: spec.grad } : {})}
         {...(spec.recolor ? { recolor: spec.recolor } : {})}

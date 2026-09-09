@@ -153,12 +153,33 @@ JOBS = {
     # El logotipo viene negro sobre blanco, pero la ficha es negra: se traza la
     # forma y se pinta en blanco.
     "qobuz": ("9962d364-image.png", [{"match": dark(120), "fill": "#FFFFFF"}], None),
-    "peacock": ("b1b62659-image.jpg", [{"match": light(190), "fill": "#FFFFFF"}], (0.0, 0.3, 0.78, 0.72)),
+    # El wordmark y los cinco puntos del degradado, que quedaban fuera del
+    # recorte anterior. Cada punto es una capa con su color muestreado.
+    "peacock": (
+        "b1b62659-image.jpg",
+        [
+            {"match": light(190), "fill": "#FFFFFF"},
+            {"match": near("#F8B410", 70), "fill": "#F8B410"},
+            {"match": near("#E82828", 70), "fill": "#E82828"},
+            {"match": near("#A42CDC", 70), "fill": "#A42CDC"},
+            {"match": near("#1898E8", 80), "fill": "#1898E8"},
+            {"match": near("#00B060", 70), "fill": "#00B060"},
+        ],
+        (0.16, 0.30, 0.86, 0.72),
+    ),
     "applemusic": ("2ccd21cf-image.jpg", [{"match": light(190), "fill": "#FFFFFF"}], None),
     "paramountplus": ("3e19799a-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.30, 0.0, 0.70, 0.82)),
     "disneyplus": ("d8039d36-image.jpg", [{"match": light(200), "fill": "#FFFFFF"}], None),
     "kocowa": ("953823f8-image.png", [{"match": light(180), "fill": "#FFFFFF"}], None),
-    "hidive": ("e857e205-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.05, 0.33, 0.95, 0.62)),
+    # La barra negra y las letras blancas dentro: dos capas, la barra primero.
+    "hidive": (
+        "e857e205-image.png",
+        [
+            {"match": both(dark(90), notf(saturated(45))), "fill": "#000000"},
+            {"match": light(200), "fill": "#FFFFFF"},
+        ],
+        (0.04, 0.30, 0.96, 0.66),
+    ),
     "photoshop": ("8c43a815-image.png", [{"match": near("#31A8FF", 90), "fill": "#31A8FF"}], None),
     "smartfit": (
         "e4782df5-image.png",
