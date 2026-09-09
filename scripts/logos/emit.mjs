@@ -20,9 +20,7 @@ const traced = JSON.parse(readFileSync(join(here, "traced.json"), "utf8"));
 
 /** Símbolos oficiales de `simple-icons`, para marcas sin imagen de referencia. */
 const WANTED = [
-  "hbo", // el «HBO» del lockup; el «max» va trazado de la imagen de Uri
   "appletv", // trae el wordmark completo (manzana + tv)
-  "plex", // trae el wordmark completo
   "fox", // trae el wordmark completo
   "discord",
   "duolingo", // el búho: en la imagen es verde sobre verde y no se puede trazar

@@ -44,6 +44,17 @@ export type Brand = {
   accent: string;
   /** Presencia del acento sobre el fondo, de 0 a 1. */
   wash: number;
+  /**
+   * Colores secundarios del logotipo (los cinco puntos de Peacock). En la
+   * ficha entran como acentos discretos, nunca como protagonistas.
+   */
+  secondary?: string[];
+  /**
+   * Color del extremo profundo de la ficha. Por omisión es el propio acento
+   * oscurecido; se fija a mano cuando el logotipo tiene un fondo con
+   * identidad propia (el negro de Netflix, de Peacock o de Tidal).
+   */
+  deepEnd?: string;
   font: BrandFont;
   weight: number;
   tracking: string;
@@ -80,6 +91,8 @@ const W = "#FFFFFF";
 function spec(s: Spec): Brand {
   return {
     ...(s.logo ? { logo: s.logo } : {}),
+    ...(s.secondary ? { secondary: s.secondary } : {}),
+    ...(s.deepEnd ? { deepEnd: s.deepEnd } : {}),
     bg: s.bg,
     ink: s.ink,
     ...(s.inkGrad ? { inkGrad: s.inkGrad } : {}),
@@ -127,6 +140,7 @@ function key(value: string) {
       bg: "#101010",
       ink: "#E50914",
       accent: "#E50914",
+      deepEnd: "#101010",
       wash: 0.58,
       logo: "netflix",
     }),
@@ -145,13 +159,16 @@ function key(value: string) {
     }),
   ],
   [
-    // El logotipo volvió a «HBO Max» en julio de 2025: negro con las letras en
-    // blanco plateado. simple-icons solo trae el símbolo «HBO».
+    // El logotipo apilado que mandaste: las letras son metal —de blanco cálido
+    // a gris azulado— y el fondo NO es negro, es un azul de tinta con viñeta.
+    // Los dos colores salen muestreados de esa imagen, así que el difuminado
+    // de la ficha se arma solo con ellos: nada de negro añadido por nosotros.
     /^hbo|^max\b/,
     spec({
-      bg: "#000000",
-      ink: "#FFFFFF",
-      accent: "#B9C6DC",
+      bg: "radial-gradient(128% 128% at 50% 50%,#0D0F1B,#00030C)",
+      ink: "#E7E7EF",
+      accent: "#DCDCE6",
+      deepEnd: "#0D0F1B",
       wash: 0.34,
       logo: "hbomax",
     }),
@@ -181,7 +198,9 @@ function key(value: string) {
     spec({
       bg: "#0D0D0D",
       ink: "#FFFFFF",
-      accent: "#8C8C96",
+      accent: "#FFFFFF",
+      deepEnd: "#0D0D0D",
+      secondary: ["#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
       wash: 0.3,
       logo: "peacock",
     }),
@@ -192,6 +211,7 @@ function key(value: string) {
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#C3C3CC",
+      deepEnd: "#000000",
       wash: 0.26,
       logo: "appletv",
     }),
@@ -213,9 +233,13 @@ function key(value: string) {
     // letras en blanco. Dibujado por mí, pendiente de tu visto bueno.
     /^vix/,
     spec({
-      bg: "linear-gradient(135deg,#FF5683,#FF6C57 42%,#FF6829 72%,#FF4712)",
+      // Las nueve paradas son la media de la imagen por franjas a 135°, no una
+      // interpolación nuestra: el rosa vive solo en el primer octavo y el
+      // naranja se queda con el resto, que es justo lo que se ve en el archivo.
+      bg: "linear-gradient(135deg,#FF587E,#FE5F6E 12%,#FE685D 25%,#FD6E4A 38%,#FD6E39 50%,#FD672A 62%,#FE591E 75%,#FF4A14 88%,#FF4712)",
       ink: "#FFFFFF",
-      accent: "#FF8A5C",
+      accent: "#FD6E39",
+      deepEnd: "#FF4712",
       wash: 0.16,
       logo: "vix",
     }),
@@ -228,6 +252,7 @@ function key(value: string) {
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#E1251B",
+      deepEnd: "#000000",
       wash: 0.5,
       logo: "clarovideo",
     }),
@@ -282,6 +307,7 @@ function key(value: string) {
       bg: "linear-gradient(140deg,#572978,#311C40 52%,#121212)",
       ink: "#FFFFFF",
       accent: "#7B3BA8",
+      deepEnd: "#121212",
       wash: 0.4,
       logo: "kocowa",
     }),
@@ -308,11 +334,16 @@ function key(value: string) {
     }),
   ],
   [
+    // El fondo del logotipo es negro, no gris; el blanco de «ple» es el color
+    // que manda y el dorado de la «x» entra de secundario. Los tres están
+    // muestreados de tu imagen.
     /^plex/,
     spec({
-      bg: "#282A2D",
-      ink: "#E5A00D",
-      accent: "#E5A00D",
+      bg: "#070708",
+      ink: "#FFFFFF",
+      accent: "#FFFFFF",
+      secondary: ["#EFAE02"],
+      deepEnd: "#070708",
       wash: 0.4,
       logo: "plex",
     }),
@@ -356,6 +387,7 @@ function key(value: string) {
       bg: "#191414",
       ink: "#1DB954",
       accent: "#1DB954",
+      deepEnd: "#191414",
       wash: 0.6,
       logo: "spotify",
     }),
@@ -400,6 +432,7 @@ function key(value: string) {
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#A237FF",
+      deepEnd: "#000000",
       wash: 0.55,
       logo: "deezer",
     }),
@@ -410,6 +443,7 @@ function key(value: string) {
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#C9CFD6",
+      deepEnd: "#000000",
       wash: 0.22,
       logo: "tidal",
     }),
@@ -420,6 +454,7 @@ function key(value: string) {
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#B9C2CC",
+      deepEnd: "#000000",
       wash: 0.22,
       logo: "qobuz",
     }),
@@ -493,6 +528,7 @@ function key(value: string) {
       bg: "#0A0A0C",
       ink: "#FFFFFF",
       accent: "#FFFFFF",
+      deepEnd: "#0A0A0C",
       wash: 0.16,
       logo: "capcut",
       suffix: "Pro",
@@ -506,6 +542,7 @@ function key(value: string) {
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#10A37F",
+      deepEnd: "#000000",
       wash: 0.5,
       font: "grotesk",
       weight: 600,
@@ -535,6 +572,7 @@ function key(value: string) {
       bg: "#0A0D17",
       ink: "#FFFFFF",
       accent: "#4285F4",
+      deepEnd: "#0A0D17",
       wash: 0.45,
       logo: "gemini",
     }),
@@ -545,6 +583,7 @@ function key(value: string) {
       bg: "#141416",
       ink: "#FFFFFF",
       accent: "#E0518C",
+      deepEnd: "#141416",
       wash: 0.42,
       logo: "microsoft365",
     }),
@@ -565,6 +604,7 @@ function key(value: string) {
       bg: "#101116",
       ink: "#FFFFFF",
       accent: "#4285F4",
+      deepEnd: "#101116",
       wash: 0.4,
       logo: "googleone",
     }),
@@ -620,6 +660,7 @@ function key(value: string) {
       bg: "#12141A",
       ink: "#FFFFFF",
       accent: "#FF7A00",
+      deepEnd: "#12141A",
       wash: 0.34,
       font: "condensed",
       weight: 700,
@@ -639,6 +680,7 @@ function key(value: string) {
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#FBBA00",
+      deepEnd: "#000000",
       wash: 0.4,
       logo: "smartfit",
     }),
@@ -649,6 +691,7 @@ function key(value: string) {
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#8E9AAE",
+      deepEnd: "#000000",
       wash: 0.24,
       logo: "roblox",
     }),
@@ -1082,19 +1125,28 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
   const skylight = `radial-gradient(${hero ? "120% 46%" : "132% 62%"} at 50% ${hero ? "-8%" : "-14%"}, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`;
 
   /*
-   * El extremo profundo se saca del propio color de la marca, no del fondo de
-   * la app. Antes la ficha de ViX terminaba en marrón sucio porque por debajo
-   * asomaba el negro del sistema: ViX no lleva negro en ningún lado.
+   * En la ficha manda el color PRINCIPAL del logotipo, no su fondo.
+   *
+   * Es la diferencia entre una página viva y una apagada: el fondo del
+   * logotipo de Netflix es negro y el de Peacock también, pero lo que
+   * identifica a esas marcas es el rojo y el blanco. Si el negro domina, la
+   * ficha se ve muerta. Así que el acento cubre la parte alta y el fondo real
+   * queda como extremo profundo.
+   *
+   * Los colores secundarios —los cinco puntos de Peacock— entran después, en
+   * dosis pequeñas, como acentos y no como protagonistas.
    */
   const deep = shade(a, -0.66);
 
   const layers = hero
     ? [
         skylight,
-        // La tinta del logotipo entra en la mezcla, que es lo que pide la
-        // regla: se difuminan el color del fondo y el de las letras.
-        `radial-gradient(120% 58% at 50% 4%, ${rgba(brand.ink, 0.14)}, transparent 60%)`,
-        `radial-gradient(150% 88% at 50% 112%, ${deep}, transparent 66%)`,
+        ...(brand.secondary ?? []).map(
+          (c, i) =>
+            `radial-gradient(46% 26% at ${12 + i * 19}% ${18 + (i % 2) * 10}%, ${rgba(c, 0.2)}, transparent 62%)`,
+        ),
+        `radial-gradient(165% 76% at 50% -4%, ${rgba(a, 0.86)}, ${rgba(a, 0.34)} 62%, transparent 84%)`,
+        `radial-gradient(150% 66% at 50% 116%, ${rgba(shade(brand.deepEnd ?? a, -0.3), 0.94)}, transparent 74%)`,
         brand.bg,
       ]
     : [skylight, brand.bg];

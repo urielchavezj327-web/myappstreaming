@@ -16,7 +16,7 @@ import sys
 
 import numpy as np
 import potrace
-from PIL import Image
+from PIL import Image, ImageFilter
 
 UP = "/root/.claude/uploads/62c054d9-a0a6-5ee5-9c58-8288ae594ab7/"
 OUT = "/tmp/claude-0/-home-user-myappstreaming/62c054d9-a0a6-5ee5-9c58-8288ae594ab7/scratchpad/traced/"
@@ -85,7 +85,7 @@ def curve_to_d(path, sx, sy, ox, oy, r=1):
     return "".join(out)
 
 
-def trace(file, name, layers, box=1000, crop=None, maxside=900, turd=8):
+def trace(file, name, layers, box=1000, crop=None, maxside=900, minside=700, turd=8):
     """Traza cada capa y devuelve `{viewBox, layers:[{fill, d}]}`.
 
     Todas las capas comparten el mismo encuadre —el rectángulo que ocupa la
@@ -108,6 +108,14 @@ def trace(file, name, layers, box=1000, crop=None, maxside=900, turd=8):
     if max(im.size) > maxside:
         s = maxside / max(im.size)
         im = im.resize((max(1, int(im.width * s)), max(1, int(im.height * s))), Image.LANCZOS)
+    elif max(im.size) < minside:
+        # Las capturas chicas (el Plex de 196 px) dan curvas dentadas: potrace
+        # solo puede seguir el escalón del píxel. Se amplía con Lanczos y se
+        # difumina un poco: el escalón se vuelve una rampa, y al binarizar una
+        # rampa el contorno sale continuo en vez de en escalera.
+        f = minside / max(im.size)
+        im = im.resize((int(im.width * f), int(im.height * f)), Image.LANCZOS)
+        im = im.filter(ImageFilter.GaussianBlur(f / 2.2))
 
     arr = np.asarray(im)
     masks = [(spec, spec["match"](arr)) for spec in layers]
@@ -283,9 +291,22 @@ JOBS = {
         ],
         None,
     ),
-    # Es el lockup apilado de 2020, no el horizontal de 2025: de aquí sale la
-    # forma de «max», que se combina con el símbolo «HBO» de simple-icons.
-    "hbomaxword": ("d1ba32cc-image.jpg", [{"match": light(150), "fill": "#FFFFFF"}], (0.10, 0.55, 0.90, 0.86)),
+    # El lockup apilado —«HBO» arriba, «max» abajo— tal como lo mandó Uri.
+    # Va de una sola pieza: así el interletraje y la relación de alturas entre
+    # las dos líneas salen del archivo y no de una composición nuestra. El
+    # relleno va al degradado metálico muestreado de la misma imagen.
+    "hbomax": ("9172f180-image.jpg", [{"match": light(110), "fill": "#HBOMAX"}], None),
+    # El logotipo que mandaste: «ple» en blanco y la «x» en dorado, sobre negro.
+    # El dorado se toma del núcleo de los píxeles, no del promedio, que el JPEG
+    # ensucia con un halo verdoso en los bordes.
+    "plex": (
+        "003f8978-image.jpg",
+        [
+            {"match": both(light(150), notf(saturated(60))), "fill": "#FFFFFF"},
+            {"match": saturated(60), "fill": "#EFAE02"},
+        ],
+        None,
+    ),
     "tidal": ("aec23587-image.png", [{"match": light(180), "fill": "#FFFFFF"}], None),
     "duolingoword": ("5cee19fe-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.20, 0.62, 0.80, 0.92)),
     "duolingoowl": ("5cee19fe-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.28, 0.10, 0.72, 0.60)),

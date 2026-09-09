@@ -257,10 +257,10 @@ export function OfferRow({
               {age ? (
                 /* Frescura del precio: un dato de hace meses ya no es un dato. */
                 <span
-                  className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
-                    age.stale
-                      ? "bg-amber-400/10 text-amber-300/80"
-                      : "bg-surface-2 text-muted-foreground"
+                  /* Vidrio translúcido, no un bloque oscuro: sobre el color de
+                     marca de una ficha, una pastilla opaca se lee como mancha. */
+                  className={`rounded-md bg-white/12 px-1.5 py-0.5 text-[11px] font-semibold ${
+                    age.stale ? "text-amber-200/90" : "text-white/72"
                   }`}
                   title={`Última actualización: ${age.label}`}
                 >

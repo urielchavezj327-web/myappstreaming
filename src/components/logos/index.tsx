@@ -27,9 +27,16 @@ export type Piece =
 
 export type LogoSpec =
   /** Logotipo completo, ya con símbolo y nombre en el mismo trazado. */
-  | { kind: "full"; key: string; grad?: Gradient; recolor?: Record<string, string> }
+  | {
+      kind: "full";
+      key: string;
+      grad?: Gradient;
+      recolor?: Record<string, string>;
+      /** Ajuste fino sobre el tamaño que da la tinta. 1 = sin ajuste. */
+      scale?: number;
+    }
   /** Solo el símbolo oficial de simple-icons, que ya trae el nombre dentro. */
-  | { kind: "solo"; key: string; ink?: string }
+  | { kind: "solo"; key: string; ink?: string; scale?: number }
   /**
    * Dos piezas compuestas. `col` pone el símbolo encima del nombre; `row` los
    * deja en el mismo renglón, que es como van HBO Max y Fox One.
@@ -60,6 +67,22 @@ const GEMINI: Gradient = {
   angle: 45,
 };
 
+const HBOMAX: Gradient = {
+  id: "hbomax",
+  // Las letras de HBO Max no son blancas: son metal. Van de un blanco cálido
+  // rosado a la izquierda a un gris azulado frío a la derecha, con un repunte
+  // de luz en la «x». Las cinco paradas están promediadas por tramos sobre la
+  // tinta de la imagen de referencia, no elegidas a ojo.
+  stops: [
+    ["0%", "#F8F2F5"],
+    ["30%", "#EDE7ED"],
+    ["58%", "#DCDCE6"],
+    ["82%", "#C6D1DC"],
+    ["100%", "#D9E0E9"],
+  ],
+  angle: 8,
+};
+
 const COPILOT: Gradient = {
   id: "copilot",
   // El listón de Microsoft 365 Copilot recorre azul, verde, amarillo,
@@ -83,7 +106,10 @@ const COPILOT: Gradient = {
 export const LOGOS = {
   // ── Logotipo completo en un solo trazado ────────────────────────────────
   netflix: { kind: "full", key: "netflixword" },
-  primevideo: { kind: "full", key: "primevideo" },
+  // Apilado —«HBO» sobre «max»—, de una sola pieza, con el metal de la marca.
+  hbomax: { kind: "full", key: "hbomax", grad: HBOMAX },
+  // apilado en dos líneas más la sonrisa
+  primevideo: { kind: "full", key: "primevideo", scale: 1.1 },
   vix: { kind: "full", key: "vix" },
   disneyplus: { kind: "full", key: "disneyplus" },
   paramountplus: { kind: "full", key: "paramountplus" },
@@ -91,10 +117,11 @@ export const LOGOS = {
   crunchyroll: { kind: "full", key: "crunchyroll" },
   clarovideo: { kind: "full", key: "clarovideo" },
   f1tv: { kind: "full", key: "f1tv" },
-  hidive: { kind: "full", key: "hidive" },
+  hidive: { kind: "full", key: "hidive", scale: 1.7 },
   iptv: { kind: "full", key: "iptv" },
   kocowa: { kind: "full", key: "kocowa" },
-  mlbtv: { kind: "full", key: "mlbtv" },
+  // el emblema y «MLB.tv» dejan mucho aire entre sí
+  mlbtv: { kind: "full", key: "mlbtv", scale: 1.9 },
   universalplus: { kind: "full", key: "universalplus" },
   viki: { kind: "full", key: "viki" },
   iqiyi: { kind: "full", key: "iqiyi" },
@@ -103,24 +130,30 @@ export const LOGOS = {
   youtube: { kind: "full", key: "youtube" },
   applemusic: { kind: "full", key: "applemusic" },
   amazonmusic: { kind: "full", key: "amazonmusic" },
-  deezer: { kind: "full", key: "deezer" },
-  qobuz: { kind: "full", key: "qobuz" },
+  deezer: { kind: "full", key: "deezer", scale: 1.1 },
+  // símbolo arriba y nombre abajo, muy separados
+  qobuz: { kind: "full", key: "qobuz", scale: 1.2 },
   gemini: { kind: "full", key: "geminiword", grad: GEMINI },
-  scribd: { kind: "full", key: "scribd" },
-  photoshop: { kind: "full", key: "photoshop" },
+  // solo el símbolo entre corchetes
+  scribd: { kind: "full", key: "scribd", scale: 1.15 },
+  // icono cuadrado sin nombre al lado
+  photoshop: { kind: "full", key: "photoshop", scale: 1.2 },
   // El magenta original se pierde contra el degradado morado de la ficha, así
   // que sube de luminosidad lo justo para leerse encima.
   picsart: { kind: "full", key: "picsart", recolor: { "#BE07BD": "#FF63F0" } },
   // El logotipo viene negro sobre blanco; la ficha es negra.
   capcut: { kind: "full", key: "capcut", recolor: { "#000000": "#FFFFFF" } },
-  googleone: { kind: "full", key: "googleone" },
-  onedrive: { kind: "full", key: "onedrive" },
+  // vertical y estrecho
+  googleone: { kind: "full", key: "googleone", scale: 1.35 },
+  onedrive: { kind: "full", key: "onedrive", recolor: { "#084BB1": "#E8F2FF" } },
+  // «ple» en blanco y la «x» partida: chevrón dorado y chevrón blanco.
+  plex: { kind: "full", key: "plex" },
   smartfit: { kind: "full", key: "smartfit" },
   roblox: { kind: "full", key: "roblox" },
 
   // ── Símbolo de simple-icons que ya incluye el nombre ────────────────────
-  appletv: { kind: "solo", key: "appletv", ink: "#FFFFFF" },
-  plex: { kind: "solo", key: "plex", ink: "#E5A00D" },
+  // solo la manzana y «tv»: con el tamaño común se pierde
+  appletv: { kind: "solo", key: "appletv", ink: "#FFFFFF", scale: 1.8 },
 
   // ── Compuestos ─────────────────────────────────────────────────────────
   spotify: {
@@ -129,18 +162,6 @@ export const LOGOS = {
     a: { traced: "spotifymark" },
     b: { traced: "spotifyword" },
     sizes: [30, 15],
-  },
-  // El logotipo de 2025 es horizontal: «HBO» y «Max» en el mismo renglón.
-  // «HBO» viene de simple-icons; «Max» está trazado de tu imagen.
-  hbomax: {
-    kind: "compose",
-    dir: "row",
-    a: { mark: "hbo", ink: "#FFFFFF" },
-    b: { traced: "hbomaxword" },
-    // El símbolo «HBO» de simple-icons viene en un lienzo cuadrado y su tinta
-    // ocupa solo una banda horizontal, así que necesita más caja para pesar lo
-    // mismo que «max», que sí viene recortado a su tinta.
-    sizes: [44, 16],
   },
   foxone: { kind: "full", key: "foxone" },
   duolingo: {
@@ -188,19 +209,19 @@ export function hasLogo(id: string): id is LogoId {
  * alto de `ancho · alto · cobertura = constante` y solo después se recorta
  * contra los topes de la tarjeta, conservando la proporción.
  */
-const INK_AREA = 975; // cqw² de trazo; el resto lo decide la proporción
-const MAX_W = 96;
-const MAX_H = 58;
+const INK_AREA = 1420; // cqw² de trazo; el resto lo decide la proporción
+const MAX_W = 99;
+const MAX_H = 62;
 
-function fitBox(logo: { viewBox: string; coverage: number }): {
-  width: string;
-  height: string;
-} {
+function fitBox(
+  logo: { viewBox: string; coverage: number },
+  scale = 1,
+): { width: string; height: string } {
   const [, , vw, vh] = logo.viewBox.split(" ").map(Number);
   const ratio = (vw ?? 1) / (vh ?? 1);
   // Cobertura mínima para que un logotipo muy vacío no crezca sin freno.
   const ink = Math.max(logo.coverage || 0.3, 0.12);
-  let h = Math.sqrt(INK_AREA / (ratio * ink));
+  let h = Math.sqrt((INK_AREA * scale) / (ratio * ink));
   let w = h * ratio;
   if (w > MAX_W) {
     w = MAX_W;
@@ -274,12 +295,14 @@ function Layers({
 function PieceView({
   piece,
   height,
+  scale,
   label,
   grad,
   recolor,
 }: {
   piece: Piece;
   height: number;
+  scale?: number;
   label?: string;
   grad?: Gradient;
   recolor?: Record<string, string>;
@@ -295,6 +318,7 @@ function PieceView({
             viewBox: "0 0 1 1",
             coverage: 0.3,
           },
+          scale,
         );
   const common = {
     preserveAspectRatio: "xMidYMid meet" as const,
@@ -361,6 +385,7 @@ export const BrandLogo = memo(function BrandLogo({ id, name }: { id: LogoId; nam
       <PieceView
         piece={{ traced: spec.key }}
         height={0}
+        {...(spec.scale ? { scale: spec.scale } : {})}
         label={name}
         {...(spec.grad ? { grad: spec.grad } : {})}
         {...(spec.recolor ? { recolor: spec.recolor } : {})}
@@ -372,7 +397,7 @@ export const BrandLogo = memo(function BrandLogo({ id, name }: { id: LogoId; nam
     return (
       <PieceView
         piece={{ mark: spec.key, ...(spec.ink ? { ink: spec.ink } : {}) }}
-        height={40}
+        height={44 * (spec.scale ?? 1)}
         label={name}
       />
     );
