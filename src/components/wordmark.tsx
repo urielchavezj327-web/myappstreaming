@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import type { Brand, BrandFont } from "@/lib/brands";
 import { BrandSymbol } from "@/components/brand-symbols";
+import { BrandLogo, isTileLogo } from "@/components/logos";
 
 /**
  * Logotipo de un servicio.
@@ -64,7 +65,10 @@ const LINE_H = 1.04;
 const BOX: Record<WordmarkSize, Box> = {
   tile: { width: 100, max: 30, min: 8, symbol: 34, lines: 3, height: 64 },
   row: { width: 100, max: 12, min: 4.6, symbol: 12, lines: 2, height: 0 },
-  hero: { width: 100, max: 22, min: 7, symbol: 26, lines: 3, height: 0 },
+  // La ficha tenía el cuerpo suelto y sin tope de alto: «Pagos de servicios
+  // con descuento» salía a tres renglones de 67 px y se comía la pantalla
+  // entera antes de llegar al precio.
+  hero: { width: 100, max: 19, min: 7, symbol: 26, lines: 3, height: 50 },
 };
 
 /** Reparte el texto en `n` líneas equilibradas sin cortar palabras. */
@@ -170,6 +174,45 @@ export const Wordmark = memo(function Wordmark({
   brand: Brand;
   size: WordmarkSize;
 }) {
+  /*
+   * Camino principal: la marca tiene su logotipo vectorizado. Se dibuja tal
+   * cual —símbolo y nombre son contorno, no tipografía— y no se compone nada
+   * más encima.
+   *
+   * Lo que sigue después de este bloque solo atiende a lo que NO es una marca:
+   * los servicios propios de «Otros» y los 59 trámites, donde la tipografía
+   * temática sí es el tratamiento correcto porque no hay logotipo que imitar.
+   */
+  if (brand.logo) {
+    // Los que son el icono completo de la aplicación —Duolingo— se sirven a
+    // sangre: llenan la caja entera y su propio fondo hace de fondo. Encajarlo
+    // en un cuadro más chico dentro de la tarjeta es lo que lo hacía parecer
+    // una imagen pegada encima.
+    if (isTileLogo(brand.logo) && size !== "hero") {
+      return (
+        <span className="absolute inset-0 block">
+          <BrandLogo id={brand.logo} name={name} />
+        </span>
+      );
+    }
+    return (
+      <span
+        className={
+          size === "row"
+            ? "flex min-w-0 flex-1 items-center"
+            : "flex w-full items-center justify-center"
+        }
+        style={size === "row" ? { maxWidth: "12rem" } : undefined}
+      >
+        <BrandLogo
+          id={brand.logo}
+          name={name}
+          {...(isTileLogo(brand.logo) ? { contain: true } : {})}
+        />
+      </span>
+    );
+  }
+
   // El «+» de Paramount+, Universal+ o Apple TV+ ya viene en el nombre del
   // servicio: se quita del texto para que lo dibuje `Suffix` con su propio
   // peso, pegado a la última letra y no en una línea aparte.

@@ -86,10 +86,20 @@ export function OfferGroups({
                 const showDuration = durations.length > 1 || variants.length === 1;
                 return (
                   <div key={key}>
+                    {/*
+                      El rótulo de duración separa bloques de precios: si va en
+                      cuerpo diminuto y pegado a la izquierda no separa nada. Va
+                      centrado, con filete a cada lado y a un tamaño que se lee
+                      de un vistazo mientras se baja la lista.
+                    */}
                     {showDuration ? (
-                      <p className="mb-2.5 t-micro text-faint">
-                        {durationLabel(rows[0]?.months ?? null)}
-                      </p>
+                      <div className="mb-3 flex items-center gap-3" aria-hidden={false}>
+                        <span className="h-px flex-1 bg-border" />
+                        <span className="text-[12.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                          {durationLabel(rows[0]?.months ?? null)}
+                        </span>
+                        <span className="h-px flex-1 bg-border" />
+                      </div>
                     ) : null}
                     <div className={variants.length > 1 ? "space-y-5" : ""}>
                       {variants.map((variant) => (
@@ -228,10 +238,7 @@ export function OfferRow({
     >
       {/* Filo de acento a la izquierda: marca la fila ganadora sin gritar. */}
       {best ? (
-        <span
-          className="pointer-events-none absolute inset-y-0 left-0 w-[3px] bg-brand"
-          aria-hidden
-        />
+        <span className="pointer-events-none absolute inset-y-0 left-0 w-[3px] metal" aria-hidden />
       ) : null}
       <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4">
         <div className="min-w-0">
@@ -241,7 +248,7 @@ export function OfferRow({
               {title}
             </span>
             {best ? (
-              <span className="inline-flex items-center rounded-full bg-brand px-2.5 py-[3px] text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-brand-ink shadow-[0_0_20px_-4px_var(--brand-glow)]">
+              <span className="inline-flex items-center rounded-full metal px-2.5 py-[3px] text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-brand-ink shadow-[0_0_20px_-4px_var(--brand-glow)]">
                 Mejor precio
               </span>
             ) : null}
@@ -257,10 +264,10 @@ export function OfferRow({
               {age ? (
                 /* Frescura del precio: un dato de hace meses ya no es un dato. */
                 <span
-                  className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
-                    age.stale
-                      ? "bg-amber-400/10 text-amber-300/80"
-                      : "bg-surface-2 text-muted-foreground"
+                  /* Vidrio translúcido, no un bloque oscuro: sobre el color de
+                     marca de una ficha, una pastilla opaca se lee como mancha. */
+                  className={`rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-semibold ${
+                    age.stale ? "text-amber-500" : "text-muted-foreground"
                   }`}
                   title={`Última actualización: ${age.label}`}
                 >

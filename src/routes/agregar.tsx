@@ -574,7 +574,7 @@ function AdminPanel({ onLock }: { onLock: () => void }) {
                     value={row.price}
                     onChange={(e) => setRow(i, { price: e.target.value })}
                     className={inputCls}
-                    placeholder="Vacío = A consultar"
+                    placeholder="Vacío = consultar"
                   />
                 </div>
                 <div>
@@ -679,7 +679,7 @@ function NewServiceBox({
       <div className="mt-3">
         <ActionCard
           onClick={() => setOpen(true)}
-          icon={<Plus className="h-[22px] w-[22px]" strokeWidth={2.6} />}
+          icon={<Plus className="h-[18px] w-[18px]" strokeWidth={2.6} />}
           title="Crear servicio nuevo"
           hint={`Se agrega a ${category?.name ?? "la categoría"} con su color y logotipo`}
         />
@@ -771,7 +771,7 @@ function NewServiceBox({
             setBusy(false);
           }
         }}
-        className="mt-3 h-12 w-full rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
+        className="mt-3 h-12 w-full rounded-xl metal text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none text-sm"
       >
         {busy ? "Creando…" : "Crear y seleccionar"}
       </button>
@@ -1045,7 +1045,7 @@ function OfferEditor({
               setBusy(false);
             }
           }}
-          className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-3.5 text-[13px]"
+          className="inline-flex h-11 items-center gap-1.5 rounded-xl metal text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-3.5 text-[13px]"
         >
           <Check className="h-4 w-4" /> Guardar
         </button>

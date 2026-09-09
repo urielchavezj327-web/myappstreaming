@@ -1,4 +1,5 @@
 import type { SymbolId } from "@/components/brand-symbols";
+import type { LogoId } from "@/components/logos";
 
 /**
  * Identidad visual de cada servicio.
@@ -27,6 +28,12 @@ import type { SymbolId } from "@/components/brand-symbols";
 export type BrandFont = "display" | "grotesk" | "geometric" | "condensed" | "script" | "serif";
 
 export type Brand = {
+  /**
+   * Logotipo vectorial de la marca (ver `components/logos`). Cuando existe,
+   * manda sobre todos los campos tipográficos de abajo: el nombre se dibuja
+   * como contorno, no como texto con una fuente parecida.
+   */
+  logo?: LogoId;
   /** Fondo exacto del logotipo. Color sólido o degradado CSS completo. */
   bg: string;
   /** Color exacto de las letras. */
@@ -37,6 +44,17 @@ export type Brand = {
   accent: string;
   /** Presencia del acento sobre el fondo, de 0 a 1. */
   wash: number;
+  /**
+   * Colores secundarios del logotipo (los cinco puntos de Peacock). En la
+   * ficha entran como acentos discretos, nunca como protagonistas.
+   */
+  secondary?: string[];
+  /**
+   * Color del extremo profundo de la ficha. Por omisión es el propio acento
+   * oscurecido; se fija a mano cuando el logotipo tiene un fondo con
+   * identidad propia (el negro de Netflix, de Peacock o de Tidal).
+   */
+  deepEnd?: string;
   font: BrandFont;
   weight: number;
   tracking: string;
@@ -64,6 +82,18 @@ export type Brand = {
   lines?: [string, string];
   /** Fondo claro: el resto de la interfaz de la tarjeta se oscurece. */
   light: boolean;
+  /**
+   * Cuánto pesa el acento en el difuminado de la ficha, de 0 a 1. Por omisión
+   * 1. Se baja cuando el color principal es casi blanco —el metal de HBO Max—
+   * porque a plena intensidad no se lee como plata sino como una página gris.
+   */
+  fade?: number;
+  /**
+   * Textura de papel apenas perceptible. Va en Trámites y en los servicios
+   * temáticos de «Otros»: son los que no representan a ninguna marca, y la
+   * fibra les da el aire de archivo que los distingue del catálogo comercial.
+   */
+  paper?: boolean;
 };
 
 type Spec = Partial<Brand> & { bg: string; ink: string };
@@ -72,6 +102,11 @@ const W = "#FFFFFF";
 
 function spec(s: Spec): Brand {
   return {
+    ...(s.logo ? { logo: s.logo } : {}),
+    ...(s.secondary ? { secondary: s.secondary } : {}),
+    ...(s.deepEnd ? { deepEnd: s.deepEnd } : {}),
+    ...(s.fade === undefined ? {} : { fade: s.fade }),
+    ...(s.paper ? { paper: true } : {}),
     bg: s.bg,
     ink: s.ink,
     ...(s.inkGrad ? { inkGrad: s.inkGrad } : {}),
@@ -110,100 +145,82 @@ function key(value: string) {
 /**
  * Tabla de marcas. Gana la primera que coincide, así que lo específico
  * («canva edu») va antes que lo general («canva»).
- */
-const BRANDS: Array<[RegExp, Brand]> = [
+ */ const BRANDS: Array<[RegExp, Brand]> = [
   // ── Streaming ──────────────────────────────────────────────────────────
   [
     /^netflix/,
     spec({
-      bg: "#000000",
+      // Muestreado de tu imagen: el fondo del logotipo es #101010, plano.
+      bg: "#101010",
       ink: "#E50914",
       accent: "#E50914",
-      wash: 0.3,
-      font: "grotesk",
-      weight: 800,
-      upper: true,
-      tracking: "-0.005em",
-      symbol: "netflix",
-      symbolScale: 0.6,
-      maxLines: 1,
+      deepEnd: "#101010",
+      wash: 0.58,
+      logo: "netflix",
     }),
   ],
   [
-    // El logotipo actual es negro con las letras en blanco iridiscente; el azul
-    // de 2023 ya no se usa. La guía de marca pide fondo oscuro con degradado
-    // radial, que es justo lo que compone `brandSkin`.
-    /^hbo|^max\b/,
-    spec({
-      bg: "#000000",
-      ink: "#FFFFFF",
-      inkGrad: "linear-gradient(96deg,#FFFFFF,#DCE4F2 42%,#F7EDE2 70%,#FFFFFF)",
-      accent: "#9FB2CE",
-      wash: 0.17,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.045em",
-      label: "HBO Max",
-      maxLines: 1,
-    }),
-  ],
-  [
+    // Rebranding «Aurora» de marzo de 2024: el azul marino de 2019 quedó atrás
+    // y el arco sobre «Disney» pasó a ser blanco sólido. Paradas muestreadas
+    // de la imagen de referencia.
     /^disney/,
     spec({
-      bg: "linear-gradient(168deg,#12266B,#050C2E 62%,#01061B)",
+      bg: "linear-gradient(165deg,#073545,#0A5864 46%,#04BCBA 78%,#5AF3F1)",
       ink: "#FFFFFF",
-      accent: "#3DA9FF",
-      wash: 0.26,
-      font: "script",
-      weight: 400,
-      tracking: "0em",
-      suffix: "+",
+      accent: "#04BCBA",
+      wash: 0.3,
+      logo: "disneyplus",
+    }),
+  ],
+  [
+    // El logotipo apilado que mandaste: las letras son metal —de blanco cálido
+    // a gris azulado— y el fondo NO es negro, es un azul de tinta con viñeta.
+    // Los dos colores salen muestreados de esa imagen, así que el difuminado
+    // de la ficha se arma solo con ellos: nada de negro añadido por nosotros.
+    /^hbo|^max\b/,
+    spec({
+      bg: "radial-gradient(128% 128% at 50% 50%,#0D0F1B,#00030C)",
+      ink: "#E7E7EF",
+      accent: "#DCDCE6",
+      deepEnd: "#0D0F1B",
+      // El metal es casi blanco: a plena intensidad la ficha sale gris en vez
+      // de azul de tinta con luz de plata encima.
+      fade: 0.3,
+      wash: 0.34,
+      logo: "hbomax",
     }),
   ],
   [
     /^prime video|^amazon prime/,
     spec({
-      bg: "#0B1620",
+      bg: "#0779FF",
       ink: "#FFFFFF",
-      accent: "#00A8E1",
+      accent: "#0779FF",
       wash: 0.3,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.025em",
-      symbol: "primeSmile",
-      symbolInk: "#00A8E1",
-      symbolScale: 0.62,
-      label: "prime video",
+      logo: "primevideo",
     }),
   ],
   [
     /^paramount/,
     spec({
-      bg: "#0064FF",
+      bg: "#006FFD",
       ink: "#FFFFFF",
-      accent: "#8FC3FF",
-      wash: 0.2,
-      font: "grotesk",
-      weight: 700,
-      tracking: "-0.035em",
-      symbol: "paramount",
-      symbolScale: 0.94,
-      suffix: "+",
+      accent: "#006FFD",
+      wash: 0.24,
+      logo: "paramountplus",
     }),
   ],
   [
     /^peacock/,
     spec({
-      bg: "#FFFFFF",
-      ink: "#000000",
-      accent: "#6460AA",
-      wash: 0.09,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.045em",
-      symbol: "peacock",
-      symbolScale: 0.92,
-      light: true,
+      bg: "#0D0D0D",
+      ink: "#FFFFFF",
+      accent: "#FFFFFF",
+      deepEnd: "#0D0D0D",
+      fade: 0.5,
+      secondary: ["#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
+      wash: 0.3,
+      logo: "peacock",
     }),
   ],
   [
@@ -211,230 +228,177 @@ const BRANDS: Array<[RegExp, Brand]> = [
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#B7B7BE",
-      wash: 0.12,
-      font: "grotesk",
-      weight: 500,
-      tracking: "-0.055em",
-      symbol: "apple",
-      symbolScale: 0.72,
-      label: "tv",
-      suffix: "+",
+      accent: "#FFFFFF",
+      deepEnd: "#000000",
+      wash: 0.26,
+      logo: "appletv",
     }),
   ],
   [
+    // Naranja muestreado de la imagen: #FF5E00, no el #F47521 que citan las
+    // fuentes secundarias.
     /^crunchyroll/,
     spec({
-      bg: "#F47521",
+      bg: "#FF5E00",
       ink: "#FFFFFF",
-      accent: "#FFC79A",
-      wash: 0.16,
-      font: "grotesk",
-      weight: 700,
-      tracking: "-0.04em",
-      symbol: "crunchyroll",
-      symbolHole: "#F47521",
-      symbolScale: 0.74,
+      accent: "#FF5E00",
+      wash: 0.2,
+      logo: "crunchyroll",
     }),
   ],
   [
-    // Las letras llevan el degradado naranja de la marca; el lila anterior era
-    // un invento. No pude confirmar las paradas exactas en una fuente oficial.
+    // Sin imagen de referencia: el degradado naranja del brand guide con las
+    // letras en blanco. Dibujado por mí, pendiente de tu visto bueno.
     /^vix/,
     spec({
-      bg: "#08060A",
-      ink: "#FF6A00",
-      inkGrad: "linear-gradient(96deg,#FFB300,#FF6A00 48%,#F5002E)",
-      accent: "#FF6A00",
-      wash: 0.3,
-      font: "grotesk",
-      weight: 800,
-      tracking: "-0.05em",
+      // Las nueve paradas son la media de la imagen por franjas a 135°, no una
+      // interpolación nuestra: el rosa vive solo en el primer octavo y el
+      // naranja se queda con el resto, que es justo lo que se ve en el archivo.
+      bg: "linear-gradient(135deg,#FF587E,#FE5F6E 12%,#FE685D 25%,#FD6E4A 38%,#FD6E39 50%,#FD672A 62%,#FE591E 75%,#FF4A14 88%,#FF4712)",
+      ink: "#FFFFFF",
+      accent: "#FD6E39",
+      deepEnd: "#FF4712",
+      wash: 0.16,
+      logo: "vix",
     }),
   ],
   [
+    // Colores invertidos a propósito: el logotipo real es rojo y negro sobre
+    // blanco, pero la app es oscura y así combina.
     /^claro/,
     spec({
-      bg: "#E30613",
+      bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#FFC9CD",
-      wash: 0.14,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.03em",
-      symbol: "claroSwoosh",
-      symbolScale: 0.62,
+      accent: "#E1251B",
+      deepEnd: "#000000",
+      wash: 0.5,
+      logo: "clarovideo",
     }),
   ],
   [
     /^formula 1|^f1\b/,
     spec({
-      bg: "#15151E",
-      ink: "#FFFFFF",
-      accent: "#FF1801",
-      wash: 0.3,
-      font: "condensed",
-      weight: 700,
-      upper: true,
-      italic: true,
-      tracking: "0.02em",
-      symbol: "f1",
-      symbolInk: "#FF1801",
-      symbolScale: 0.6,
-      label: "F1 TV",
-      maxLines: 1,
+      bg: "#FFFFFF",
+      ink: "#15151E",
+      accent: "#E10600",
+      wash: 0.28,
+      logo: "f1tv",
+      light: true,
     }),
   ],
   [
-    // No pude confirmar la paleta oficial de Fox One; se usa el negro y el azul
-    // corporativo de FOX.
+    // Sin imagen: «FOX» viene de simple-icons y «One» va como rótulo propio.
     /^fox/,
     spec({
-      bg: "#0A0A0C",
+      bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#0C4DA2",
+      accent: "#FFFFFF",
       wash: 0.26,
-      font: "grotesk",
-      weight: 800,
-      upper: true,
-      tracking: "0.02em",
+      logo: "foxone",
     }),
   ],
   [
-    // No pude confirmar la paleta oficial de HIDIVE.
     /^hidive/,
     spec({
-      bg: "#08090D",
-      ink: "#28B3F0",
-      accent: "#28B3F0",
-      wash: 0.24,
-      font: "grotesk",
-      weight: 800,
-      upper: true,
-      tracking: "0.01em",
+      bg: "linear-gradient(180deg,#72EFFF,#30BFF4 55%,#04AFEF)",
+      ink: "#000000",
+      accent: "#04AFEF",
+      wash: 0.2,
+      logo: "hidive",
+      light: true,
     }),
   ],
   [
-    // IPTV no es una marca sino una categoría: se le da identidad propia —
-    // pantalla y ondas de señal sobre pizarra fría, sin imitar a nadie.
+    // IPTV no es una marca: identidad propia, vectorizada de tu referencia.
     /^iptv/,
     spec({
-      bg: "linear-gradient(165deg,#0D2E37,#071B22 64%,#041015)",
-      ink: "#7BE6D2",
-      accent: "#31C9C0",
-      wash: 0.24,
-      font: "condensed",
-      weight: 600,
-      upper: true,
-      tracking: "0.2em",
-      symbol: "iptv",
-      symbolScale: 0.8,
+      bg: "linear-gradient(140deg,#1AAEFF,#3060FF 55%,#4E0FFF)",
+      ink: "#FFFFFF",
+      accent: "#3B7BFF",
+      wash: 0.22,
+      logo: "iptv",
     }),
   ],
   [
-    // No pude confirmar la paleta oficial de KOCOWA.
     /^kocowa/,
     spec({
-      bg: "#12061F",
+      bg: "linear-gradient(140deg,#572978,#311C40 52%,#121212)",
       ink: "#FFFFFF",
-      accent: "#8B3DFF",
-      wash: 0.32,
-      font: "grotesk",
-      weight: 800,
-      upper: true,
-      tracking: "-0.02em",
+      accent: "#7B3BA8",
+      deepEnd: "#121212",
+      wash: 0.4,
+      logo: "kocowa",
     }),
   ],
   [
     /^mlb/,
     spec({
-      bg: "#002D72",
-      ink: "#FFFFFF",
-      accent: "#D50032",
+      bg: "#FFFFFF",
+      ink: "#001E3C",
+      accent: "#BA001E",
       wash: 0.24,
-      font: "grotesk",
-      weight: 800,
-      upper: true,
-      tracking: "-0.01em",
-      symbol: "mlb",
-      symbolScale: 0.66,
+      logo: "mlbtv",
+      light: true,
     }),
   ],
   [
-    // MUBI es blanco y negro; no pude confirmar un acento oficial.
     /^mubi/,
     spec({
-      bg: "#0A0A0A",
+      bg: "#001DFF",
       ink: "#FFFFFF",
-      accent: "#C8C8CE",
-      wash: 0.1,
-      font: "grotesk",
-      weight: 500,
-      upper: true,
-      tracking: "0.2em",
-      maxLines: 1,
+      accent: "#001DFF",
+      wash: 0.26,
+      logo: "mubi",
     }),
   ],
   [
+    // El fondo del logotipo es negro, no gris; el blanco de «ple» es el color
+    // que manda y el dorado de la «x» entra de secundario. Los tres están
+    // muestreados de tu imagen.
     /^plex/,
     spec({
-      bg: "#1F2326",
-      ink: "#E5A00D",
-      accent: "#E5A00D",
-      wash: 0.26,
-      font: "geometric",
-      weight: 600,
-      upper: true,
-      tracking: "0.14em",
-      symbol: "plex",
-      symbolInk: "#E5A00D",
-      symbolScale: 0.66,
+      bg: "#070708",
+      ink: "#FFFFFF",
+      accent: "#FFFFFF",
+      secondary: ["#EFAE02"],
+      deepEnd: "#070708",
+      // El blanco manda en el difuminado, pero sobre el negro del logotipo: a
+      // plena intensidad la ficha se volvía gris y «plex», que es blanco,
+      // desaparecía dentro de ella.
+      fade: 0.42,
+      wash: 0.4,
+      logo: "plex",
     }),
   ],
   [
-    // No pude confirmar la paleta oficial de Universal+; se usa el azul y el
-    // globo de Universal.
     /^universal/,
     spec({
-      bg: "#071A45",
-      ink: "#FFFFFF",
-      accent: "#5B8FD6",
-      wash: 0.24,
-      font: "grotesk",
-      weight: 600,
-      upper: true,
-      tracking: "0.06em",
-      symbol: "universal",
-      symbolScale: 0.82,
-      suffix: "+",
+      bg: "#FBCC11",
+      ink: "#000000",
+      accent: "#FBCC11",
+      wash: 0.18,
+      logo: "universalplus",
+      light: true,
     }),
   ],
   [
-    // Viki: azul Rakuten. No pude confirmar el hex exacto.
     /^viki/,
     spec({
-      bg: "#04121C",
+      bg: "#0C9BFF",
       ink: "#FFFFFF",
-      accent: "#00A8E0",
-      wash: 0.3,
-      font: "geometric",
-      weight: 700,
-      tracking: "-0.04em",
-      label: "viki",
+      accent: "#0C9BFF",
+      wash: 0.2,
+      logo: "viki",
     }),
   ],
   [
-    // iQIYI: verde corporativo. No pude confirmar el hex exacto.
     /^iqiyi/,
     spec({
-      bg: "#00BE06",
+      bg: "linear-gradient(180deg,#00DC5B,#00C251 60%,#00B74C)",
       ink: "#FFFFFF",
-      accent: "#B6F5B8",
-      wash: 0.14,
-      font: "geometric",
-      weight: 700,
-      tracking: "-0.04em",
-      label: "iQIYI",
+      accent: "#00DC5B",
+      wash: 0.18,
+      logo: "iqiyi",
     }),
   ],
 
@@ -442,110 +406,79 @@ const BRANDS: Array<[RegExp, Brand]> = [
   [
     /^spotify/,
     spec({
-      bg: "#000000",
-      ink: "#FFFFFF",
-      accent: "#1ED760",
-      wash: 0.34,
-      font: "geometric",
-      weight: 700,
-      tracking: "-0.045em",
-      symbol: "spotify",
-      symbolInk: "#1ED760",
-      symbolHole: "#000000",
-      symbolScale: 0.8,
+      bg: "#191414",
+      ink: "#1DB954",
+      accent: "#1DB954",
+      deepEnd: "#191414",
+      wash: 0.6,
+      logo: "spotify",
     }),
   ],
   [
+    // El icono real es un degradado rosa→rojo. Uri pidió expresamente el
+    // degradado y no el rojo plano de la campaña que mandó de referencia.
     /^apple music/,
     spec({
-      bg: "linear-gradient(150deg,#FB5C74,#FA233B 58%,#C7112B)",
+      bg: "linear-gradient(160deg,#FB5C74,#FA2337 55%,#D50F2C)",
       ink: "#FFFFFF",
-      accent: "#FFC2CA",
-      wash: 0.12,
-      font: "grotesk",
-      weight: 500,
-      tracking: "-0.05em",
-      symbol: "appleMusic",
-      symbolScale: 0.66,
-      label: "Apple Music",
+      accent: "#FB5C74",
+      wash: 0.18,
+      logo: "applemusic",
     }),
   ],
   [
     /^youtube/,
     spec({
-      bg: "#0F0F0F",
-      ink: "#FFFFFF",
-      accent: "#FF0033",
-      wash: 0.24,
-      font: "grotesk",
-      weight: 700,
-      tracking: "-0.05em",
-      symbol: "youtubePlay",
-      symbolInk: "#FF0033",
-      symbolHole: "#0F0F0F",
-      symbolScale: 0.6,
-      label: "YouTube",
-      suffix: "Premium",
+      bg: "#FFFFFF",
+      ink: "#282828",
+      accent: "#FF0000",
+      wash: 0.3,
+      logo: "youtube",
+      light: true,
     }),
   ],
   [
     /^amazon music/,
     spec({
-      bg: "linear-gradient(155deg,#2ED2F5,#0A84D6 62%,#06407A)",
-      ink: "#FFFFFF",
-      accent: "#B6ECFB",
-      wash: 0.12,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.035em",
-      symbol: "amazonMusicNote",
-      symbolScale: 0.6,
-      label: "Amazon Music",
+      bg: "#25D2D9",
+      ink: "#000000",
+      accent: "#25D2D9",
+      wash: 0.18,
+      logo: "amazonmusic",
+      light: true,
     }),
   ],
   [
     /^deezer/,
     spec({
-      bg: "#0B0B0F",
+      bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#A238FF",
-      wash: 0.3,
-      font: "geometric",
-      weight: 700,
-      tracking: "-0.04em",
-      symbol: "deezerBars",
-      symbolInk: "#A238FF",
-      symbolScale: 0.72,
+      accent: "#A237FF",
+      deepEnd: "#000000",
+      wash: 0.55,
+      logo: "deezer",
     }),
   ],
   [
-    // Negro con blanco, sin adornos: el logotipo de Tidal es exactamente eso.
     /^tidal/,
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#D3D8DE",
-      wash: 0.08,
-      font: "grotesk",
-      weight: 400,
-      upper: true,
-      tracking: "0.3em",
-      maxLines: 1,
+      accent: "#FFFFFF",
+      deepEnd: "#000000",
+      wash: 0.22,
+      logo: "tidal",
     }),
   ],
   [
-    // No pude confirmar la paleta oficial de Qobuz.
     /^qobuz/,
     spec({
-      bg: "#0B1B2E",
-      ink: "#8FC0F0",
-      accent: "#4A8FD6",
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#FFFFFF",
+      deepEnd: "#000000",
       wash: 0.22,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.02em",
-      symbol: "qobuz",
-      symbolScale: 0.58,
+      logo: "qobuz",
     }),
   ],
 
@@ -556,34 +489,34 @@ const BRANDS: Array<[RegExp, Brand]> = [
       bg: "#001E36",
       ink: "#31A8FF",
       accent: "#31A8FF",
-      wash: 0.2,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.04em",
+      wash: 0.45,
+      logo: "photoshop",
     }),
   ],
   [
+    // Sin imagen de referencia: dibujo mío, pendiente de tu visto bueno.
     /^adobe/,
     spec({
-      bg: "#08080A",
+      bg: "linear-gradient(150deg,#FF3B30,#E3001B 55%,#8A0010)",
       ink: "#FFFFFF",
-      accent: "#FA0F00",
-      wash: 0.3,
+      accent: "#FF6A5E",
+      wash: 0.24,
       font: "grotesk",
       weight: 700,
       tracking: "-0.05em",
       symbol: "adobeA",
-      symbolInk: "#FA0F00",
-      symbolScale: 0.72,
+      symbolInk: "#FFFFFF",
+      symbolScale: 0.66,
     }),
   ],
   [
+    // Sin imagen: el degradado y el rosa del wordmark salen del brand kit.
     /^canva edu/,
     spec({
-      bg: "linear-gradient(148deg,#00C4CC,#4B6BE8 52%,#7D2AE8)",
+      bg: "linear-gradient(148deg,#00C4CC,#4B6BE8 52%,#7D2AE7)",
       ink: "#FFFFFF",
-      accent: "#B7F2F5",
-      wash: 0.1,
+      accent: "#00C4CC",
+      wash: 0.2,
       font: "geometric",
       weight: 600,
       tracking: "-0.035em",
@@ -597,10 +530,10 @@ const BRANDS: Array<[RegExp, Brand]> = [
   [
     /^canva/,
     spec({
-      bg: "linear-gradient(148deg,#00C4CC,#5C46E0 55%,#7D2AE8)",
+      bg: "linear-gradient(148deg,#00C4CC,#5C46E0 55%,#7D2AE7)",
       ink: "#FFFFFF",
-      accent: "#9FEDF2",
-      wash: 0.1,
+      accent: "#00C4CC",
+      wash: 0.2,
       font: "geometric",
       weight: 600,
       tracking: "-0.035em",
@@ -614,60 +547,58 @@ const BRANDS: Array<[RegExp, Brand]> = [
   [
     /^capcut/,
     spec({
-      bg: "#0E0E14",
+      bg: "#0A0A0C",
       ink: "#FFFFFF",
-      accent: "#3DE7F0",
-      wash: 0.26,
-      font: "geometric",
-      weight: 700,
-      tracking: "-0.045em",
-      symbol: "capcut",
-      symbolScale: 0.62,
-      label: "CapCut",
+      accent: "#FFFFFF",
+      deepEnd: "#0A0A0C",
+      wash: 0.16,
+      logo: "capcut",
       suffix: "Pro",
     }),
   ],
   [
+    // El nudo va trazado de tu imagen; el nombre, en la tipografía de la app.
+    // Su identidad es negro y blanco, y el blanco a plena intensidad convierte
+    // la ficha en una página gris: entra rebajado, como luz sobre el negro.
     /^chatgpt|^openai/,
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#8FA8A2",
-      wash: 0.12,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.035em",
-      symbol: "openai",
-      symbolScale: 0.7,
+      accent: "#FFFFFF",
+      deepEnd: "#000000",
+      fade: 0.22,
+      wash: 0.5,
+      logo: "chatgpt",
     }),
   ],
   [
     /^claude|^anthropic/,
     spec({
-      bg: "#0F0D0B",
+      bg: "#191919",
       ink: "#FFFFFF",
-      accent: "#D97757",
-      wash: 0.32,
+      accent: "#D4A27F",
+      wash: 0.45,
       font: "serif",
       weight: 500,
       tracking: "-0.02em",
       symbol: "geminiSpark",
+      symbolInk: "#D4A27F",
       symbolScale: 0.6,
     }),
   ],
   [
+    // Fondo claro, como el archivo, pero no blanco de papel: el gris 50 de la
+    // propia paleta de Google, que es el que usan ellos de superficie.
     /^gemini/,
     spec({
-      bg: "#0A0D17",
-      ink: "#9AB6FF",
-      inkGrad: "linear-gradient(96deg,#5B8DFF,#A57BFF 58%,#E0708F)",
-      accent: "#7C8FFF",
-      wash: 0.26,
-      font: "geometric",
-      weight: 500,
-      tracking: "-0.03em",
-      symbol: "geminiSpark",
-      symbolScale: 0.58,
+      bg: "#F8F9FA",
+      ink: "#4D8BEA",
+      accent: "#6482E1",
+      secondary: ["#C4667F"],
+      deepEnd: "#EDEFF3",
+      wash: 0.45,
+      logo: "gemini",
+      light: true,
     }),
   ],
   [
@@ -675,115 +606,103 @@ const BRANDS: Array<[RegExp, Brand]> = [
     spec({
       bg: "#141416",
       ink: "#FFFFFF",
-      accent: "#00A4EF",
-      wash: 0.2,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.04em",
-      symbol: "microsoft",
-      symbolScale: 0.62,
+      accent: "#E0518C",
+      deepEnd: "#141416",
+      wash: 0.42,
+      logo: "microsoft365",
     }),
   ],
   [
+    // Fondo blanco, que es el del archivo que mandaste: el logotipo de OneDrive
+    // es una nube azul y un nombre azul marino sobre blanco, no al revés.
     /onedrive/,
     spec({
-      bg: "#0364B8",
-      ink: "#FFFFFF",
-      accent: "#9BD3F5",
-      wash: 0.16,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.035em",
-      symbol: "onedrive",
-      symbolScale: 0.62,
-      label: "OneDrive",
+      bg: "#FFFFFF",
+      ink: "#074BB3",
+      accent: "#0179D4",
+      deepEnd: "#E6F1FB",
+      wash: 0.46,
+      logo: "onedrive",
+      light: true,
     }),
   ],
   [
+    // Fondo blanco, como el archivo: es la única forma de que el gris 700 de
+    // «One» y los cuatro colores de Google salgan exactos y se lean.
     /almacenamiento google|google drive|google one/,
     spec({
-      bg: "#101116",
-      ink: "#FFFFFF",
-      accent: "#4688F1",
-      wash: 0.22,
-      font: "geometric",
-      weight: 500,
-      tracking: "-0.03em",
-      symbol: "googleDrive",
-      symbolScale: 0.64,
-      label: "Google Drive",
+      bg: "#FFFFFF",
+      ink: "#5F6368",
+      accent: "#4285F4",
+      secondary: ["#EA4335", "#FBBC04", "#34A853"],
+      deepEnd: "#E8EAED",
+      wash: 0.4,
+      logo: "googleone",
+      light: true,
     }),
   ],
   [
+    // El acento es el verde del propio cuadro del icono, no el de la cabeza:
+    // así la parte alta de la ficha es exactamente el suelo sobre el que está
+    // dibujado el búho y no se ve el canto del icono. El blanco de los ojos y
+    // los dos tonos del pico entran de secundarios, sin quitarle el mando al
+    // verde. Nada de negro: el icono no lo lleva.
     /^duolingo/,
     spec({
-      bg: "#58CC02",
+      bg: "#77C801",
       ink: "#FFFFFF",
-      accent: "#C6F5A0",
-      wash: 0.14,
-      font: "geometric",
-      weight: 800,
-      tracking: "-0.03em",
-      symbol: "duolingoOwl",
-      symbolHole: "#FFFFFF",
-      symbolScale: 0.72,
+      accent: "#77C801",
+      secondary: ["#FFFFFF", "#FEC200", "#F38003"],
+      deepEnd: "#8FDF02",
+      wash: 0.18,
+      logo: "duolingo",
     }),
   ],
   [
+    // Las siete paradas son la media del icono por franjas sobre su propio eje
+    // de 45°: magenta abajo a la izquierda, cian arriba a la derecha, y el
+    // morado que sale de mezclarlos en medio.
     /^picsart/,
     spec({
-      bg: "linear-gradient(150deg,#F0347E,#B026C9 55%,#6C1BD1)",
+      bg: "linear-gradient(45deg,#D302BF,#B11EC6 25%,#9039CC 38%,#6B60D3 50%,#36ABE0 62%,#0DEBEB 75%,#01FDEE)",
       ink: "#FFFFFF",
-      accent: "#FFB3D4",
-      wash: 0.1,
-      font: "geometric",
-      weight: 700,
-      tracking: "-0.045em",
-      symbol: "picsart",
-      symbolScale: 0.58,
+      accent: "#B11EC6",
+      secondary: ["#01FDEE"],
+      deepEnd: "#7949D0",
+      wash: 0.22,
+      logo: "picsart",
     }),
   ],
   [
-    // No pude confirmar el hex oficial de Scribd; se usa su verde azulado.
     /^scribd/,
     spec({
-      bg: "#0B2E33",
+      bg: "#0A8648",
       ink: "#FFFFFF",
-      accent: "#1E9E92",
-      wash: 0.28,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.04em",
-      symbol: "scribd",
-      symbolScale: 0.58,
+      accent: "#0A8648",
+      wash: 0.2,
+      logo: "scribd",
     }),
   ],
 
-  // ── Otros ──────────────────────────────────────────────────────────────
+  // ── Otros con marca ────────────────────────────────────────────────────
   [
     /^discord/,
     spec({
       bg: "#5865F2",
       ink: "#FFFFFF",
-      accent: "#C3C8FF",
-      wash: 0.14,
-      font: "geometric",
-      weight: 700,
-      tracking: "-0.035em",
-      symbol: "discord",
-      symbolHole: "#5865F2",
-      symbolScale: 0.66,
-      label: "Discord",
-      suffix: "Nitro",
+      accent: "#5865F2",
+      wash: 0.18,
+      logo: "discord",
     }),
   ],
   [
     /^free fire/,
     spec({
-      bg: "#111318",
+      bg: "#12141A",
       ink: "#FFFFFF",
       accent: "#FF7A00",
-      wash: 0.32,
+      deepEnd: "#12141A",
+      wash: 0.34,
       font: "condensed",
       weight: 700,
       upper: true,
@@ -791,145 +710,31 @@ const BRANDS: Array<[RegExp, Brand]> = [
       tracking: "0.02em",
       symbol: "flame",
       symbolInk: "#FF7A00",
-      symbolHole: "#111318",
+      symbolHole: "#12141A",
       symbolScale: 0.6,
       label: "Free Fire",
     }),
   ],
   [
-    /^nordvpn|^nord/,
-    spec({
-      bg: "#0A1226",
-      ink: "#FFFFFF",
-      accent: "#4687FF",
-      wash: 0.3,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.035em",
-      symbol: "shield",
-      symbolInk: "#4687FF",
-      symbolScale: 0.58,
-    }),
-  ],
-  [
-    /^surfshark/,
-    spec({
-      bg: "#0A2634",
-      ink: "#FFFFFF",
-      accent: "#20C5C5",
-      wash: 0.3,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.04em",
-      symbol: "sharkFin",
-      symbolInk: "#20C5C5",
-      symbolScale: 0.6,
-    }),
-  ],
-  [
-    /^expressvpn|^express vpn/,
-    spec({
-      bg: "#C7222A",
-      ink: "#FFFFFF",
-      accent: "#FFB3B6",
-      wash: 0.14,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.04em",
-      symbol: "pin",
-      symbolScale: 0.56,
-    }),
-  ],
-  [
-    /^avira/,
-    spec({
-      bg: "#0E1319",
-      ink: "#FFFFFF",
-      accent: "#E2001A",
-      wash: 0.28,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.03em",
-      symbol: "umbrella",
-      symbolInk: "#E2001A",
-      symbolScale: 0.58,
-    }),
-  ],
-  [
-    /^bitdefender/,
-    spec({
-      bg: "#0C1017",
-      ink: "#FFFFFF",
-      accent: "#ED1C24",
-      wash: 0.28,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.04em",
-      symbol: "shield",
-      symbolInk: "#ED1C24",
-      symbolScale: 0.56,
-    }),
-  ],
-  [
-    // Wordmark de dos bloques: «Porn» en blanco y «hub» sobre naranja.
-    /^pornhub/,
-    spec({
-      bg: "#000000",
-      ink: "#FFFFFF",
-      accent: "#FF9900",
-      wash: 0.22,
-      font: "grotesk",
-      weight: 800,
-      tracking: "-0.05em",
-      label: "Porn",
-      suffix: "hub",
-      suffixBg: "#FF9900",
-      suffixInk: "#000000",
-    }),
-  ],
-  [
-    /^brazzers/,
-    spec({
-      bg: "#000000",
-      ink: "#FFFFFF",
-      accent: "#9A9AA4",
-      wash: 0.1,
-      font: "grotesk",
-      weight: 800,
-      upper: true,
-      tracking: "-0.02em",
-    }),
-  ],
-  [
-    /^onlyfans/,
-    spec({
-      bg: "#00AFF0",
-      ink: "#FFFFFF",
-      accent: "#B3E8FB",
-      wash: 0.14,
-      font: "geometric",
-      weight: 600,
-      tracking: "-0.04em",
-      symbol: "infinity",
-      symbolScale: 0.5,
-      label: "OnlyFans",
-    }),
-  ],
-  [
     /^smart fit|^smartfit/,
     spec({
-      bg: "#FFD400",
-      ink: "#101010",
-      accent: "#7A5E00",
-      wash: 0.1,
-      font: "grotesk",
-      weight: 800,
-      upper: true,
-      italic: true,
-      tracking: "-0.02em",
-      symbol: "dumbbell",
-      symbolScale: 0.56,
-      light: true,
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#FBBA00",
+      deepEnd: "#000000",
+      wash: 0.4,
+      logo: "smartfit",
+    }),
+  ],
+  [
+    /^robux|pavos/,
+    spec({
+      bg: "#000000",
+      ink: "#FFFFFF",
+      accent: "#FFFFFF",
+      deepEnd: "#000000",
+      wash: 0.24,
+      logo: "roblox",
     }),
   ],
   [
@@ -938,7 +743,7 @@ const BRANDS: Array<[RegExp, Brand]> = [
       bg: "#12141C",
       ink: "#F2C260",
       accent: "#E8A33A",
-      wash: 0.24,
+      wash: 0.34,
       font: "serif",
       weight: 600,
       upper: true,
@@ -954,7 +759,7 @@ const BRANDS: Array<[RegExp, Brand]> = [
       bg: "#0A4D34",
       ink: "#FFFFFF",
       accent: "#5FD6A4",
-      wash: 0.22,
+      wash: 0.34,
       font: "condensed",
       weight: 600,
       upper: true,
@@ -970,202 +775,86 @@ const BRANDS: Array<[RegExp, Brand]> = [
  * Servicios propios sin logotipo de marca. No son marcas ajenas, así que en vez
  * de imitar a nadie reciben su propio símbolo y un color profundo distinto.
  */
+/**
+ * Paleta institucional: la de un archivo, no la de una promoción.
+ *
+ * Es la misma para Trámites y para los servicios temáticos de «Otros» —los que
+ * no son marca— porque son las dos categorías donde el color no identifica a
+ * nadie: solo tiene que ordenar. Seis familias sacadas de papelería de oficina
+ * —azul tinta, verde botella, granate, gris pizarra, ocre papel y azul acero—
+ * más tres derivadas para que dos fichas vecinas nunca coincidan.
+ *
+ * Cada familia da tres cosas:
+ *
+ *  · `bg`   — el fondo de la fila de Trámites: profundo y con color de verdad,
+ *             no un gris teñido.
+ *  · `card` — el fondo de la tarjeta de «Otros»: la pizarra casi negra de CINE,
+ *             con un punto del tono de la familia para que no sean 22 tarjetas
+ *             idénticas.
+ *  · `ink`  — el color sólido del nombre y del icono. Sólido de verdad, como el
+ *             oro de CINE: ni fluorescente ni lavado.
+ */
+const SOBRIA = {
+  tinta: { bg: "#141B33", card: "#12141F", ink: "#7C93D8" },
+  botella: { bg: "#0E241C", card: "#101812", ink: "#57BE8E" },
+  granate: { bg: "#2A141B", card: "#191114", ink: "#DB5F72" },
+  pizarra: { bg: "#181B21", card: "#131519", ink: "#A6B2C2" },
+  ocre: { bg: "#26200F", card: "#181509", ink: "#E0A93E" },
+  acero: { bg: "#122130", card: "#101720", ink: "#57A6DC" },
+  purpura: { bg: "#1E1630", card: "#15111F", ink: "#A98AE0" },
+  oliva: { bg: "#1B2113", card: "#14170D", ink: "#B4C04C" },
+  teja: { bg: "#2A1710", card: "#19110C", ink: "#E08050" },
+} as const;
+
+/**
+ * Servicio temático de «Otros»: mismo molde para los 15, solo cambia el tono.
+ *
+ * La referencia es CINE: pizarra casi negra y un color sólido encima. Lo que se
+ * evita es lo contrario en las dos direcciones —el pastel fluorescente sobre
+ * fondo teñido, que parece un letrero de neón, y el tono lavado sobre gris, que
+ * apaga la página entera.
+ */
+function sobrio(
+  tone: keyof typeof SOBRIA,
+  symbol: SymbolId,
+  symbolScale = 0.54,
+  extra: Partial<Parameters<typeof spec>[0]> = {},
+): Brand {
+  const t = SOBRIA[tone];
+  return spec({
+    bg: t.card,
+    ink: t.ink,
+    accent: t.ink,
+    // Resplandor muy bajo: el color lo pone la tinta, no un halo detrás. Y en
+    // la ficha el color entra apenas teñido, para que al entrar se vea la
+    // misma pizarra que en la tarjeta y no una pantalla del color del texto.
+    wash: 0.16,
+    fade: 0.2,
+    font: "display",
+    weight: 600,
+    paper: true,
+    symbol,
+    symbolScale,
+    ...extra,
+  });
+}
+
 const OWN: Array<[RegExp, Brand]> = [
-  [
-    /^pagos de servicios/,
-    spec({
-      bg: "#241A05",
-      ink: "#FFC94D",
-      accent: "#F0A81E",
-      wash: 0.2,
-      symbol: "card",
-      symbolScale: 0.56,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^compras con descuento/,
-    spec({
-      bg: "#280C21",
-      ink: "#FF9AD5",
-      accent: "#D95FA8",
-      wash: 0.2,
-      symbol: "bag",
-      symbolScale: 0.56,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^abonos|liquidacion de creditos/,
-    spec({
-      bg: "#20200A",
-      ink: "#E6D65F",
-      accent: "#C9B63E",
-      wash: 0.2,
-      symbol: "coins",
-      symbolScale: 0.56,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^recargas/,
-    spec({
-      bg: "#0B2440",
-      ink: "#8FC8FF",
-      accent: "#4A90E2",
-      wash: 0.22,
-      symbol: "phone",
-      symbolScale: 0.5,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^comida/,
-    spec({
-      bg: "#26110A",
-      ink: "#FFA870",
-      accent: "#E4713A",
-      wash: 0.22,
-      symbol: "cutlery",
-      symbolScale: 0.52,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^hospedaje|boletos y viajes/,
-    spec({
-      bg: "#05222F",
-      ink: "#74DCF5",
-      accent: "#2EAFD4",
-      wash: 0.22,
-      symbol: "plane",
-      symbolScale: 0.54,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^seguro de autos/,
-    spec({
-      bg: "#0C1D3D",
-      ink: "#93B4FF",
-      accent: "#4C74D9",
-      wash: 0.22,
-      symbol: "carShield",
-      symbolScale: 0.56,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^videojuegos/,
-    spec({
-      bg: "#1C0E3C",
-      ink: "#BCA6FF",
-      accent: "#7B5CE6",
-      wash: 0.24,
-      symbol: "gamepad",
-      symbolScale: 0.56,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^peliculas|libros y pdf/,
-    spec({
-      bg: "#251034",
-      ink: "#DCB8FF",
-      accent: "#8B5CD6",
-      wash: 0.22,
-      symbol: "book",
-      symbolScale: 0.54,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^bots para grupos/,
-    spec({
-      bg: "#05231D",
-      ink: "#7FEBC4",
-      accent: "#25B98C",
-      wash: 0.22,
-      symbol: "bot",
-      symbolScale: 0.54,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^seguidores/,
-    spec({
-      bg: "#2A0A1A",
-      ink: "#FF9DBA",
-      accent: "#E05580",
-      wash: 0.22,
-      symbol: "users",
-      symbolScale: 0.54,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^numeros virtuales/,
-    spec({
-      bg: "#101E29",
-      ink: "#9BD9EC",
-      accent: "#4FA8C4",
-      wash: 0.22,
-      symbol: "hash",
-      symbolScale: 0.5,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^recuperacion de cuentas/,
-    spec({
-      bg: "#271C06",
-      ink: "#F5CE7B",
-      accent: "#D0A23C",
-      wash: 0.22,
-      symbol: "key",
-      symbolScale: 0.52,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^paneles y metodos/,
-    spec({
-      bg: "#151527",
-      ink: "#B4B4FF",
-      accent: "#6E6EE0",
-      wash: 0.24,
-      symbol: "grid",
-      symbolScale: 0.52,
-      font: "display",
-      weight: 600,
-    }),
-  ],
-  [
-    /^robux|pavos/,
-    spec({
-      bg: "#111318",
-      ink: "#E9EBF2",
-      accent: "#8E9AAE",
-      wash: 0.18,
-      symbol: "coins",
-      symbolScale: 0.52,
-      font: "display",
-      weight: 600,
-    }),
-  ],
+  [/^pagos de servicios/, sobrio("ocre", "card", 0.56)],
+  [/^compras con descuento/, sobrio("granate", "bag", 0.56)],
+  [/^abonos|liquidacion de creditos/, sobrio("oliva", "coins", 0.56)],
+  [/^recargas/, sobrio("acero", "phone", 0.5)],
+  [/^comida/, sobrio("teja", "cutlery", 0.52)],
+  [/^hospedaje|boletos y viajes/, sobrio("acero", "plane", 0.54)],
+  [/^seguro de autos/, sobrio("tinta", "carShield", 0.56)],
+  [/^videojuegos/, sobrio("purpura", "gamepad", 0.56)],
+  [/^peliculas|libros y pdf/, sobrio("granate", "book", 0.54)],
+  [/^bots para grupos/, sobrio("botella", "bot", 0.54)],
+  [/^seguidores/, sobrio("purpura", "users", 0.54)],
+  [/^numeros virtuales/, sobrio("acero", "hash", 0.5)],
+  [/^recuperacion de cuentas/, sobrio("ocre", "key", 0.52)],
+  [/^paneles y metodos/, sobrio("tinta", "grid", 0.52)],
+  [/^robux|pavos/, sobrio("pizarra", "coins", 0.52)],
 ];
 
 /** Colecciones de «Otros»: agrupan varios servicios, no son una marca. */
@@ -1206,18 +895,28 @@ const BUNDLES: Array<[RegExp, Brand]> = [
  * documento y el icono lo nombra; el fondo se mantiene oscuro para que la
  * categoría se lea como un bloque tranquilo.
  */
-type TramiteStyle = { bg: string; ink: string; accent: string; symbol: SymbolId };
+type TramiteStyle = { tone: keyof typeof SOBRIA; symbol: SymbolId };
+
+/**
+ * Blanco cálido, no blanco puro y sobre todo no el color de acento.
+ *
+ * Poner el nombre del trámite en su propio color era lo que hacía que la
+ * categoría entera se viera de neón: 59 renglones seguidos de texto teñido. El
+ * acento se queda donde sí ordena —el icono y el filo— y el nombre se lee en el
+ * blanco de un documento.
+ */
+const PAPEL = "#EDE9E1";
 
 const TRAMITES: Record<string, TramiteStyle> = {
-  actas: { bg: "#161B33", ink: "#A9B6E8", accent: "#5C6FBF", symbol: "seal" },
-  sat: { bg: "#0E2A25", ink: "#8ED8BA", accent: "#3F9E7C", symbol: "receipt" },
-  salud: { bg: "#0D2534", ink: "#93CBE2", accent: "#3F8FB0", symbol: "medicalCross" },
-  imss: { bg: "#122A2E", ink: "#96CFCF", accent: "#42979A", symbol: "idCard" },
-  educacion: { bg: "#291D0F", ink: "#E0BA80", accent: "#B0813C", symbol: "gradCap" },
-  antecedentes: { bg: "#201731", ink: "#BFA9E8", accent: "#7C5CC4", symbol: "fingerprint" },
-  vehiculos: { bg: "#2C1717", ink: "#E5A697", accent: "#B26050", symbol: "car" },
-  infonavit: { bg: "#2C1421", ink: "#E5A0BE", accent: "#B25580", symbol: "house" },
-  citas: { bg: "#1D2612", ink: "#BDD292", accent: "#7C9B45", symbol: "calendar" },
+  actas: { tone: "tinta", symbol: "seal" },
+  sat: { tone: "botella", symbol: "receipt" },
+  salud: { tone: "acero", symbol: "medicalCross" },
+  imss: { tone: "pizarra", symbol: "idCard" },
+  educacion: { tone: "ocre", symbol: "gradCap" },
+  antecedentes: { tone: "granate", symbol: "fingerprint" },
+  vehiculos: { tone: "teja", symbol: "car" },
+  infonavit: { tone: "purpura", symbol: "house" },
+  citas: { tone: "oliva", symbol: "calendar" },
 };
 
 const TRAMITE_ORDER = Object.keys(TRAMITES);
@@ -1271,14 +970,19 @@ function compute(input: BrandInput): Brand {
         ? "imss"
         : sub;
     const style = TRAMITES[slot] ?? tramiteFallback(name);
+    const t = SOBRIA[style.tone];
     return spec({
-      bg: style.bg,
-      ink: style.ink,
-      accent: style.accent,
-      wash: 0.3,
+      bg: t.bg,
+      ink: PAPEL,
+      accent: t.ink,
+      // El acento vive solo en el icono y en el filo de arriba.
+      symbolInk: t.ink,
+      wash: 0.16,
+      fade: 0.24,
       font: "display",
       weight: 600,
       tracking: "-0.02em",
+      paper: true,
       symbol: style.symbol,
       symbolScale: 0.46,
     });
@@ -1326,6 +1030,12 @@ export type BrandSkin = {
   inkShadow: string;
   /** Acento de la marca, para contadores y detalles. */
   accent: string;
+  /**
+   * Extremo profundo del degradado de la ficha: el color de la marca muy
+   * oscurecido, NUNCA negro. Si una marca no lleva negro —ViX, Crunchyroll,
+   * Universal+— su ficha tampoco debe llevarlo.
+   */
+  deep: string;
   /** Color legible para texto secundario sobre esta superficie. */
   meta: string;
   /** Color del texto de interfaz (no del logotipo) sobre esta superficie. */
@@ -1340,26 +1050,115 @@ export type BrandSkin = {
  */
 export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSkin {
   const hero = size === "hero";
-  const w = brand.wash * (hero ? 1.15 : 1);
   const a = brand.accent;
 
-  // Capas, de arriba abajo: luz cenital, acento de marca, fondo real.
-  const layers = [
-    `radial-gradient(${hero ? "120% 46%" : "132% 62%"} at 50% ${hero ? "-8%" : "-14%"}, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.06 : 0.11)}, transparent 64%)`,
-    `radial-gradient(${hero ? "110% 62%" : "128% 96%"} at ${hero ? "82% 96%" : "50% 118%"}, ${rgba(a, w)}, transparent 62%)`,
-    `radial-gradient(${hero ? "76% 44%" : "92% 70%"} at ${hero ? "6% 8%" : "8% 4%"}, ${rgba(a, w * 0.55)}, transparent 60%)`,
-    brand.bg,
-  ];
+  /*
+   * La tarjeta y la ficha no se pintan igual, y es a propósito:
+   *
+   *  · **Tarjeta** — el fondo EXACTO del logotipo, plano. Si el logotipo de
+   *    Netflix es negro, la tarjeta es negra; no se le inventa un resplandor
+   *    rojo. Lo único que se le suma es la luz cenital del sistema de vidrio,
+   *    que es del lenguaje de la app y no del color de la marca.
+   *  · **Ficha** — ahí sí entra el difuminado con los colores reales de la
+   *    marca, que es lo que hace que la pantalla completa se sienta suya.
+   */
+  /*
+   * En la ficha, la capa de marca mide lo que mide la PÁGINA —puede ser de
+   * once mil píxeles—, así que todo lo que sea un efecto de entrada tiene que
+   * ir en `vh` y no en porcentaje: un 46 % de once mil píxeles no es una luz
+   * cenital, es un velo blanco sobre la mitad del documento. Ese fue el motivo
+   * de que HBO Max saliera gris.
+   */
+  const skylight = hero
+    ? `radial-gradient(120vw 38vh at 50% -6vh, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`
+    : `radial-gradient(132% 62% at 50% -14%, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`;
+
+  /*
+   * En la ficha manda el color PRINCIPAL del logotipo, no su fondo.
+   *
+   * Es la diferencia entre una página viva y una apagada: el fondo del
+   * logotipo de Netflix es negro y el de Peacock también, pero lo que
+   * identifica a esas marcas es el rojo y el blanco. Si el negro domina, la
+   * ficha se ve muerta. Así que el acento cubre la parte alta y el fondo real
+   * queda como extremo profundo.
+   *
+   * Los colores secundarios —los cinco puntos de Peacock— entran después, en
+   * dosis pequeñas, como acentos y no como protagonistas.
+   */
+  const deep = shade(a, -0.66);
+
+  /*
+   * Cuánto pesa el acento en el difuminado. Ver `Brand.fade`.
+   *
+   * Por omisión sale de la luminancia del propio acento, y no es un capricho:
+   * un rojo al 82 % se lee como rojo, pero un blanco al 82 % no se lee como
+   * blanco sino como una página gris. Cuanto más claro es el color principal,
+   * menos alfa necesita para mandar. Las marcas de fondo claro apenas tiñen:
+   * ahí el color ya lo pone su propio fondo.
+   */
+  const f =
+    brand.fade ?? (brand.light ? 0.14 : Math.min(1, Math.max(0.24, 1 - (lum(a) - 0.55) * 1.7)));
+
+  /*
+   * Halo bajo el logotipo, del propio extremo profundo de la marca.
+   *
+   * Sin él, un wordmark del mismo color que su acento se pierde en su propia
+   * ficha: el rojo de Netflix sobre un fondo rojo, el blanco de Peacock sobre
+   * uno blanco. En las marcas cuyo extremo profundo es su fondo oscuro —que
+   * son justo esas— devuelve el suelo sobre el que el logotipo fue dibujado, y
+   * en las demás es un tono más del mismo color y no se nota.
+   */
+  const deepIsDark = lum(brand.deepEnd ?? a) < 0.24;
+  const halo = deepIsDark
+    ? `radial-gradient(96vw 22vh at 50% 22vh, ${rgba(shade(brand.deepEnd ?? a, -0.2), 0.5)}, transparent 74%)`
+    : // Marca sin fondo oscuro: no hay suelo que devolver y un halo aquí solo
+      // dejaría un cerco alrededor del logotipo.
+      "none";
+
+  /*
+   * El difuminado de la ficha es UNO SOLO y es el mismo de arriba abajo.
+   *
+   * La referencia es ViX: la ficha entera es el degradado del propio logotipo,
+   * del color de su fondo al color de sus letras, y se mantiene igual hasta el
+   * final del scroll. No hay una primera pantalla vistosa y un pie oscuro —eso
+   * partía la ficha en dos— ni negro añadido por nosotros: si la marca no lleva
+   * negro, su ficha tampoco.
+   *
+   * Todo lo que sí es un efecto de entrada —la luz cenital y el halo bajo el
+   * logotipo— se mide en `vh`, porque la capa de marca mide lo que mide la
+   * página y un porcentaje sobre once mil píxeles no es un reflejo, es un velo.
+   */
+  const layers = hero
+    ? [
+        skylight,
+        halo,
+        ...(brand.secondary ?? []).map(
+          (c, i) =>
+            `radial-gradient(62vw 20vh at ${14 + i * 18}vw ${9 + (i % 2) * 7}vh, ${rgba(c, 0.26)}, transparent 64%)`,
+        ),
+        // El color del logotipo, parejo. Solo cede seis puntos de aquí al pie,
+        // lo justo para que la página tenga profundidad y no se vea plana.
+        `linear-gradient(180deg, ${rgba(a, 0.82 * f)} 0%, ${rgba(a, 0.78 * f)} 38%, ${rgba(a, 0.72 * f)} 72%, ${rgba(a, 0.68 * f)} 100%)`,
+        // Profundidad, no oscuridad: es el propio color de la marca apenas
+        // rebajado, y nunca llega a un tercio de presencia.
+        `linear-gradient(180deg, transparent 0%, ${rgba(shade(brand.deepEnd ?? a, -0.28), 0.18)} 55%, ${rgba(shade(brand.deepEnd ?? a, -0.28), 0.3)} 100%)`,
+        brand.bg,
+      ]
+    : [skylight, brand.bg];
 
   return {
     background: layers.join(", "),
-    border: rgba(brand.light ? "#000000" : a, brand.light ? 0.14 : 0.3),
+    // Neutro, no del color de la marca: un borde rojo alrededor de Netflix se
+    // lee como resplandor y rompe el negro plano de su logotipo. El marco es
+    // del sistema de vidrio de la app; el color es del fondo y del logotipo.
+    border: rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.12 : 0.14),
     edge: rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.12 : 0.34),
     ink: brand.ink,
     inkGrad: brand.inkGrad,
     symbolInk: brand.symbolInk ?? brand.ink,
-    inkShadow: brand.light ? "none" : `0 2px 18px ${rgba(a, 0.34)}`,
+    inkShadow: "none",
     accent: a,
+    deep,
     // Neutro a propósito: el color de la marca es del fondo y del logotipo.
     // Si además tiñera los textos de apoyo, el rojo de Netflix se comería la
     // legibilidad de «81 ofertas» y de los precios.
@@ -1400,6 +1199,12 @@ function rgba(hex: string, alpha: number) {
 }
 
 /** Oscurece (`amount` negativo) o aclara un color. */
+/** Luminancia relativa aproximada, para decidir si un color es oscuro. */
+function lum(hex: string) {
+  const [r, g, b] = parse(hex);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
 function shade(hex: string, amount: number) {
   const [r, g, b] = parse(hex);
   const t = amount < 0 ? 0 : 255;

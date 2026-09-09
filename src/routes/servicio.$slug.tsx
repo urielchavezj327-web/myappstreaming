@@ -102,7 +102,52 @@ function ServicePage() {
           "--wordmark-ink": skin.ink,
           "--wordmark-shadow": skin.inkShadow,
           "--edge": skin.edge,
-        } as React.CSSProperties
+          /*
+            Sobre el color de marca, el vidrio claro del sistema deja el texto
+            blanco casi ilegible. Dentro de la ficha —y solo aquí— los paneles
+            se vuelven vidrio OSCURO y los tonos de texto suben: así el fondo
+            sigue siendo el de la marca y el contenido se lee igual de bien en
+            una ficha rosa que en una negra.
+
+            Y al revés en las marcas de fondo claro —Google One, OneDrive,
+            F1 TV, MLB.tv, Universal+, YouTube—: ahí la ficha es blanca porque
+            blanco es el fondo de su logotipo, así que se invierte todo. Incluso
+            la plata del acento, que sobre blanco desaparece: pasa a un acero
+            oscuro con la letra en blanco.
+          */
+          ...(brand.light
+            ? {
+                // `color` además del token: los títulos heredan el color del
+                // `body`, que se resolvió con el tema oscuro mucho antes de
+                // llegar aquí, y sin esto salían en blanco sobre blanco.
+                color: "#14161A",
+                "--foreground": "#14161A",
+                "--color-foreground": "#14161A",
+                "--surface": "rgba(255,255,255,0.74)",
+                "--surface-2": "rgba(255,255,255,0.88)",
+                "--surface-3": "rgba(255,255,255,0.96)",
+                "--border": "rgba(0,0,0,0.10)",
+                "--border-strong": "rgba(0,0,0,0.2)",
+                "--muted-foreground": "rgba(20,22,26,0.78)",
+                "--faint": "rgba(20,22,26,0.56)",
+                "--glass-sheen": "0%",
+                "--chrome-bg": "#F3F4F6",
+                "--brand": "#525A66",
+                "--brand-ink": "#FFFFFF",
+                "--brand-glow": "rgba(20,22,26,0.18)",
+                "--metal": "linear-gradient(135deg,#8B939F,#6E7681 38%,#4C535D 72%,#343A43)",
+              }
+            : {
+                "--surface": "rgba(0,0,0,0.44)",
+                "--surface-2": "rgba(0,0,0,0.55)",
+                "--surface-3": "rgba(0,0,0,0.66)",
+                "--border": "rgba(255,255,255,0.16)",
+                "--border-strong": "rgba(255,255,255,0.28)",
+                "--muted-foreground": "rgba(255,255,255,0.88)",
+                "--faint": "rgba(255,255,255,0.72)",
+                "--glass-sheen": "1.5%",
+              }),
+        } as unknown as React.CSSProperties
       }
     >
       {/*
@@ -113,16 +158,32 @@ function ServicePage() {
         contraste a las listas de precios.
       */}
       <div
-        className="pointer-events-none fixed inset-0 -z-20"
+        className="pointer-events-none absolute inset-0 -z-20"
         style={{ background: skin.background }}
         aria-hidden
       />
       <div
-        className="pointer-events-none fixed inset-0 -z-10"
+        className="pointer-events-none absolute inset-0 -z-10"
         style={{
+          /*
+            El velo solo asienta el color para que las listas de precios se
+            lean; no lo apaga. El color de marca manda en la parte alta y el
+            extremo profundo es su propio tono oscurecido, que ya viene en el
+            fondo de abajo — por eso aquí basta con muy poca opacidad.
+
+            Las marcas de fondo claro (Peacock, YouTube, MLB, F1, Universal+)
+            sí necesitan cerrar antes: su blanco no puede cubrir la página
+            entera o las listas quedarían negro sobre gris.
+          */
+          /*
+            El velo es un asiento, no un apagón: la regla es que el difuminado
+            sea el mismo de arriba abajo, así que apenas entra al final y nunca
+            llega a cubrir. En las marcas de fondo claro no hay velo oscuro
+            ninguno —oscurecerlas sería contradecir su propio logotipo.
+          */
           background: brand.light
-            ? "linear-gradient(to bottom, transparent 0%, transparent 16%, color-mix(in srgb, var(--color-background) 92%, transparent) 46%, var(--color-background) 68%)"
-            : "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--color-background) 62%, transparent) 38%, color-mix(in srgb, var(--color-background) 84%, transparent) 100%)",
+            ? "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%)"
+            : "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%)",
         }}
         aria-hidden
       />
@@ -195,7 +256,7 @@ function ServicePage() {
               </p>
               <Link
                 to="/agregar"
-                className="mt-6 inline-flex h-13 items-center rounded-xl bg-brand text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-5 text-[15px]"
+                className="mt-6 inline-flex h-13 items-center rounded-xl metal text-brand-ink font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35),0_10px_28px_-12px_var(--brand-glow)] transition-all active:scale-[0.98] disabled:opacity-45 disabled:shadow-none px-5 text-[15px]"
               >
                 Agregar stock
               </Link>
@@ -271,28 +332,43 @@ function SummaryBar({
     { label: "Tiendas", value: String(sellers) },
   ];
 
+  // «A consultar» no es una cifra: a 2.9rem se sale de la pastilla. Cuando no
+  // hay precio, el texto baja a un cuerpo que sí cabe.
+  const price = formatPrice(min);
+  const priceSize = min === null ? "text-[1.7rem]" : "text-[2.9rem]";
+
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       <div
         className="lightedge relative overflow-hidden rounded-[1.5rem] border px-6 py-6 text-foreground"
         style={{
           borderColor: `${accent}55`,
           background: `linear-gradient(152deg, ${accent}33, rgba(255,255,255,0.045) 58%)`,
-          boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 20px 46px -26px ${accent}`,
+          boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.1), 0 22px 50px -26px ${accent}`,
         }}
       >
         <p className="t-micro text-muted-foreground">{min === null ? "Precio" : "Desde"}</p>
-        <p className="mt-2.5 t-price text-[2.9rem] leading-[0.9]">{formatPrice(min)}</p>
+        <p className={`mt-2.5 t-price leading-[0.9] ${priceSize}`}>{price}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2.5">
+      {/*
+        Las tres pastillas flotan: llevan el tinte de la marca y una sombra
+        propia, así que se leen como piezas sueltas sobre el color de la ficha
+        y no como una barra pegada al bloque de arriba.
+      */}
+      <div className="grid grid-cols-3 gap-3">
         {rest.map((c) => (
           <div
             key={c.label}
-            className="glass lightedge relative overflow-hidden rounded-[1.2rem] px-3.5 py-4 text-foreground"
+            className="lightedge relative overflow-hidden rounded-[1.2rem] border px-3.5 py-4 text-foreground"
+            style={{
+              borderColor: `${accent}3D`,
+              background: `linear-gradient(152deg, ${accent}22, rgba(255,255,255,0.05) 64%)`,
+              boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.09), 0 14px 30px -20px ${accent}`,
+            }}
           >
             <p className="truncate t-micro text-muted-foreground">{c.label}</p>
-            <p className="mt-1.5 t-price text-[1.45rem] leading-none">{c.value}</p>
+            <p className="mt-1.5 truncate t-price text-[1.45rem] leading-none">{c.value}</p>
           </div>
         ))}
       </div>

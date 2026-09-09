@@ -149,11 +149,27 @@
   --muted-foreground: oklch(0.775 0.011 280);
   --faint: oklch(0.578 0.014 280);
 
-  /* ── Acento propio: menta luminosa. Precio, acción y estado activo. ─── */
-  --brand: oklch(0.858 0.158 167);
-  --brand-dim: oklch(0.66 0.135 167);
-  --brand-ink: oklch(0.205 0.055 167);
-  --brand-glow: oklch(0.858 0.158 167 / 26%);
+  /* ── Acento propio: plata. Precio, acción y estado activo. ──────────
+   *
+   * Era menta. El problema del menta no es el tono sino lo que significa: un
+   * color propio compite con los 69 colores de marca del catálogo, y una ficha
+   * de Netflix con un botón verde se ve de dos dueños. La plata no compite con
+   * ninguno —es luz, no color— y encima da el peso de metal que pedía el resto
+   * del sistema de vidrio.
+   *
+   * `--brand` es la parada legible del metal, la que se usa cuando hay que
+   * pintar texto o un icono de un solo color; el degradado completo vive en
+   * `--metal` y se aplica con la utilidad del mismo nombre. */
+  --brand: #E8ECF1;
+  --brand-dim: #A9B2BD;
+  --brand-ink: #14161A;
+  --brand-glow: oklch(0.93 0.006 265 / 20%);
+  /* Las cuatro paradas del metal, a 135°: brillo, cuerpo, sombra y canto. */
+  /* El canto oscuro se corre al final: sobre él la tinta del botón bajaba de
+     4.5:1 y con las cuatro paradas repartidas a partes iguales ocupaba un
+     tercio de la superficie. */
+  --metal: linear-gradient(135deg, #F5F7FA 0%, #E8ECF1 40%, #A9B2BD 82%, #6E7681 100%);
+  --metal-edge: linear-gradient(135deg, oklch(1 0 0 / 70%), oklch(1 0 0 / 12%) 46%, oklch(0 0 0 / 22%));
 
   --card: var(--surface);
   --card-foreground: var(--foreground);
@@ -171,7 +187,7 @@
   --success: var(--brand);
   --success-foreground: var(--brand-ink);
   --input: oklch(1 0 0 / 13%);
-  --ring: oklch(0.858 0.158 167 / 75%);
+  --ring: oklch(0.93 0.006 265 / 70%);
 
   /* ── Sombras en capas: contacto, cuerpo y ambiente ──────────────────── */
   --shadow-soft:
@@ -227,16 +243,18 @@
      * *detrás* de su propio fondo y no se vería. Aquí es el fondo del lienzo,
      * fijo al viewport, y se pinta una sola vez.
      *
-     * Cuatro focos: luz cenital blanca, menta a la izquierda, violeta a la
-     * derecha y un rescoldo cálido al pie. Ninguno es un color plano: es lo
-     * que impide que el negro se lea como un vacío.
+     * Cuatro focos, todos neutros. Antes había menta a la izquierda y violeta a
+     * la derecha, y eran ellos los que teñían de un color ajeno cualquier ficha
+     * que se abriera encima. Ahora es luz sin color, al 3-5 %: lo justo para
+     * que el negro no se lea como un vacío y sin robarle el tono a ninguna
+     * marca.
      */
     background-color: var(--background);
     background-image:
-      radial-gradient(128% 58% at 50% -16%, oklch(0.44 0.03 276 / 92%), transparent 66%),
-      radial-gradient(82% 46% at -4% 4%, oklch(0.7 0.15 167 / 20%), transparent 66%),
-      radial-gradient(76% 48% at 104% -2%, oklch(0.58 0.17 302 / 26%), transparent 66%),
-      radial-gradient(104% 44% at 50% 106%, oklch(0.58 0.12 42 / 13%), transparent 70%);
+      radial-gradient(128% 58% at 50% -16%, oklch(0.44 0.02 276 / 88%), transparent 66%),
+      radial-gradient(82% 46% at -4% 4%, oklch(0.92 0.004 265 / 5%), transparent 66%),
+      radial-gradient(76% 48% at 104% -2%, oklch(0.9 0.006 280 / 4%), transparent 66%),
+      radial-gradient(104% 44% at 50% 106%, oklch(0.88 0.005 265 / 3%), transparent 70%);
     background-attachment: fixed;
     background-repeat: no-repeat;
   }
@@ -345,8 +363,11 @@
    superior, el degradado vertical y las sombras en capas — sobre obsidiana el
    desenfoque no aportaría nada visible. */
 @utility glass {
+  /* El brillo se puede apagar por contexto: sobre el color de marca de una
+     ficha, el velo blanco deja los paneles casi invisibles. */
   background:
-    linear-gradient(180deg, oklch(1 0 0 / 7%), oklch(1 0 0 / 2.5%)), var(--color-surface);
+    linear-gradient(180deg, oklch(1 0 0 / var(--glass-sheen, 7%)), oklch(1 0 0 / calc(var(--glass-sheen, 7%) / 2.8))),
+    var(--color-surface);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft);
 }
@@ -380,6 +401,51 @@
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--edge), transparent);
     pointer-events: none;
+  }
+}
+
+/* Fibra de papel, apenas perceptible.
+   Dos tramas finísimas cruzadas en vez de una imagen de ruido: el ruido a este
+   tamaño se lee como suciedad y además habría que descargarlo. En `soft-light`
+   la trama no aclara ni oscurece el fondo, solo lo hace parecer material. */
+@utility paper {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(0deg, oklch(1 0 0 / 2.4%) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, oklch(1 0 0 / 1.8%) 0 1px, transparent 1px 4px);
+    mix-blend-mode: soft-light;
+  }
+}
+
+/* Superficie de metal: el acento de la app cuando toca pintar un relleno.
+   Cuatro paradas a 135°, un canto de luz arriba y sombra abajo con doble
+   `inset`, y una banda especular que cruza en diagonal. Es lo que hace que un
+   botón se lea como una pieza de platino y no como un rectángulo gris. */
+@utility metal {
+  position: relative;
+  overflow: hidden;
+  background-image: var(--metal);
+  color: var(--brand-ink);
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 62%),
+    inset 0 -1px 0 0 oklch(0 0 0 / 26%),
+    0 10px 26px -14px oklch(0 0 0 / 70%);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      104deg,
+      transparent 34%,
+      oklch(1 0 0 / 42%) 47%,
+      transparent 58%
+    );
   }
 }
 
