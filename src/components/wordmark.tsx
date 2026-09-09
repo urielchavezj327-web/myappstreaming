@@ -65,7 +65,10 @@ const LINE_H = 1.04;
 const BOX: Record<WordmarkSize, Box> = {
   tile: { width: 100, max: 30, min: 8, symbol: 34, lines: 3, height: 64 },
   row: { width: 100, max: 12, min: 4.6, symbol: 12, lines: 2, height: 0 },
-  hero: { width: 100, max: 22, min: 7, symbol: 26, lines: 3, height: 0 },
+  // La ficha tenía el cuerpo suelto y sin tope de alto: «Pagos de servicios
+  // con descuento» salía a tres renglones de 67 px y se comía la pantalla
+  // entera antes de llegar al precio.
+  hero: { width: 100, max: 19, min: 7, symbol: 26, lines: 3, height: 50 },
 };
 
 /** Reparte el texto en `n` líneas equilibradas sin cortar palabras. */

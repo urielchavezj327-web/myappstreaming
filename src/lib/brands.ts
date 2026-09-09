@@ -825,8 +825,11 @@ function sobrio(
     bg: t.card,
     ink: t.ink,
     accent: t.ink,
-    // Resplandor muy bajo: el color lo pone la tinta, no un halo detrás.
+    // Resplandor muy bajo: el color lo pone la tinta, no un halo detrás. Y en
+    // la ficha el color entra apenas teñido, para que al entrar se vea la
+    // misma pizarra que en la tarjeta y no una pantalla del color del texto.
     wash: 0.16,
+    fade: 0.2,
     font: "display",
     weight: 600,
     paper: true,
@@ -975,6 +978,7 @@ function compute(input: BrandInput): Brand {
       // El acento vive solo en el icono y en el filo de arriba.
       symbolInk: t.ink,
       wash: 0.16,
+      fade: 0.24,
       font: "display",
       weight: 600,
       tracking: "-0.02em",
