@@ -2,7 +2,7 @@ import { memo } from "react";
 
 import type { Brand, BrandFont } from "@/lib/brands";
 import { BrandSymbol } from "@/components/brand-symbols";
-import { BrandLogo } from "@/components/logos";
+import { BrandLogo, isTileLogo } from "@/components/logos";
 
 /**
  * Logotipo de un servicio.
@@ -181,6 +181,17 @@ export const Wordmark = memo(function Wordmark({
    * temática sí es el tratamiento correcto porque no hay logotipo que imitar.
    */
   if (brand.logo) {
+    // Los que son el icono completo de la aplicación —Duolingo— se sirven a
+    // sangre: llenan la caja entera y su propio fondo hace de fondo. Encajarlo
+    // en un cuadro más chico dentro de la tarjeta es lo que lo hacía parecer
+    // una imagen pegada encima.
+    if (isTileLogo(brand.logo) && size !== "hero") {
+      return (
+        <span className="absolute inset-0 block">
+          <BrandLogo id={brand.logo} name={name} />
+        </span>
+      );
+    }
     return (
       <span
         className={
@@ -190,7 +201,11 @@ export const Wordmark = memo(function Wordmark({
         }
         style={size === "row" ? { maxWidth: "12rem" } : undefined}
       >
-        <BrandLogo id={brand.logo} name={name} />
+        <BrandLogo
+          id={brand.logo}
+          name={name}
+          {...(isTileLogo(brand.logo) ? { contain: true } : {})}
+        />
       </span>
     );
   }

@@ -554,12 +554,15 @@ function key(value: string) {
   ],
   [
     // El nudo va trazado de tu imagen; el nombre, en la tipografía de la app.
+    // Su identidad es negro y blanco, y el blanco a plena intensidad convierte
+    // la ficha en una página gris: entra rebajado, como luz sobre el negro.
     /^chatgpt|^openai/,
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
       accent: "#FFFFFF",
       deepEnd: "#000000",
+      fade: 0.22,
       wash: 0.5,
       logo: "chatgpt",
     }),
@@ -580,14 +583,18 @@ function key(value: string) {
     }),
   ],
   [
+    // Fondo claro, como el archivo, pero no blanco de papel: el gris 50 de la
+    // propia paleta de Google, que es el que usan ellos de superficie.
     /^gemini/,
     spec({
-      bg: "#0A0D17",
-      ink: "#FFFFFF",
-      accent: "#4285F4",
-      deepEnd: "#0A0D17",
+      bg: "#F8F9FA",
+      ink: "#4D8BEA",
+      accent: "#6482E1",
+      secondary: ["#C4667F"],
+      deepEnd: "#EDEFF3",
       wash: 0.45,
       logo: "gemini",
+      light: true,
     }),
   ],
   [
@@ -602,13 +609,17 @@ function key(value: string) {
     }),
   ],
   [
+    // Fondo blanco, que es el del archivo que mandaste: el logotipo de OneDrive
+    // es una nube azul y un nombre azul marino sobre blanco, no al revés.
     /onedrive/,
     spec({
-      bg: "#0B3B78",
-      ink: "#FFFFFF",
-      accent: "#28A8EA",
+      bg: "#FFFFFF",
+      ink: "#074BB3",
+      accent: "#0179D4",
+      deepEnd: "#E6F1FB",
       wash: 0.46,
       logo: "onedrive",
+      light: true,
     }),
   ],
   [
@@ -627,15 +638,18 @@ function key(value: string) {
     }),
   ],
   [
-    // Los dos verdes son los del icono: el del cuadro y el de la cabeza. El
-    // amarillo del pico entra de secundario en el difuminado de la ficha.
+    // El acento es el verde del propio cuadro del icono, no el de la cabeza:
+    // así la parte alta de la ficha es exactamente el suelo sobre el que está
+    // dibujado el búho y no se ve el canto del icono. El blanco de los ojos y
+    // los dos tonos del pico entran de secundarios, sin quitarle el mando al
+    // verde. Nada de negro: el icono no lo lleva.
     /^duolingo/,
     spec({
       bg: "#77C801",
       ink: "#FFFFFF",
-      accent: "#8FDF02",
-      secondary: ["#FEC200"],
-      deepEnd: "#77C801",
+      accent: "#77C801",
+      secondary: ["#FFFFFF", "#FEC200", "#F38003"],
+      deepEnd: "#8FDF02",
       wash: 0.18,
       logo: "duolingo",
     }),
@@ -1066,7 +1080,7 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
   const deep = shade(a, -0.66);
 
   /** Cuánto pesa el acento en el difuminado. Ver `Brand.fade`. */
-  const f = brand.fade ?? 1;
+  const f = brand.fade ?? (brand.light ? 0.14 : 1);
 
   /*
    * Halo bajo el logotipo, del propio extremo profundo de la marca.
@@ -1077,7 +1091,12 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
    * son justo esas— devuelve el suelo sobre el que el logotipo fue dibujado, y
    * en las demás es un tono más del mismo color y no se nota.
    */
-  const halo = `radial-gradient(96vw 22vh at 50% 22vh, ${rgba(shade(brand.deepEnd ?? a, -0.2), 0.5)}, transparent 74%)`;
+  const deepIsDark = lum(brand.deepEnd ?? a) < 0.24;
+  const halo = deepIsDark
+    ? `radial-gradient(96vw 22vh at 50% 22vh, ${rgba(shade(brand.deepEnd ?? a, -0.2), 0.5)}, transparent 74%)`
+    : // Marca sin fondo oscuro: no hay suelo que devolver y un halo aquí solo
+      // dejaría un cerco alrededor del logotipo.
+      "none";
 
   /*
    * El difuminado de la ficha es UNO SOLO y es el mismo de arriba abajo.
@@ -1163,6 +1182,12 @@ function rgba(hex: string, alpha: number) {
 }
 
 /** Oscurece (`amount` negativo) o aclara un color. */
+/** Luminancia relativa aproximada, para decidir si un color es oscuro. */
+function lum(hex: string) {
+  const [r, g, b] = parse(hex);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
 function shade(hex: string, amount: number) {
   const [r, g, b] = parse(hex);
   const t = amount < 0 ? 0 : 255;

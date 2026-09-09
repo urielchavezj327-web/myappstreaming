@@ -256,8 +256,8 @@ export function OfferRow({
                 <span
                   /* Vidrio translúcido, no un bloque oscuro: sobre el color de
                      marca de una ficha, una pastilla opaca se lee como mancha. */
-                  className={`rounded-md bg-white/12 px-1.5 py-0.5 text-[11px] font-semibold ${
-                    age.stale ? "text-amber-200/90" : "text-white/72"
+                  className={`rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-semibold ${
+                    age.stale ? "text-amber-500" : "text-muted-foreground"
                   }`}
                   title={`Última actualización: ${age.label}`}
                 >

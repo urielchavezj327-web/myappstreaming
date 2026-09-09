@@ -35,9 +35,10 @@ export type LogoSpec =
       /** Ajuste fino sobre el tamaño que da la tinta. 1 = sin ajuste. */
       scale?: number;
       /**
-       * El trazado incluye el fondo del icono de la aplicación. Se redondea
-       * como tal: si no, el cuadro plano se recorta a escuadra contra el
-       * difuminado de la ficha y parece un error de encaje.
+       * El trazado ES el icono de la aplicación, fondo incluido. En la tarjeta
+       * se sirve a sangre —de borde a borde— porque su fondo y el de la tarjeta
+       * son el mismo color y así no se ve ni un canto; recortarlo a un cuadro
+       * más chico es lo que lo hacía parecer un PNG pegado encima.
        */
       tile?: boolean;
     }
@@ -63,14 +64,16 @@ type Gradient = { id: string; stops: Array<[string, string]>; angle?: number };
 
 const GEMINI: Gradient = {
   id: "gemini",
-  // La estrella de Gemini recorre los cuatro colores de Google.
+  // Las paradas son la media del archivo por franjas a lo ancho: el degradado
+  // recorre la palabra entera, del azul de la «G» al rosa de la última «i».
   stops: [
-    ["0%", "#34A853"],
-    ["34%", "#4285F4"],
-    ["68%", "#9B72CB"],
-    ["100%", "#D96570"],
+    ["0%", "#4895E4"],
+    ["32%", "#4D8BEA"],
+    ["56%", "#6482E1"],
+    ["76%", "#8C79CA"],
+    ["100%", "#C4667F"],
   ],
-  angle: 45,
+  angle: 0,
 };
 
 const HBOMAX: Gradient = {
@@ -153,7 +156,8 @@ export const LOGOS = {
   // Sin recolorear: la tarjeta es blanca como el archivo, así los cuatro
   // colores de Google y el gris 700 de «One» salen exactos.
   googleone: { kind: "full", key: "googleone", scale: 0.85 },
-  onedrive: { kind: "full", key: "onedrive", scale: 1.15, recolor: { "#074BB3": "#E8F2FF" } },
+  // Sin recolorear: la tarjeta es blanca como el archivo.
+  onedrive: { kind: "full", key: "onedrive", scale: 1.15 },
   // «ple» en blanco y la «x» partida: chevrón dorado y chevrón blanco.
   plex: { kind: "full", key: "plex" },
   smartfit: { kind: "full", key: "smartfit" },
@@ -161,7 +165,7 @@ export const LOGOS = {
   // cabeza del búho se sale por los lados y sin su cuadro quedaría cortada.
   // Su cobertura es del 100 % (el cuadro entero es tinta), así que el reparto
   // por tinta lo encogía: va al tope de altura de la tarjeta.
-  duolingo: { kind: "full", key: "duolingo", scale: 2.8, tile: true },
+  duolingo: { kind: "full", key: "duolingo", tile: true },
   // De una pieza: la cinta de Copilot y «Microsoft 365» en la proporción del
   // archivo. Antes iban por separado y la «M» se salía de la tarjeta.
   microsoft365: {
@@ -192,7 +196,8 @@ export const LOGOS = {
     dir: "col",
     a: { traced: "chatgptmark" },
     b: { text: "ChatGPT" },
-    sizes: [40, 16],
+    // El símbolo pesa más que el nombre porque es lo que se reconoce.
+    sizes: [38, 15],
     recolor: { "#000000": "#FFFFFF" },
   },
   discord: {
@@ -208,6 +213,12 @@ export type LogoId = keyof typeof LOGOS;
 
 export function hasLogo(id: string): id is LogoId {
   return id in LOGOS;
+}
+
+/** ¿Este logotipo es el icono completo de la aplicación? Ver `tile`. */
+export function isTileLogo(id: LogoId): boolean {
+  const spec = LOGOS[id] as LogoSpec;
+  return spec.kind === "full" && spec.tile === true;
 }
 
 /**
@@ -327,8 +338,11 @@ function PieceView({
   // `height` sigue mandando en las piezas compuestas, donde la proporción
   // entre símbolo y nombre la fija la marca; las piezas sueltas se normalizan
   // por área.
-  const box =
-    height > 0
+  // A sangre: el icono cubre la caja entera aunque tenga que recortarse por los
+  // lados, que es justo lo que hace el icono real dentro de su cuadro.
+  const box = tile
+    ? { width: "100%", height: "100%" }
+    : height > 0
       ? { width: "100%", height: `${height}cqw` }
       : fitBox(
           ("traced" in piece ? TRACED[piece.traced] : undefined) ?? {
@@ -338,20 +352,21 @@ function PieceView({
           scale,
         );
   const common = {
-    preserveAspectRatio: "xMidYMid meet" as const,
+    preserveAspectRatio: (tile ? "xMidYMid slice" : "xMidYMid meet") as
+      "xMidYMid slice" | "xMidYMid meet",
     style: {
       display: "block",
       margin: "0 auto",
       ...box,
-      // La misma proporción de esquina que usan iOS y Android para el icono.
-      ...(tile ? { clipPath: "inset(0 round 22.4%)" } : {}),
     },
   };
 
   if ("text" in piece) {
     return (
+      // `block` a propósito: un `span` en línea ignora `text-center` y el
+      // nombre se quedaba pegado a la izquierda debajo del símbolo.
       <span
-        className="text-center font-display font-semibold tracking-[-0.01em]"
+        className="block w-full text-center font-display font-semibold tracking-[-0.01em]"
         style={{
           fontSize: `${height * 0.82}cqw`,
           color: piece.ink ?? "currentColor",
@@ -400,7 +415,16 @@ function PieceView({
  * tarjeta del catálogo y para el encabezado de la ficha sin recomponerse: solo
  * cambia el ancho del contenedor.
  */
-export const BrandLogo = memo(function BrandLogo({ id, name }: { id: LogoId; name: string }) {
+export const BrandLogo = memo(function BrandLogo({
+  id,
+  name,
+  contain = false,
+}: {
+  id: LogoId;
+  name: string;
+  /** Contener el icono en vez de servirlo a sangre. Solo afecta a los `tile`. */
+  contain?: boolean;
+}) {
   const spec = LOGOS[id] as LogoSpec;
 
   if (spec.kind === "full") {
@@ -409,7 +433,8 @@ export const BrandLogo = memo(function BrandLogo({ id, name }: { id: LogoId; nam
         piece={{ traced: spec.key }}
         height={0}
         {...(spec.scale ? { scale: spec.scale } : {})}
-        {...(spec.tile ? { tile: true } : {})}
+        {...(spec.tile && !contain ? { tile: true } : {})}
+        {...(spec.tile && contain ? { scale: 3.4 } : {})}
         label={name}
         {...(spec.grad ? { grad: spec.grad } : {})}
         {...(spec.recolor ? { recolor: spec.recolor } : {})}

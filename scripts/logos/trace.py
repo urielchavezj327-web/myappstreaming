@@ -371,13 +371,13 @@ JOBS = {
     "primevideo": ("0ef56604-image.png", [{"match": light(200), "fill": "#FFFFFF"}], None),
     "foxone": ("ac39b449-image.png", [{"match": light(180), "fill": "#FFFFFF"}], None),
     "vix": ("822a2472-image.png", [{"match": light(205), "fill": "#FFFFFF"}], None),
+    # El wordmark completo con la estrella encima de la «i». Va todo al mismo
+    # degradado —azul, morado y rosa— porque en el archivo es uno solo que
+    # recorre la palabra entera, no un color por letra.
     "geminiword": (
-        "a844a5f9-image.jpg",
-        [
-            {"match": both(dark(110), notf(saturated(45))), "fill": "#FFFFFF"},
-            {"match": saturated(60), "fill": "#GEMINI"},
-        ],
-        (0.02, 0.06, 0.98, 0.94),
+        "419a15f7-image.png",
+        [{"match": lambda a: a.mean(axis=2) < 225, "fill": "#GEMINI"}],
+        None,
     ),
 }
 

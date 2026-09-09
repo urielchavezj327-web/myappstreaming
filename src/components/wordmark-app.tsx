@@ -3,8 +3,8 @@
  *
  * "Stockdex" — de *stock* e *índice*. Una sola palabra con el peso partido en
  * dos: el bloque sólido nombra la materia y el trazo fino la convierte en un
- * índice. El punto de acento sobre la «i» invisible —la barra de menta bajo la
- * palabra— es lo que la ata al resto del sistema.
+ * índice. El punto de plata sobre la «i» invisible es lo que la ata al resto
+ * del sistema.
  */
 export function AppWordmark({ size = "hero" }: { size?: "hero" | "bar" }) {
   if (size === "bar") {

@@ -108,16 +108,46 @@ function ServicePage() {
             se vuelven vidrio OSCURO y los tonos de texto suben: así el fondo
             sigue siendo el de la marca y el contenido se lee igual de bien en
             una ficha rosa que en una negra.
+
+            Y al revés en las marcas de fondo claro —Google One, OneDrive,
+            F1 TV, MLB.tv, Universal+, YouTube—: ahí la ficha es blanca porque
+            blanco es el fondo de su logotipo, así que se invierte todo. Incluso
+            la plata del acento, que sobre blanco desaparece: pasa a un acero
+            oscuro con la letra en blanco.
           */
-          "--surface": "rgba(0,0,0,0.44)",
-          "--surface-2": "rgba(0,0,0,0.55)",
-          "--surface-3": "rgba(0,0,0,0.66)",
-          "--border": "rgba(255,255,255,0.16)",
-          "--border-strong": "rgba(255,255,255,0.28)",
-          "--muted-foreground": "rgba(255,255,255,0.88)",
-          "--faint": "rgba(255,255,255,0.72)",
-          "--glass-sheen": "1.5%",
-        } as React.CSSProperties
+          ...(brand.light
+            ? {
+                // `color` además del token: los títulos heredan el color del
+                // `body`, que se resolvió con el tema oscuro mucho antes de
+                // llegar aquí, y sin esto salían en blanco sobre blanco.
+                color: "#14161A",
+                "--foreground": "#14161A",
+                "--color-foreground": "#14161A",
+                "--surface": "rgba(255,255,255,0.74)",
+                "--surface-2": "rgba(255,255,255,0.88)",
+                "--surface-3": "rgba(255,255,255,0.96)",
+                "--border": "rgba(0,0,0,0.10)",
+                "--border-strong": "rgba(0,0,0,0.2)",
+                "--muted-foreground": "rgba(20,22,26,0.78)",
+                "--faint": "rgba(20,22,26,0.56)",
+                "--glass-sheen": "0%",
+                "--chrome-bg": "#F3F4F6",
+                "--brand": "#525A66",
+                "--brand-ink": "#FFFFFF",
+                "--brand-glow": "rgba(20,22,26,0.18)",
+                "--metal": "linear-gradient(135deg,#8B939F,#6E7681 38%,#4C535D 72%,#343A43)",
+              }
+            : {
+                "--surface": "rgba(0,0,0,0.44)",
+                "--surface-2": "rgba(0,0,0,0.55)",
+                "--surface-3": "rgba(0,0,0,0.66)",
+                "--border": "rgba(255,255,255,0.16)",
+                "--border-strong": "rgba(255,255,255,0.28)",
+                "--muted-foreground": "rgba(255,255,255,0.88)",
+                "--faint": "rgba(255,255,255,0.72)",
+                "--glass-sheen": "1.5%",
+              }),
+        } as unknown as React.CSSProperties
       }
     >
       {/*
@@ -145,9 +175,15 @@ function ServicePage() {
             sí necesitan cerrar antes: su blanco no puede cubrir la página
             entera o las listas quedarían negro sobre gris.
           */
+          /*
+            El velo es un asiento, no un apagón: la regla es que el difuminado
+            sea el mismo de arriba abajo, así que apenas entra al final y nunca
+            llega a cubrir. En las marcas de fondo claro no hay velo oscuro
+            ninguno —oscurecerlas sería contradecir su propio logotipo.
+          */
           background: brand.light
-            ? "linear-gradient(to bottom, transparent 0%, transparent 10%, color-mix(in srgb, var(--color-background) 55%, transparent) 34%, color-mix(in srgb, var(--color-background) 78%, transparent) 62%, color-mix(in srgb, var(--color-background) 86%, transparent) 100%)"
-            : "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 16%, transparent) 88%, color-mix(in srgb, var(--color-background) 26%, transparent) 100%)",
+            ? "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%)"
+            : "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%)",
         }}
         aria-hidden
       />

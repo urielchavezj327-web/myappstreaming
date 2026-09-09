@@ -12,7 +12,7 @@ export function SiteHeader() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-[color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-border bg-[color-mix(in_srgb,var(--chrome-bg,var(--background))_92%,transparent)] backdrop-blur-xl">
       <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link
           to="/"
