@@ -101,6 +101,9 @@ function ServicePage() {
       className="relative min-h-screen"
       style={
         {
+          // El encabezado toma el color de la ficha en todas, para que la barra
+          // no se lea como una pieza de otra pantalla pegada encima.
+          "--chrome-bg": skin.chromeBg,
           "--wordmark-ink": skin.ink,
           "--wordmark-shadow": skin.inkShadow,
           "--edge": skin.edge,
@@ -133,7 +136,7 @@ function ServicePage() {
                 "--muted-foreground": "rgba(20,22,26,0.78)",
                 "--faint": "rgba(20,22,26,0.56)",
                 "--glass-sheen": "0%",
-                "--chrome-bg": "#F3F4F6",
+
                 "--brand": "#525A66",
                 "--brand-ink": "#FFFFFF",
                 "--brand-glow": "rgba(20,22,26,0.18)",
@@ -355,7 +358,7 @@ function SummaryBar({
   // «A consultar» no es una cifra: dentro de un círculo hay menos sitio aún, y
   // por eso baja a un cuerpo que sí cabe y se parte en dos renglones.
   const price = formatPrice(min);
-  const priceSize = min === null ? "text-[1.05rem] leading-tight" : "text-[2.5rem] leading-[0.9]";
+  const priceSize = min === null ? "text-[0.82rem] leading-tight" : "text-[1.45rem] leading-none";
 
   return (
     /*
@@ -367,12 +370,15 @@ function SummaryBar({
      * porque es el dato que se viene a consultar; los otros dos acompañan.
      *
      * El relleno es vidrio neutro, no el color de la marca: teñido del mismo
-     * color que tiene detrás, el círculo desaparecía. Y sin filete de luz
-     * arriba, que sobre una forma redonda se lee como una raya suelta.
+     * color que tiene detrás, el círculo desaparecía. Sin filete de luz
+     * arriba, que sobre una forma redonda se lee como una raya suelta, y con
+     * la esquina al 38 % —una forma redondeada, no un círculo perfecto—. Los
+     * cuatro miden lo mismo: «Desde» destaca por ir solo y arriba, no por
+     * ocupar el doble.
      */
     <div className="flex flex-col items-center gap-4">
       <div
-        className="relative flex aspect-square w-[46%] max-w-[11rem] flex-col items-center justify-center rounded-full border text-center text-foreground"
+        className="relative flex aspect-square w-[30%] max-w-[7.5rem] flex-col items-center justify-center rounded-[38%] border text-center text-foreground"
         style={{
           borderColor: "rgba(255,255,255,0.34)",
           background:
@@ -382,14 +388,14 @@ function SummaryBar({
         }}
       >
         <p className="t-micro text-muted-foreground">{min === null ? "Precio" : "Desde"}</p>
-        <p className={`mt-1 t-price ${priceSize}`}>{price}</p>
+        <p className={`mt-0.5 t-price ${priceSize}`}>{price}</p>
       </div>
 
       <div className="flex w-full items-start justify-center gap-3">
         {rest.map((c) => (
           <div
             key={c.label}
-            className="relative flex aspect-square w-[28%] max-w-[7rem] flex-col items-center justify-center rounded-full border text-center text-foreground"
+            className="relative flex aspect-square w-[30%] max-w-[7.5rem] flex-col items-center justify-center rounded-[38%] border text-center text-foreground"
             style={{
               borderColor: "rgba(255,255,255,0.24)",
               background:
