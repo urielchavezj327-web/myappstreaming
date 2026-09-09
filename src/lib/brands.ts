@@ -535,20 +535,15 @@ function key(value: string) {
     }),
   ],
   [
-    // Sin imagen: el nudo de OpenAI va en blanco con el verde de marca como
-    // acento del fondo. Dibujo mío, pendiente de tu visto bueno.
+    // El nudo va trazado de tu imagen; el nombre, en la tipografía de la app.
     /^chatgpt|^openai/,
     spec({
       bg: "#000000",
       ink: "#FFFFFF",
-      accent: "#10A37F",
+      accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.5,
-      font: "grotesk",
-      weight: 600,
-      tracking: "-0.035em",
-      symbol: "openai",
-      symbolScale: 0.7,
+      logo: "chatgpt",
     }),
   ],
   [
@@ -599,35 +594,45 @@ function key(value: string) {
     }),
   ],
   [
+    // Fondo blanco, como el archivo: es la única forma de que el gris 700 de
+    // «One» y los cuatro colores de Google salgan exactos y se lean.
     /almacenamiento google|google drive|google one/,
     spec({
-      bg: "#101116",
-      ink: "#FFFFFF",
+      bg: "#FFFFFF",
+      ink: "#5F6368",
       accent: "#4285F4",
-      deepEnd: "#101116",
+      secondary: ["#EA4335", "#FBBC04", "#34A853"],
+      deepEnd: "#E8EAED",
       wash: 0.4,
       logo: "googleone",
+      light: true,
     }),
   ],
   [
+    // Los dos verdes son los del icono: el del cuadro y el de la cabeza. El
+    // amarillo del pico entra de secundario en el difuminado de la ficha.
     /^duolingo/,
     spec({
-      bg: "#58CC02",
+      bg: "#77C801",
       ink: "#FFFFFF",
-      accent: "#C6F5A0",
+      accent: "#8FDF02",
+      secondary: ["#FEC200"],
+      deepEnd: "#77C801",
       wash: 0.18,
       logo: "duolingo",
     }),
   ],
   [
-    // El blanco de tu foto era el fondo de la imagen, no del logotipo: la
-    // ficha lleva el mismo degradado teal→morado del círculo, y el magenta
-    // del wordmark se aclara para que se lea encima.
+    // Las siete paradas son la media del icono por franjas sobre su propio eje
+    // de 45°: magenta abajo a la izquierda, cian arriba a la derecha, y el
+    // morado que sale de mezclarlos en medio.
     /^picsart/,
     spec({
-      bg: "linear-gradient(145deg,#78DEE4,#8A5FD0 52%,#5B1E88)",
+      bg: "linear-gradient(45deg,#D302BF,#B11EC6 25%,#9039CC 38%,#6B60D3 50%,#36ABE0 62%,#0DEBEB 75%,#01FDEE)",
       ink: "#FFFFFF",
-      accent: "#D64FE0",
+      accent: "#B11EC6",
+      secondary: ["#01FDEE"],
+      deepEnd: "#7949D0",
       wash: 0.22,
       logo: "picsart",
     }),

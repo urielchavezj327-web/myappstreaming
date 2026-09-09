@@ -34,6 +34,12 @@ export type LogoSpec =
       recolor?: Record<string, string>;
       /** Ajuste fino sobre el tamaño que da la tinta. 1 = sin ajuste. */
       scale?: number;
+      /**
+       * El trazado incluye el fondo del icono de la aplicación. Se redondea
+       * como tal: si no, el cuadro plano se recorta a escuadra contra el
+       * difuminado de la ficha y parece un error de encaje.
+       */
+      tile?: boolean;
     }
   /** Solo el símbolo oficial de simple-icons, que ya trae el nombre dentro. */
   | { kind: "solo"; key: string; ink?: string; scale?: number }
@@ -138,17 +144,32 @@ export const LOGOS = {
   scribd: { kind: "full", key: "scribd", scale: 1.15 },
   // icono cuadrado sin nombre al lado
   photoshop: { kind: "full", key: "photoshop", scale: 1.2 },
-  // El magenta original se pierde contra el degradado morado de la ficha, así
-  // que sube de luminosidad lo justo para leerse encima.
-  picsart: { kind: "full", key: "picsart", recolor: { "#BE07BD": "#FF63F0" } },
+  // El icono de la aplicación, tal cual: solo la «p» blanca. El degradado va
+  // de fondo de tarjeta porque un degradado continuo no se puede trazar.
+  picsart: { kind: "full", key: "picsart" },
   // El logotipo viene negro sobre blanco; la ficha es negra.
   capcut: { kind: "full", key: "capcut", recolor: { "#000000": "#FFFFFF" } },
   // vertical y estrecho
-  googleone: { kind: "full", key: "googleone", scale: 1.35 },
-  onedrive: { kind: "full", key: "onedrive", recolor: { "#084BB1": "#E8F2FF" } },
+  // Sin recolorear: la tarjeta es blanca como el archivo, así los cuatro
+  // colores de Google y el gris 700 de «One» salen exactos.
+  googleone: { kind: "full", key: "googleone", scale: 0.85 },
+  onedrive: { kind: "full", key: "onedrive", scale: 1.15, recolor: { "#074BB3": "#E8F2FF" } },
   // «ple» en blanco y la «x» partida: chevrón dorado y chevrón blanco.
   plex: { kind: "full", key: "plex" },
   smartfit: { kind: "full", key: "smartfit" },
+  // El icono de la aplicación completo —fondo, cabeza, ojos y pico—, porque la
+  // cabeza del búho se sale por los lados y sin su cuadro quedaría cortada.
+  // Su cobertura es del 100 % (el cuadro entero es tinta), así que el reparto
+  // por tinta lo encogía: va al tope de altura de la tarjeta.
+  duolingo: { kind: "full", key: "duolingo", scale: 2.8, tile: true },
+  // De una pieza: la cinta de Copilot y «Microsoft 365» en la proporción del
+  // archivo. Antes iban por separado y la «M» se salía de la tarjeta.
+  microsoft365: {
+    kind: "full",
+    key: "microsoft365",
+    grad: COPILOT,
+    recolor: { "#737373": "#E6E6EC" },
+  },
   roblox: { kind: "full", key: "roblox" },
 
   // ── Símbolo de simple-icons que ya incluye el nombre ────────────────────
@@ -164,12 +185,15 @@ export const LOGOS = {
     sizes: [30, 15],
   },
   foxone: { kind: "full", key: "foxone" },
-  duolingo: {
+  // El nudo de OpenAI trazado de tu imagen, encima del nombre. El nombre va en
+  // la tipografía de esta app, no en una imitación de la suya.
+  chatgpt: {
     kind: "compose",
     dir: "col",
-    a: { mark: "duolingo", ink: "#FFFFFF" },
-    b: { traced: "duolingoword" },
-    sizes: [30, 13],
+    a: { traced: "chatgptmark" },
+    b: { text: "ChatGPT" },
+    sizes: [40, 16],
+    recolor: { "#000000": "#FFFFFF" },
   },
   discord: {
     kind: "compose",
@@ -177,15 +201,6 @@ export const LOGOS = {
     a: { mark: "discord", ink: "#FFFFFF" },
     b: { text: "Nitro" },
     sizes: [26, 12],
-  },
-  microsoft365: {
-    kind: "compose",
-    dir: "col",
-    a: { traced: "microsoft365" },
-    b: { traced: "microsoft365word" },
-    sizes: [28, 12],
-    grad: COPILOT,
-    recolor: { "#8A8A8E": "#E6E6EC" },
   },
 } as const satisfies Record<string, LogoSpec>;
 
@@ -296,6 +311,7 @@ function PieceView({
   piece,
   height,
   scale,
+  tile,
   label,
   grad,
   recolor,
@@ -303,6 +319,7 @@ function PieceView({
   piece: Piece;
   height: number;
   scale?: number;
+  tile?: boolean;
   label?: string;
   grad?: Gradient;
   recolor?: Record<string, string>;
@@ -322,7 +339,13 @@ function PieceView({
         );
   const common = {
     preserveAspectRatio: "xMidYMid meet" as const,
-    style: { display: "block", margin: "0 auto", ...box },
+    style: {
+      display: "block",
+      margin: "0 auto",
+      ...box,
+      // La misma proporción de esquina que usan iOS y Android para el icono.
+      ...(tile ? { clipPath: "inset(0 round 22.4%)" } : {}),
+    },
   };
 
   if ("text" in piece) {
@@ -386,6 +409,7 @@ export const BrandLogo = memo(function BrandLogo({ id, name }: { id: LogoId; nam
         piece={{ traced: spec.key }}
         height={0}
         {...(spec.scale ? { scale: spec.scale } : {})}
+        {...(spec.tile ? { tile: true } : {})}
         label={name}
         {...(spec.grad ? { grad: spec.grad } : {})}
         {...(spec.recolor ? { recolor: spec.recolor } : {})}

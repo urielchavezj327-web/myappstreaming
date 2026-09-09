@@ -61,6 +61,11 @@ def notf(f):
     return lambda a: ~f(a)
 
 
+def allpx():
+    """Todo el lienzo. Sirve para meter el fondo del icono como primera capa."""
+    return lambda a: np.ones(a.shape[:2], bool)
+
+
 # ── trazado ─────────────────────────────────────────────────────────────────
 def curve_to_d(path, sx, sy, ox, oy, r=1):
     """Convierte las curvas de potrace en un atributo `d` compacto."""
@@ -240,12 +245,31 @@ JOBS = {
         ],
         (0.17, 0.16, 0.83, 0.85),
     ),
+    # Las cuatro caras de la nube y el nombre son todas azules y muy juntas:
+    # por distancia de color el azul oscuro de la nube se metía en la capa del
+    # nombre, así que al aclarar el nombre se aclaraba media nube. El corte va
+    # por el canal verde, que es donde sí se separan: 75 el nombre, 100 · 121 ·
+    # 145 · 168 las cuatro caras.
     "onedrive": (
         "a3d2d41c-image.webp",
         [
-            {"match": near("#084BB1", 60), "fill": "#084BB1"},
-            {"match": near("#0179D4", 55), "fill": "#0179D4"},
-            {"match": near("#28A8EA", 55), "fill": "#28A8EA"},
+            {"match": lambda a: (a[:, :, 1] < 88) & (a[:, :, 2] > 140), "fill": "#074BB3"},
+            {
+                "match": lambda a: (a[:, :, 1] >= 88) & (a[:, :, 1] < 112) & (a[:, :, 2] > 150),
+                "fill": "#0564BA",
+            },
+            {
+                "match": lambda a: (a[:, :, 1] >= 112) & (a[:, :, 1] < 138) & (a[:, :, 2] > 180),
+                "fill": "#0179D4",
+            },
+            {
+                "match": lambda a: (a[:, :, 1] >= 138) & (a[:, :, 1] < 165) & (a[:, :, 2] > 190),
+                "fill": "#1391DF",
+            },
+            {
+                "match": lambda a: (a[:, :, 1] >= 165) & (a[:, :, 2] > 200) & (a[:, :, 0] < 120),
+                "fill": "#28A8EA",
+            },
         ],
         None,
     ),
@@ -258,25 +282,30 @@ JOBS = {
         ],
         None,
     ),
+    # El lockup completo: el «1» de cuatro colores arriba y, debajo, «Google»
+    # con los colores de Google y «One» en su gris exacto (#5F6368, el gris 700
+    # de su paleta). Los cinco están muestreados de tu imagen.
     "googleone": (
-        "99d53e89-image.jpg",
+        "b44168bd-image.png",
         [
-            {"match": near("#4284F0", 80), "fill": "#4285F4"},
-            {"match": near("#F6BA00", 80), "fill": "#FBBC05"},
-            {"match": near("#30A84E", 80), "fill": "#34A853"},
-            {"match": near("#EA4230", 80), "fill": "#EA4335"},
+            {"match": near("#4285F4", 70), "fill": "#4285F4"},
+            {"match": near("#FBBC04", 70), "fill": "#FBBC04"},
+            {"match": near("#34A853", 70), "fill": "#34A853"},
+            {"match": near("#EA4335", 70), "fill": "#EA4335"},
+            {"match": both(dark(200), notf(saturated(40))), "fill": "#5F6368"},
         ],
-        (0.42, 0.22, 0.58, 0.56),
+        None,
     ),
+    # De una pieza. Antes iban la cinta y el nombre por separado y se componían
+    # con alturas fijas: la «M» se salía de la tarjeta porque la proporción
+    # entre las dos piezas la ponía el montaje y no el archivo.
     "microsoft365": (
         "80032c40-image.png",
-        [{"match": saturated(38), "fill": "#COPILOT"}],
-        (0.33, 0.02, 0.67, 0.52),
-    ),
-    "microsoft365word": (
-        "80032c40-image.png",
-        [{"match": both(dark(160), notf(saturated(38))), "fill": "#8A8A8E"}],
-        (0.06, 0.55, 0.97, 1.0),
+        [
+            {"match": saturated(38), "fill": "#COPILOT"},
+            {"match": both(dark(190), notf(saturated(38))), "fill": "#737373"},
+        ],
+        None,
     ),
     # ── Wordmarks que simple-icons no trae: trazados de las imágenes de Uri ──
     "netflixword": ("4917a8a0-image.png", [{"match": near("#E50914", 110), "fill": "#E50914"}], None),
@@ -307,6 +336,34 @@ JOBS = {
         ],
         None,
     ),
+    # El nudo de OpenAI, que viene negro sobre transparente. En la tarjeta va
+    # en blanco (ver `recolor` en el registro de logotipos).
+    "chatgptmark": ("4d934fbb-image.png", [{"match": dark(150), "fill": "#000000"}], None),
+    # Los dos iconos de aplicación que mandaste van completos —fondo incluido—
+    # porque su gracia es el cuadro entero, no un símbolo recortado. En Duolingo
+    # la cabeza del búho se sale por los lados del cuadro, así que sin el fondo
+    # quedaría un corte recto flotando en verde.
+    "duolingo": (
+        "d8f5f655-image.jpg",
+        [
+            {"match": allpx(), "fill": "#77C801"},
+            # Los dos verdes se distinguen mal por distancia de color —están a
+            # 33 unidades— así que el corte va por el canal verde, que es donde
+            # sí se separan limpio: 200 el fondo, 223 la cabeza.
+            {
+                "match": lambda a: (a[:, :, 1] >= 212) & (a[:, :, 2] < 90) & (a[:, :, 0] < 190),
+                "fill": "#8FDF02",
+            },
+            {"match": light(215), "fill": "#FFFFFF"},
+            {"match": near("#4B4B4B", 46), "fill": "#4B4B4B"},
+            {"match": near("#FEC200", 58), "fill": "#FEC200"},
+            {"match": near("#F38003", 58), "fill": "#F38003"},
+        ],
+        None,
+    ),
+    # Aquí solo va la «p»: el fondo es un degradado continuo y eso no se traza,
+    # va como fondo de la tarjeta con sus paradas muestreadas.
+    "picsart": ("520bf64d-image.jpg", [{"match": light(215), "fill": "#FFFFFF"}], None),
     "tidal": ("aec23587-image.png", [{"match": light(180), "fill": "#FFFFFF"}], None),
     "duolingoword": ("5cee19fe-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.20, 0.62, 0.80, 0.92)),
     "duolingoowl": ("5cee19fe-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.28, 0.10, 0.72, 0.60)),
