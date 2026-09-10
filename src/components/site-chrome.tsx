@@ -8,13 +8,20 @@ import { ViewSettingsSheet } from "@/components/view-settings";
 const navLink =
   "rounded-xl px-3.5 py-2.5 text-[15px] transition-colors hover:bg-surface-2 hover:text-foreground";
 
-export function SiteHeader() {
+/**
+ * `style` va en el propio `<header>`, no en un envoltorio: la barra es
+ * `sticky`, y un `div` alrededor la encierra en su propia altura y deja de
+ * pegarse al bajar. Lo usa la ficha para darle los tonos de SU zona, que no
+ * siempre son los del cuerpo.
+ */
+export function SiteHeader({ style }: { style?: React.CSSProperties }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <header // Sin desenfoque: el filtro emborronaba el color de la ficha justo debajo del
       // encabezado y dejaba una banda turbia entre la barra y el logotipo.
       className="sticky top-0 z-40 border-b border-border bg-[var(--chrome-bg,var(--background))]"
+      style={style}
     >
       <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link

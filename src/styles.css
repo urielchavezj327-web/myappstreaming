@@ -440,10 +440,15 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
+    /*
+      El brillo. Regulable porque sobre la plata sube el contraste —la tinta es
+      oscura— pero sobre un acento de marca oscuro lo hunde: una franja blanca
+      al 42 % sobre el rojo de MLB deja su tinta blanca en 2:1.
+    */
     background: linear-gradient(
       104deg,
       transparent 34%,
-      oklch(1 0 0 / 42%) 47%,
+      var(--metal-sheen, oklch(1 0 0 / 42%)) 47%,
       transparent 58%
     );
   }
