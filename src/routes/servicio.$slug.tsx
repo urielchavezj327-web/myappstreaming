@@ -10,6 +10,81 @@ import { isTileLogo } from "@/components/logos";
 import { OfferSection } from "@/components/offer-list";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 
+/**
+ * Los tonos de una zona de la ficha, claros u oscuros.
+ *
+ * Sobre el color de marca, el vidrio claro del sistema deja el texto blanco
+ * casi ilegible. Dentro de la ficha —y solo aquí— los paneles se vuelven vidrio
+ * OSCURO y los tonos de texto suben: así el fondo sigue siendo el de la marca y
+ * el contenido se lee igual de bien en una ficha rosa que en una negra. Y al
+ * revés en las marcas de fondo claro —F1 TV, MLB.tv, Universal+—, donde la
+ * ficha es clara porque claro es el fondo de su logotipo.
+ *
+ * Va por ZONA y no por ficha entera: el cuerpo se decide por el color de media
+ * pantalla, que es donde está la lista, y la barra de arriba por el suyo.
+ */
+function zoneTokens(light: boolean, aliases = false) {
+  /*
+    Los alias `--color-*` hay que redeclararlos aquí, no basta con el token.
+
+    Se declaran en `@theme inline` como `--color-surface: var(--surface)`, y un
+    `var()` dentro de una propiedad personalizada se resuelve donde se DECLARA
+    —en `:root`— no donde se usa. Las utilidades `glass` y `border-border` leen
+    el alias, así que los paneles de oferta llevaban desde siempre el vidrio por
+    defecto de la app (blanco al 4.5 %) en vez del de la ficha: sobre el teal
+    medio de Disney+ eso dejaba el nombre del vendedor en 3.6:1.
+
+    Va detrás de una bandera porque arregla también las cuatro categorías que
+    aún no migran, y esas tienen que renderizar idénticas hasta que les toque su
+    ronda.
+  */
+  const alias = (o: Record<string, string>) =>
+    aliases
+      ? {
+          ...o,
+          "--color-surface": o["--surface"] as string,
+          "--color-surface-2": o["--surface-2"] as string,
+          "--color-surface-3": o["--surface-3"] as string,
+          "--color-border": o["--border"] as string,
+          "--color-border-strong": o["--border-strong"] as string,
+        }
+      : o;
+
+  return light
+    ? alias({
+        // `color` además del token: los títulos heredan el color del `body`,
+        // que se resolvió con el tema oscuro mucho antes de llegar aquí, y sin
+        // esto salían en blanco sobre blanco.
+        color: "#14161A",
+        "--foreground": "#14161A",
+        "--color-foreground": "#14161A",
+        "--surface": "rgba(255,255,255,0.74)",
+        "--surface-2": "rgba(255,255,255,0.88)",
+        "--surface-3": "rgba(255,255,255,0.96)",
+        "--border": "rgba(0,0,0,0.10)",
+        "--border-strong": "rgba(0,0,0,0.2)",
+        "--muted-foreground": "rgba(20,22,26,0.78)",
+        "--faint": "rgba(20,22,26,0.56)",
+        "--glass-sheen": "0%",
+      })
+    : alias({
+        // El valor EXACTO de `:root`, no un hex parecido: la rama oscura la
+        // usan también las cuatro categorías sin migrar, y tienen que
+        // renderizar píxel a píxel igual que antes.
+        color: "oklch(0.985 0.003 285)",
+        "--foreground": "oklch(0.985 0.003 285)",
+        "--color-foreground": "oklch(0.985 0.003 285)",
+        "--surface": "rgba(0,0,0,0.44)",
+        "--surface-2": "rgba(0,0,0,0.55)",
+        "--surface-3": "rgba(0,0,0,0.66)",
+        "--border": "rgba(255,255,255,0.16)",
+        "--border-strong": "rgba(255,255,255,0.28)",
+        "--muted-foreground": "rgba(255,255,255,0.88)",
+        "--faint": "rgba(255,255,255,0.72)",
+        "--glass-sheen": "1.5%",
+      });
+}
+
 type Detail = {
   service: {
     slug: string;
@@ -101,6 +176,19 @@ function ServicePage() {
       className="relative min-h-screen"
       style={
         {
+          /*
+            `isolation` acota el grupo de mezcla a las dos capas del fondo.
+            `mix-blend-mode` mezcla contra el fondo acumulado del contexto de
+            apilado más cercano; sin esto sería el del `body`, que funcionaría
+            de casualidad —la capa de abajo es opaca y lo tapa— y dejaría de
+            hacerlo en cuanto algo por encima cambie.
+
+            Solo donde hay capa que aislar: un contexto de apilado nuevo cambia
+            cómo se rasteriza el antialias, y en las fichas sin mezcla eso movía
+            unos cientos de píxeles del contorno de los logotipos sin ninguna
+            razón.
+          */
+          ...(skin.blend ? { isolation: "isolate" } : {}),
           // El encabezado toma el color de la ficha en todas, para que la barra
           // no se lea como una pieza de otra pantalla pegada encima.
           "--chrome-bg": skin.chromeBg,
@@ -120,23 +208,9 @@ function ServicePage() {
             la plata del acento, que sobre blanco desaparece: pasa a un acero
             oscuro con la letra en blanco.
           */
+          ...zoneTokens(skin.light, Boolean(brand.ficha)),
           ...(skin.light
             ? {
-                // `color` además del token: los títulos heredan el color del
-                // `body`, que se resolvió con el tema oscuro mucho antes de
-                // llegar aquí, y sin esto salían en blanco sobre blanco.
-                color: "#14161A",
-                "--foreground": "#14161A",
-                "--color-foreground": "#14161A",
-                "--surface": "rgba(255,255,255,0.74)",
-                "--surface-2": "rgba(255,255,255,0.88)",
-                "--surface-3": "rgba(255,255,255,0.96)",
-                "--border": "rgba(0,0,0,0.10)",
-                "--border-strong": "rgba(0,0,0,0.2)",
-                "--muted-foreground": "rgba(20,22,26,0.78)",
-                "--faint": "rgba(20,22,26,0.56)",
-                "--glass-sheen": "0%",
-
                 // Los alias `--color-*` se declaran en `:root` como
                 // `var(--brand)`, y un `var()` dentro de una propiedad
                 // personalizada se resuelve donde se DECLARA, no donde se usa:
@@ -153,16 +227,40 @@ function ServicePage() {
                 "--brand-glow": "rgba(20,22,26,0.18)",
                 "--metal": "linear-gradient(135deg,#8B939F,#6E7681 38%,#4C535D 72%,#343A43)",
               }
-            : {
-                "--surface": "rgba(0,0,0,0.44)",
-                "--surface-2": "rgba(0,0,0,0.55)",
-                "--surface-3": "rgba(0,0,0,0.66)",
-                "--border": "rgba(255,255,255,0.16)",
-                "--border-strong": "rgba(255,255,255,0.28)",
-                "--muted-foreground": "rgba(255,255,255,0.88)",
-                "--faint": "rgba(255,255,255,0.72)",
-                "--glass-sheen": "1.5%",
-              }),
+            : {}),
+
+          /*
+            El tercer color del logotipo, ya fuera del fondo.
+
+            Con la capa de luz obligada a ser sólida no le queda sitio ahí, y
+            como parada de degradado se convertía en una franja fija al pie de
+            la pantalla. Vive en la interfaz, sustituyendo a la plata del
+            sistema: acento neutro por defecto, color de marca donde la marca
+            tiene uno propio.
+
+            Va DESPUÉS de la rama claro/oscuro a propósito: la rama clara de
+            MLB pisaría el rojo con su acero #2E3642.
+
+            `--color-brand` aparte de `--brand`: los alias `--color-*` se
+            declaran en `:root` como `var(--brand)`, y un `var()` dentro de una
+            propiedad personalizada se resuelve donde se DECLARA, no donde se
+            usa.
+          */
+          ...(skin.uiAccent
+            ? {
+                ...(skin.uiAccent.brand
+                  ? {
+                      "--brand": skin.uiAccent.brand,
+                      "--color-brand": skin.uiAccent.brand,
+                      "--brand-glow": skin.uiAccent.glow,
+                    }
+                  : {}),
+                "--brand-ink": skin.uiAccent.ink,
+                "--color-brand-ink": skin.uiAccent.ink,
+                "--metal": skin.uiAccent.metal,
+                "--metal-sheen": skin.uiAccent.sheen,
+              }
+            : {}),
         } as unknown as React.CSSProperties
       }
     >
@@ -191,6 +289,23 @@ function ServicePage() {
         que aún no migran —Música, Diseño e IA, Otros y Trámites— tienen que
         verse exactamente igual que antes hasta que les toque su ronda.
       */}
+      {/*
+        La iluminación (`screen`) o el tinte (`multiply`) de los modelos B y C.
+        Un color SÓLIDO, nunca un degradado y nunca con `opacity`: la opacidad
+        es lo que lavaba el negro a gris rosado. Para subirle o bajarle fuerza
+        se oscurece este color, no se le baja el alfa.
+
+        El contenido de la página se pinta después (z positivo), así que la
+        mezcla no toca ni un texto: la legibilidad se decide aparte.
+      */}
+      {skin.blend ? (
+        <div
+          className="pointer-events-none fixed inset-0 -z-10"
+          style={{ background: skin.blend.color, mixBlendMode: skin.blend.mode }}
+          aria-hidden
+        />
+      ) : null}
+
       {brand.ficha ? null : (
         <div
           className="pointer-events-none fixed inset-0 -z-10"
@@ -203,7 +318,16 @@ function ServicePage() {
         />
       )}
 
-      <SiteHeader />
+      {/*
+        La barra lleva los tonos de SU zona, no los del cuerpo. Casi siempre
+        son los mismos, pero no en Disney+ —cuerpo claro sobre el celeste de
+        abajo, barra sobre un teal casi negro— ni en HIDIVE, que es justo al
+        revés. Sin esto, el encabezado de Disney+ salía con letra oscura sobre
+        su propio #084F60.
+      */}
+      <SiteHeader
+        style={zoneTokens(skin.chromeLight, Boolean(brand.ficha)) as React.CSSProperties}
+      />
 
       <header className="relative">
         <div className="relative mx-auto max-w-3xl px-4 pt-4 sm:px-6 sm:pt-6">

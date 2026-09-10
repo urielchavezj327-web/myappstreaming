@@ -27,6 +27,38 @@ import type { LogoId } from "@/components/logos";
 
 export type BrandFont = "display" | "grotesk" | "geometric" | "condensed" | "script" | "serif";
 
+/**
+ * Cómo se pinta el fondo de la ficha.
+ *
+ * Tres modelos, y cada marca entra en UNO SOLO según cómo esté construido su
+ * logotipo. No se mezclan ni se aplica uno donde va otro.
+ *
+ *  · **`color`** — el color exacto de la marca. Ni se aclara, ni se lava, ni se
+ *    mezcla con blanco. Plano si su logotipo es de un color; par arriba/abajo si
+ *    su logotipo ya trae su propio degradado.
+ *  · **`negro`** — para los logotipos en blanco y negro. Fondo negro y encima
+ *    una capa de color SÓLIDO en `mix-blend-mode: screen`. La fórmula del screen
+ *    es `1-(1-a)(1-b)`: sobre negro puro devuelve exactamente el color de la
+ *    capa, y sobre contenido claro se queda claro. Levanta el negro HACIA un
+ *    color sin lavarlo a gris, que es justo lo que pasaba al degradar de negro a
+ *    rojo —la mitad de la pantalla quedaba granate—.
+ *  · **`claro`** — el reverso: fondo claro y una capa sólida en `multiply`.
+ *
+ * Dos reglas que, si se rompen, rompen el efecto:
+ *
+ *  · La intensidad se controla OSCURECIENDO el color sólido de la capa, nunca
+ *    con `opacity`. La opacidad es lo que producía el lavado gris-rosa.
+ *  · La capa es un color sólido, jamás un degradado, y va anclada a la PANTALLA
+ *    (`fixed inset-0`) para verse idéntica a cualquier altura del scroll.
+ *
+ * Prohibidos en el modelo `negro`: `multiply` (negro × lo que sea = negro),
+ * `overlay` y `soft-light`.
+ */
+export type Ficha =
+  | { modelo: "color"; fondo: string | [string, string] }
+  | { modelo: "negro"; fondo: string; luz: string }
+  | { modelo: "claro"; fondo: string; tinte: string };
+
 export type Brand = {
   /**
    * Logotipo vectorial de la marca (ver `components/logos`). Cuando existe,
@@ -82,21 +114,22 @@ export type Brand = {
   lines?: [string, string];
   /** Fondo claro: el resto de la interfaz de la tarjeta se oscurece. */
   light: boolean;
+  /** Cómo se pinta el fondo de la ficha. Cuando existe, manda sobre `mix`. */
+  ficha?: Ficha;
   /**
-   * Los dos extremos del degradado de la ficha, arriba y abajo.
+   * El tercer color del logotipo —el dorado de la «x» de Plex, el rojo de MLB,
+   * los cinco puntos de Peacock—.
    *
-   * Cada uno lleva YA mezcla de los dos colores del logotipo, en distinta
-   * proporción: no se va de negro puro a rojo puro sino de «negro con algo de
-   * rojo» a «rojo con algo de negro». Es lo que hace que cualquier trozo de
-   * pantalla, a cualquier altura del scroll, contenga los dos colores.
+   * Ya NO va en el fondo. Con la capa de luz obligada a ser sólida no queda
+   * sitio ahí, y meterlo como parada de degradado lo convierte en una franja
+   * fija al pie de la pantalla. Va en la interfaz, sustituyendo a la plata del
+   * sistema: acento neutro por defecto, color de marca donde la marca tiene uno
+   * propio.
    *
-   * Cuando existe, manda sobre `mix`.
-   */
-  ficha?: [string, string];
-  /**
-   * Los colores que le quedan al logotipo después de los dos del degradado —el
-   * dorado de la «x» de Plex, el rojo de MLB, los cinco puntos de Peacock—.
-   * Entran solo como acento en un tramo corto, nunca como parte principal.
+   * Uno solo tiñe los tres sitios donde vive la plata dentro de la ficha —el
+   * precio de la fila destacada, la píldora «Mejor precio» y el botón de
+   * copiar—. Varios se quedan SOLO en la píldora, en su orden real: cinco
+   * colores repartidos por la ficha serían confeti.
    */
   fichaAccent?: string[];
   /**
@@ -177,9 +210,10 @@ function key(value: string) {
       accent: "#E50914",
       deepEnd: "#101010",
       wash: 0.58,
-      // Negro y rojo en los dos extremos. El rojo tiene que seguir leyéndose como
-      // el #E50914 de Netflix, no como vino.
-      ficha: ["#1A0104", "#B00810"],
+      // Modelo B. Su logotipo es rojo sobre negro: el negro se levanta HACIA el
+      // rojo con una capa sólida en `screen`. Degradar de un negro a un rojo
+      // dejaba media pantalla en granate, que es el vino que no es de Netflix.
+      ficha: { modelo: "negro", fondo: "#000000", luz: "#4D0207" },
       logo: "netflix",
     }),
   ],
@@ -193,9 +227,9 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#04BCBA",
       wash: 0.3,
-      // Caso A: el degradado del propio logotipo. Los dos extremos del teal tienen
-      // que verse, el brillante y el profundo, igual que en su archivo.
-      ficha: ["#0C3F4C", "#22B9AE"],
+      // Modelo A: el degradado del propio logotipo, exacto. El celeste de abajo
+      // tiene que verse VIVO, y el encabezado toma el #084F60 de arriba.
+      ficha: { modelo: "color", fondo: ["#084F60", "#00D6E8"] },
       logo: "disneyplus",
     }),
   ],
@@ -211,9 +245,9 @@ function key(value: string) {
       accent: "#DCDCE6",
       deepEnd: "#0D0F1B",
       wash: 0.34,
-      // Su azul de tinta #0D0F1B con el plateado de las letras entrando como
-      // aclarado general, no como luz de un lado.
-      ficha: ["#2A3044", "#0C0E19"],
+      // Modelo B. El plateado de sus letras entra como aclarado general en
+      // `screen`, no como luz por un lado.
+      ficha: { modelo: "negro", fondo: "#05070F", luz: "#2A2E3A" },
       logo: "hbomax",
     }),
   ],
@@ -224,8 +258,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#0779FF",
       wash: 0.3,
-      // Un solo azul en toda la ficha, con el blanco dentro de los dos extremos.
-      ficha: ["#5FA7EE", "#1878E4"],
+      // Modelo A: su azul exacto, plano. Ni aclarado ni mezclado con blanco.
+      ficha: { modelo: "color", fondo: "#00A8E1" },
       logo: "primevideo",
     }),
   ],
@@ -236,8 +270,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#006FFD",
       wash: 0.24,
-      // El azul manda sobre el blanco, no al revés.
-      ficha: ["#4E9AEE", "#0B62D6"],
+      // Modelo A: su azul exacto, plano.
+      ficha: { modelo: "color", fondo: "#0064FF" },
       logo: "paramountplus",
     }),
   ],
@@ -250,8 +284,9 @@ function key(value: string) {
       deepEnd: "#0D0D0D",
       secondary: ["#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
       wash: 0.3,
-      // Negro y blanco de base; los cinco colores de sus puntos, de acento.
-      ficha: ["#34363A", "#131416"],
+      // Modelo B: negro levantado apenas. Sus cinco puntos no van en el fondo
+      // —serían confeti— sino en la píldora «Mejor precio», en su orden real.
+      ficha: { modelo: "negro", fondo: "#000000", luz: "#262628" },
       fichaAccent: ["#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
       logo: "peacock",
     }),
@@ -264,8 +299,8 @@ function key(value: string) {
       accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.26,
-      // Negro con el blanco de sus letras dentro de los dos extremos.
-      ficha: ["#2E3034", "#0A0B0D"],
+      // Modelo B: negro con el blanco de sus letras levantándolo en `screen`.
+      ficha: { modelo: "negro", fondo: "#000000", luz: "#2E2E30" },
       logo: "appletv",
     }),
   ],
@@ -278,8 +313,9 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FF5E00",
       wash: 0.2,
-      // Naranja #F47521 con blanco. Sin negro: su logotipo no lo lleva.
-      ficha: ["#F79055", "#F26A15"],
+      // Modelo A: su naranja oficial, plano y sin aclarar. Sin negro: su
+      // logotipo no lo lleva.
+      ficha: { modelo: "color", fondo: "#F47521" },
       logo: "crunchyroll",
     }),
   ],
@@ -296,8 +332,8 @@ function key(value: string) {
       accent: "#FD6E39",
       deepEnd: "#FF4712",
       wash: 0.16,
-      // Caso A: su propio degradado naranja.
-      ficha: ["#EE6A4E", "#DE402A"],
+      // Modelo A: su propio degradado naranja, exacto.
+      ficha: { modelo: "color", fondo: ["#FF5900", "#F52D1F"] },
       logo: "vix",
     }),
   ],
@@ -311,8 +347,8 @@ function key(value: string) {
       accent: "#E1251B",
       deepEnd: "#000000",
       wash: 0.5,
-      // Su rojo #DA291C tiene que reconocerse dentro del oscuro.
-      ficha: ["#3A1512", "#A81E15"],
+      // Modelo B: negro levantado hacia su rojo.
+      ficha: { modelo: "negro", fondo: "#000000", luz: "#4A0E08" },
       logo: "clarovideo",
     }),
   ],
@@ -323,10 +359,18 @@ function key(value: string) {
       ink: "#15151E",
       accent: "#E10600",
       wash: 0.28,
-      // Rojo #E10600 con el oscuro. La tarjeta del catálogo se queda blanca: solo
-      // la ficha va oscura.
-      ficha: ["#1A0304", "#A80A08"],
+      // Modelo C: blanco teñido de rojo con una capa en `multiply`. Su logotipo
+      // es rojo y azul marino sobre blanco, así que la ficha va clara, igual que
+      // la tarjeta.
+      //
+      // El #FFE0DE de la primera pasada era un rosa tan pálido que el rojo no
+      // se notaba. Este es blanco con un 28 % de su rojo #E10600: se lee como
+      // rosa y deja la tinta oscura en 11:1.
+      ficha: { modelo: "claro", fondo: "#FFFFFF", tinte: "#F7B9B8" },
       logo: "f1tv",
+      // Su fondo es blanco: sin esto, el contador de ofertas de la TARJETA salía
+      // blanco sobre blanco.
+      light: true,
     }),
   ],
   [
@@ -337,8 +381,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FFFFFF",
       wash: 0.26,
-      // Igual que Apple TV: el blanco tiene que notarse.
-      ficha: ["#303237", "#0A0A0C"],
+      // Modelo B, igual que Apple TV: el blanco tiene que notarse.
+      ficha: { modelo: "negro", fondo: "#000000", luz: "#303032" },
       logo: "foxone",
     }),
   ],
@@ -349,8 +393,8 @@ function key(value: string) {
       ink: "#000000",
       accent: "#04AFEF",
       wash: 0.2,
-      // Caso A: su propio degradado cian.
-      ficha: ["#6FD9F7", "#1B9FDD"],
+      // Modelo A: su cian exacto cayendo a negro, como su propio archivo.
+      ficha: { modelo: "color", fondo: ["#00AEEF", "#000000"] },
       logo: "hidive",
       light: true,
     }),
@@ -363,8 +407,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#3B7BFF",
       wash: 0.22,
-      // Caso A: su propio degradado azul→violeta.
-      ficha: ["#2B7FEE", "#4B36E0"],
+      // Modelo A: su propio degradado azul→violeta. Aprobado, no se toca.
+      ficha: { modelo: "color", fondo: ["#2B7FEE", "#4B36E0"] },
       logo: "iptv",
     }),
   ],
@@ -376,8 +420,10 @@ function key(value: string) {
       accent: "#7B3BA8",
       deepEnd: "#121212",
       wash: 0.4,
-      // Caso A: su propio degradado morado.
-      ficha: ["#5E2E80", "#2A1038"],
+      // Modelo A, MUESTREADO del archivo píxel a píxel: su icono va de #612C86
+      // en la esquina superior izquierda a un negro neutro #121212 en la
+      // inferior derecha. El extremo oscuro no es un morado oscuro.
+      ficha: { modelo: "color", fondo: ["#612C86", "#121212"] },
       logo: "kocowa",
     }),
   ],
@@ -389,9 +435,9 @@ function key(value: string) {
       accent: "#BA001E",
       wash: 0.24,
       secondary: ["#BA001E"],
-      // Blanco de principal, el azul marino #002D72 tiñendo hacia abajo y el rojo
-      // solo de acento.
-      ficha: ["#EFF1F5", "#C2CBDA"],
+      // Modelo C: blanco teñido de su azul marino. El rojo no cabe dentro de una
+      // capa sólida, así que va de acento en la interfaz.
+      ficha: { modelo: "claro", fondo: "#FFFFFF", tinte: "#DDE4EF" },
       fichaAccent: ["#D50032"],
       logo: "mlbtv",
       light: true,
@@ -404,8 +450,10 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#001DFF",
       wash: 0.26,
-      // Su azul intenso con el blanco de las letras dentro.
-      ficha: ["#4B4BEB", "#1010D2"],
+      // Modelo A: su azul, plano. El archivo del logotipo es trazo negro sobre
+      // blanco y no tiene un solo píxel azul, así que este hex NO está
+      // muestreado de ahí: lo dio Uri.
+      ficha: { modelo: "color", fondo: "#1010D2" },
       logo: "mubi",
     }),
   ],
@@ -421,8 +469,14 @@ function key(value: string) {
       secondary: ["#EFAE02"],
       deepEnd: "#070708",
       wash: 0.4,
-      // Carbón #16171A y blanco; el dorado de la «x» solo de acento.
-      ficha: ["#34363B", "#121316"],
+      // Modelo B. Su fondo real es carbón, no negro puro, así que el `screen`
+      // parte de #282A2D. El dorado de la «x» va de acento en la interfaz.
+      //
+      // Con la capa en #1F1F1F el compuesto salía #424447, un gris medio: el
+      // mismo «Plex se ve gris y no negro» de la ronda anterior. Bajada a
+      // #141414 queda en #393B3E. El suelo es #282A2D —el `screen` solo puede
+      // aclarar— así que más oscuro que eso habría que mover su fondo real.
+      ficha: { modelo: "negro", fondo: "#282A2D", luz: "#141414" },
       fichaAccent: ["#E5A00D"],
       logo: "plex",
     }),
@@ -434,8 +488,9 @@ function key(value: string) {
       ink: "#000000",
       accent: "#FBCC11",
       wash: 0.18,
-      // El negro de sus letras entra oscureciendo el amarillo hacia abajo.
-      ficha: ["#F7CE3B", "#C79E0E"],
+      // Modelo C: su amarillo teñido con una capa en `multiply`, que es como el
+      // negro de sus letras entra sin ensuciarlo.
+      ficha: { modelo: "claro", fondo: "#FBCC11", tinte: "#E8D89A" },
       logo: "universalplus",
       light: true,
     }),
@@ -447,8 +502,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#0C9BFF",
       wash: 0.2,
-      // Azul cielo, el suyo. Sin negro.
-      ficha: ["#6BC5F5", "#1C9CE8"],
+      // Modelo A: su azul cielo exacto, plano. Sin negro.
+      ficha: { modelo: "color", fondo: "#0C9BFF" },
       logo: "viki",
     }),
   ],
@@ -459,8 +514,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#00DC5B",
       wash: 0.18,
-      // Su verde exacto. Sin negro.
-      ficha: ["#4FD68F", "#00AC50"],
+      // Modelo A: su verde exacto, plano. Sin negro.
+      ficha: { modelo: "color", fondo: "#00DC5A" },
       logo: "iqiyi",
     }),
   ],
@@ -1167,6 +1222,23 @@ export type BrandSkin = {
   chromeBg: string;
   /** Fondo completo de la tarjeta o de la ficha. */
   background: string;
+  /**
+   * La capa sólida que va ENCIMA del fondo, con su modo de mezcla. `null` en el
+   * modelo A y en las tarjetas del catálogo, que no llevan ninguna.
+   */
+  blend: { color: string; mode: "screen" | "multiply" } | null;
+  /**
+   * Acento contextual de la marca; sustituye a la plata del sistema dentro de
+   * la ficha. `null` = plata. `brand` en `null` con `metal` puesto significa
+   * que el color va solo en la píldora (Peacock).
+   */
+  uiAccent: {
+    brand: string | null;
+    ink: string;
+    glow: string;
+    metal: string;
+    sheen: string;
+  } | null;
   /** Borde. */
   border: string;
   /** Filo de luz superior. */
@@ -1193,6 +1265,12 @@ export type BrandSkin = {
   meta: string;
   /** Color del texto de interfaz (no del logotipo) sobre esta superficie. */
   chrome: string;
+  /**
+   * ¿La ZONA DE ARRIBA quedó clara? No siempre coincide con `light`, que se
+   * decide por el color de media pantalla: Disney+ tiene el cuerpo claro y la
+   * barra sobre un teal casi negro, y HIDIVE justo al revés.
+   */
+  chromeLight: boolean;
 };
 
 /**
@@ -1201,56 +1279,143 @@ export type BrandSkin = {
  * `hero` es la ficha completa: el mismo fondo pero con más recorrido, porque
  * cubre toda la pantalla y necesita que la luz viaje de arriba abajo.
  */
+/** Fondo de la ficha ya resuelto: qué se pinta y qué color queda encima. */
+type Surface = {
+  /** Color COMPUESTO de arriba: lo que se ve, no el hex crudo del fondo. */
+  top: string;
+  /** Color compuesto de abajo. En los modelos B y C es el mismo que `top`. */
+  bottom: string;
+  /** Lo que va en la capa de fondo. */
+  background: string;
+  /** La capa de mezcla que va encima, o `null` en el modelo A. */
+  blend: { color: string; mode: "screen" | "multiply" } | null;
+};
+
 /**
- * Los dos extremos del degradado de la ficha, y de dónde salen.
+ * El fondo de la ficha, según el modelo de la marca.
  *
  * Hay dos caminos, y cuál se toma lo decide si la marca tiene `ficha`:
  *
- *  · **`ficha`** — los dos extremos escritos a mano, cada uno ya con mezcla de
- *    los dos colores del logotipo. Es el modelo bueno y el que se queda. Hoy
+ *  · **`fichaSurface`** — los tres modelos. Es el bueno y el que se queda. Hoy
  *    lo usan las 21 fichas de Streaming.
- *  · **`legacyField`** — promediar los colores en uno. Es el que hay que
- *    borrar. Sigue vivo únicamente para las categorías que todavía no se han
- *    revisado ficha por ficha; cuando la última esté aprobada, esa función,
- *    `mix` y `secondary` se van juntos.
+ *  · **`legacyField`** — promediar los colores del logotipo en uno. Es el que
+ *    hay que borrar. Sigue vivo únicamente para las categorías que todavía no
+ *    se han revisado ficha por ficha; cuando la última esté aprobada, esa
+ *    función, `mix` y `secondary` se van juntos.
  */
-function fichaField(brand: Brand): { top: string; bottom: string; field: string } {
-  const [top, bottom] = brand.ficha as [string, string];
-  const accents = brand.fichaAccent ?? [];
-  if (accents.length === 0) {
-    return { top, bottom, field: `linear-gradient(175deg, ${top} 0%, ${bottom} 100%)` };
+function fichaSurface(ficha: Ficha): Surface {
+  if (ficha.modelo === "negro") {
+    const compuesto = screenHex(ficha.fondo, ficha.luz);
+    return {
+      top: compuesto,
+      bottom: compuesto,
+      background: ficha.fondo,
+      blend: { color: ficha.luz, mode: "screen" },
+    };
   }
 
-  /*
-   * El acento tiñe, no se posa.
-   *
-   * Primero lo puse como paradas fuertes entre el 78 % y el 94 % volviendo al
-   * color de abajo en el 100 %, y con la capa anclada a la pantalla eso son
-   * dos bordes: una franja dorada permanente al pie de Plex, estés donde estés
-   * en el scroll. Un color solo se lee como acento y no como banda si tiene un
-   * único borde y muy suave, así que entra desde media pantalla, con una
-   * mezcla de una cifra, y llega al borde sin volver atrás.
-   */
-  // Ocupan siempre el mismo último tramo, tenga la marca uno o cinco: si el
-  // reparto crece con la cuenta, los cinco puntos de Peacock se estiran por
-  // media pantalla y dejan de ser acento. Y a más colores, menos mezcla cada
-  // uno, porque el ojo suma.
-  const from = 72;
-  const each = accents.length > 2 ? 0.06 : 0.09;
-  const stops = accents
-    .map(
-      (c, i) =>
-        `${mixHex(bottom, c, each)} ${Math.round(from + 6 + ((i + 1) * (100 - from - 6)) / accents.length)}%`,
-    )
-    .join(", ");
+  if (ficha.modelo === "claro") {
+    const compuesto = multiplyHex(ficha.fondo, ficha.tinte);
+    return {
+      top: compuesto,
+      bottom: compuesto,
+      background: ficha.fondo,
+      blend: { color: ficha.tinte, mode: "multiply" },
+    };
+  }
+
+  const { fondo } = ficha;
+  if (typeof fondo === "string") {
+    return { top: fondo, bottom: fondo, background: fondo, blend: null };
+  }
+  const [top, bottom] = fondo;
+  // 180°, recto de arriba abajo. El grado y pico de inclinación del modelo
+  // anterior es lo que hacía que la luz «entrara por la izquierda», que es la
+  // queja literal en HBO Max y en Fox One.
   return {
     top,
     bottom,
-    field: `linear-gradient(175deg, ${top} 0%, ${bottom} ${from}%, ${stops})`,
+    background: `linear-gradient(180deg, ${top} 0%, ${bottom} 100%)`,
+    blend: null,
   };
 }
 
-/** MODELO VIEJO. Ver `fichaField`. Se borra cuando la última categoría migre. */
+/**
+ * El tercer color del logotipo, convertido en acento de interfaz.
+ *
+ * Sustituye a la plata del sistema en los tres sitios donde vive dentro de la
+ * ficha: el precio de la fila destacada, la píldora «Mejor precio» y el botón
+ * de copiar. Uno solo tiñe los tres; varios se quedan en la píldora.
+ */
+/**
+ * Corrige las paradas de la píldora hasta que la tinta se lea en TODAS.
+ *
+ * Se mide con el brillo del metal ya encima, no con el color desnudo: la franja
+ * diagonal blanca es lo que decide el peor punto de la píldora, y sin contarla
+ * la cuenta sale optimista justo donde se lee peor.
+ *
+ * El factor es UNO SOLO para todas las paradas. Por separado se les cambia la
+ * relación entre ellas, y los cinco puntos de Peacock dejan de leerse como la
+ * cola del pavo real para parecer cinco colores sueltos.
+ */
+function pillStops(colors: string[], ink: string, sheen: number): string[] {
+  const legible = (f: number) =>
+    colors.every((c) => contrast(ink, mixHex(shade(c, f), "#FFFFFF", sheen)) >= 4.5);
+  // Hacia el negro si la tinta es blanca, hacia el blanco si es oscura.
+  const dir = ink === "#FFFFFF" ? -1 : 1;
+  let f = 0;
+  while (f < 0.6 && !legible(dir * f)) f += 0.01;
+  return colors.map((c) => shade(c, dir * f));
+}
+
+function uiAccent(
+  colors: string[],
+): { brand: string | null; ink: string; glow: string; metal: string; sheen: string } | null {
+  const first = colors[0];
+  if (!first) return null;
+
+  if (colors.length === 1) {
+    const ink = prefersDarkInk(first) ? "#14161A" : "#FFFFFF";
+    // Sobre la plata el brillo sube el contraste, porque su tinta es oscura;
+    // sobre un acento oscuro lo hunde. Se baja solo donde estorba.
+    const sheenPct = ink === "#FFFFFF" ? 0.16 : 0.42;
+    // Recorrido corto: con el rango ancho de la plata, el extremo oscuro del
+    // dorado dejaba la píldora en 4.4:1 contra su propia tinta.
+    const [a, b, c] = pillStops([tint(first, 0.1), first, shade(first, -0.16)], ink, sheenPct) as [
+      string,
+      string,
+      string,
+    ];
+    return {
+      brand: first,
+      ink,
+      glow: rgba(first, 0.38),
+      metal: `linear-gradient(135deg, ${a}, ${b} 52%, ${c})`,
+      sheen: `oklch(1 0 0 / ${Math.round(sheenPct * 100)}%)`,
+    };
+  }
+
+  /*
+   * Los cinco puntos de Peacock, en su orden real y solo en la píldora: cinco
+   * colores repartidos por la ficha serían confeti.
+   *
+   * A plena saturación no hay tinta que se lea encima —el blanco da 1.9:1
+   * sobre su amarillo, el negro 3.5:1 sobre su morado—, así que se oscurecen
+   * todos por igual hasta que el blanco pase de 4.5:1.
+   */
+  const stops = pillStops(colors, "#FFFFFF", 0.16)
+    .map((c, i) => `${c} ${Math.round((i * 100) / (colors.length - 1))}%`)
+    .join(", ");
+  return {
+    brand: null,
+    ink: "#FFFFFF",
+    glow: rgba(first, 0.3),
+    metal: `linear-gradient(100deg, ${stops})`,
+    sheen: "oklch(1 0 0 / 16%)",
+  };
+}
+
+/** MODELO VIEJO. Ver `fichaSurface`. Se borra cuando la última categoría migre. */
 function legacyField(brand: Brand): { top: string; bottom: string; field: string } {
   const a = brand.accent;
   const declared = brand.mix ?? [a, brand.deepEnd ?? a];
@@ -1298,9 +1463,15 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
   const skylight = `radial-gradient(132% 62% at 50% -14%, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`;
 
   const deep = shade(a, -0.66);
-  const { top, bottom, field } = brand.ficha ? fichaField(brand) : legacyField(brand);
+  const surface: Surface = brand.ficha
+    ? fichaSurface(brand.ficha)
+    : (() => {
+        const { top, bottom, field } = legacyField(brand);
+        return { top, bottom, background: field, blend: null };
+      })();
+  const { top, bottom } = surface;
 
-  const layers = hero ? [field] : [skylight, brand.bg];
+  const layers = hero ? [surface.background] : [skylight, brand.bg];
 
   /*
    * Claro u oscuro se decide por superficie Y por zona.
@@ -1322,6 +1493,10 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
     // no se lea como una pieza de otra pantalla pegada encima.
     chromeBg: hero ? top : "transparent",
     background: layers.join(", "),
+    // Solo en la ficha: la tarjeta del catálogo lleva el fondo exacto del
+    // logotipo y nada encima, que es justo lo que no se puede tocar.
+    blend: hero ? surface.blend : null,
+    uiAccent: hero ? uiAccent(brand.fichaAccent ?? []) : null,
     // Neutro, no del color de la marca: un borde rojo alrededor de Netflix se
     // lee como resplandor y rompe el negro plano de su logotipo. El marco es
     // del sistema de vidrio de la app; el color es del fondo y del logotipo.
@@ -1359,6 +1534,7 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
     // justo: tiene que leerse de reojo, no competir con el logotipo.
     meta: surfaceLight ? rgba("#000000", 0.72) : rgba("#FFFFFF", 0.82),
     chrome: chromeLight ? "#101014" : "#FFFFFF",
+    chromeLight,
   };
 }
 
@@ -1432,6 +1608,36 @@ function prefersDarkInk(hex: string) {
 function lum(hex: string) {
   const [r, g, b] = parse(hex);
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
+/**
+ * `screen`, la fórmula del modelo B: `1-(1-a)(1-b)`.
+ *
+ * Sobre negro puro devuelve exactamente el color de la capa; sobre contenido
+ * claro se queda claro. Es lo que levanta el negro HACIA un color sin lavarlo a
+ * gris. Aquí se calcula en JS para saber de qué color queda el encabezado y qué
+ * tinta pedir, porque el navegador la resuelve al pintar y nosotros la
+ * necesitamos antes.
+ */
+function screenHex(a: string, b: string) {
+  const [r1, g1, b1] = parse(a);
+  const [r2, g2, b2] = parse(b);
+  const f = (x: number, y: number) => 255 - ((255 - x) * (255 - y)) / 255;
+  return toHex(f(r1, r2), f(g1, g2), f(b1, b2));
+}
+
+/** `multiply`, la fórmula del modelo C: `a·b`. El reverso del `screen`. */
+function multiplyHex(a: string, b: string) {
+  const [r1, g1, b1] = parse(a);
+  const [r2, g2, b2] = parse(b);
+  return toHex((r1 * r2) / 255, (g1 * g2) / 255, (b1 * b2) / 255);
+}
+
+/** Contraste entre dos colores, fórmula de la WCAG. */
+function contrast(a: string, b: string) {
+  const la = relLum(a) + 0.05;
+  const lb = relLum(b) + 0.05;
+  return la > lb ? la / lb : lb / la;
 }
 
 /** Mezcla dos colores. `t` es cuánto del segundo entra, de 0 a 1. */
