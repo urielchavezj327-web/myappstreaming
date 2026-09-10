@@ -221,6 +221,10 @@ JOBS = {
         ],
         None,
     ),
+    # Sin recorte: el encuadre ya sale ajustado. El «®» va a la altura de la
+    # base del emblema y no cuelga por debajo —lo que asomaba cuarenta píxeles
+    # más abajo era la punta de la «V»—, así que recortar ahí cortaba el bajo
+    # del logotipo entero.
     "f1tv": (
         "583c308b-image.png",
         [
@@ -378,7 +382,13 @@ JOBS = {
     "tidal": ("aec23587-image.png", [{"match": light(180), "fill": "#FFFFFF"}], None),
     "duolingoword": ("5cee19fe-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.20, 0.62, 0.80, 0.92)),
     "duolingoowl": ("5cee19fe-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.28, 0.10, 0.72, 0.60)),
-    "mubi": ("d7a6d003-image.png", [{"match": light(180), "fill": "#FFFFFF"}], None),
+    # El archivo anterior medía 196×110 px con la tinta en 125×37: trazos de seis
+    # píxeles, de ahí las letras chuecas y los puntos deformes. Este viene a
+    # 3334×1000 y en negro sobre blanco; la tinta se pinta en blanco porque va
+    # sobre el azul de su ficha. Los siete puntos NO son iguales —seis grandes en
+    # dos columnas de tres y el séptimo, a la derecha del renglón de en medio,
+    # más chico—: trazados del archivo salen con su tamaño real.
+    "mubi": ("8422d1ff-image.png", [{"match": dark(128), "fill": "#FFFFFF"}], None),
     "primevideo": ("0ef56604-image.png", [{"match": light(200), "fill": "#FFFFFF"}], None),
     "foxone": ("ac39b449-image.png", [{"match": light(180), "fill": "#FFFFFF"}], None),
     "vix": ("822a2472-image.png", [{"match": light(205), "fill": "#FFFFFF"}], None),

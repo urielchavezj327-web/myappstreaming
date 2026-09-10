@@ -488,13 +488,20 @@
   padding-inline: 1.125rem;
 }
 
-/* Realce del mejor precio: un foco suave detrás de la fila. */
+/* Realce del mejor precio: un foco suave DETRÁS de la fila.
+   El `z-index` no es un detalle: un pseudo-elemento posicionado se pinta
+   después del texto en línea, así que sin él el foco quedaba encima y lavaba
+   el nombre del vendedor y el precio de la fila destacada —justo la que más
+   se tiene que leer—. `isolation` evita que el -1 se cuele por detrás del
+   panel de la lista. */
 @utility spotlight {
   position: relative;
+  isolation: isolate;
   &::before {
     content: "";
     position: absolute;
     inset: -1px;
+    z-index: -1;
     border-radius: inherit;
     background: radial-gradient(120% 160% at 12% 0%, var(--brand-glow), transparent 62%);
     pointer-events: none;

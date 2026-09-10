@@ -83,10 +83,28 @@ export type Brand = {
   /** Fondo claro: el resto de la interfaz de la tarjeta se oscurece. */
   light: boolean;
   /**
-   * Los colores EXACTOS del logotipo, en orden de peso. Es con lo que se pinta
-   * la ficha: los dos primeros arman el degradado de base y del tercero en
-   * adelante entran como manchas suaves. Nada que no esté aquí toca la ficha,
-   * y eso incluye el negro: si el logotipo no lo lleva, la ficha tampoco.
+   * Los dos extremos del degradado de la ficha, arriba y abajo.
+   *
+   * Cada uno lleva YA mezcla de los dos colores del logotipo, en distinta
+   * proporción: no se va de negro puro a rojo puro sino de «negro con algo de
+   * rojo» a «rojo con algo de negro». Es lo que hace que cualquier trozo de
+   * pantalla, a cualquier altura del scroll, contenga los dos colores.
+   *
+   * Cuando existe, manda sobre `mix`.
+   */
+  ficha?: [string, string];
+  /**
+   * Los colores que le quedan al logotipo después de los dos del degradado —el
+   * dorado de la «x» de Plex, el rojo de MLB, los cinco puntos de Peacock—.
+   * Entran solo como acento en un tramo corto, nunca como parte principal.
+   */
+  fichaAccent?: string[];
+  /**
+   * MODELO VIEJO. Los colores del logotipo que se promediaban en uno solo.
+   *
+   * Solo sigue vivo para las categorías que aún no se han revisado ficha por
+   * ficha —Música, Diseño e IA, Otros y Trámites—. Cuando la última esté
+   * aprobada, esto y `secondary` se borran junto con `legacyField`.
    */
   mix?: string[];
   /**
@@ -106,6 +124,8 @@ function spec(s: Spec): Brand {
     ...(s.logo ? { logo: s.logo } : {}),
     ...(s.secondary ? { secondary: s.secondary } : {}),
     ...(s.deepEnd ? { deepEnd: s.deepEnd } : {}),
+    ...(s.ficha ? { ficha: s.ficha } : {}),
+    ...(s.fichaAccent ? { fichaAccent: s.fichaAccent } : {}),
     ...(s.mix ? { mix: s.mix } : {}),
     ...(s.paper ? { paper: true } : {}),
     bg: s.bg,
@@ -157,7 +177,9 @@ function key(value: string) {
       accent: "#E50914",
       deepEnd: "#101010",
       wash: 0.58,
-      mix: ["#E50914", "#E50914", "#E50914", "#101010", "#101010"],
+      // Negro y rojo en los dos extremos. El rojo tiene que seguir leyéndose como
+      // el #E50914 de Netflix, no como vino.
+      ficha: ["#1A0104", "#B00810"],
       logo: "netflix",
     }),
   ],
@@ -171,7 +193,9 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#04BCBA",
       wash: 0.3,
-      mix: ["#073545", "#073545", "#0A5864", "#04BCBA"],
+      // Caso A: el degradado del propio logotipo. Los dos extremos del teal tienen
+      // que verse, el brillante y el profundo, igual que en su archivo.
+      ficha: ["#0C3F4C", "#22B9AE"],
       logo: "disneyplus",
     }),
   ],
@@ -187,7 +211,9 @@ function key(value: string) {
       accent: "#DCDCE6",
       deepEnd: "#0D0F1B",
       wash: 0.34,
-      mix: ["#0D0F1B", "#0D0F1B", "#0D0F1B", "#DCDCE6"],
+      // Su azul de tinta #0D0F1B con el plateado de las letras entrando como
+      // aclarado general, no como luz de un lado.
+      ficha: ["#2A3044", "#0C0E19"],
       logo: "hbomax",
     }),
   ],
@@ -198,7 +224,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#0779FF",
       wash: 0.3,
-      mix: ["#0779FF", "#0779FF", "#0779FF", "#FFFFFF", "#FFFFFF"],
+      // Un solo azul en toda la ficha, con el blanco dentro de los dos extremos.
+      ficha: ["#5FA7EE", "#1878E4"],
       logo: "primevideo",
     }),
   ],
@@ -209,7 +236,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#006FFD",
       wash: 0.24,
-      mix: ["#006FFD", "#006FFD", "#006FFD", "#FFFFFF", "#FFFFFF"],
+      // El azul manda sobre el blanco, no al revés.
+      ficha: ["#4E9AEE", "#0B62D6"],
       logo: "paramountplus",
     }),
   ],
@@ -222,7 +250,9 @@ function key(value: string) {
       deepEnd: "#0D0D0D",
       secondary: ["#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
       wash: 0.3,
-      mix: ["#0D0D0D", "#0D0D0D", "#0D0D0D", "#FFFFFF"],
+      // Negro y blanco de base; los cinco colores de sus puntos, de acento.
+      ficha: ["#34363A", "#131416"],
+      fichaAccent: ["#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
       logo: "peacock",
     }),
   ],
@@ -234,7 +264,8 @@ function key(value: string) {
       accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.26,
-      mix: ["#000000", "#000000", "#000000", "#C3C3CC"],
+      // Negro con el blanco de sus letras dentro de los dos extremos.
+      ficha: ["#2E3034", "#0A0B0D"],
       logo: "appletv",
     }),
   ],
@@ -247,7 +278,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FF5E00",
       wash: 0.2,
-      mix: ["#FF5E00", "#FF5E00", "#FF5E00", "#FFFFFF", "#FFFFFF"],
+      // Naranja #F47521 con blanco. Sin negro: su logotipo no lo lleva.
+      ficha: ["#F79055", "#F26A15"],
       logo: "crunchyroll",
     }),
   ],
@@ -264,7 +296,8 @@ function key(value: string) {
       accent: "#FD6E39",
       deepEnd: "#FF4712",
       wash: 0.16,
-      mix: ["#FF587E", "#FE685D", "#FD6E39", "#FF4712"],
+      // Caso A: su propio degradado naranja.
+      ficha: ["#EE6A4E", "#DE402A"],
       logo: "vix",
     }),
   ],
@@ -278,7 +311,8 @@ function key(value: string) {
       accent: "#E1251B",
       deepEnd: "#000000",
       wash: 0.5,
-      mix: ["#000000", "#000000", "#E1251B", "#FFFFFF"],
+      // Su rojo #DA291C tiene que reconocerse dentro del oscuro.
+      ficha: ["#3A1512", "#A81E15"],
       logo: "clarovideo",
     }),
   ],
@@ -289,9 +323,9 @@ function key(value: string) {
       ink: "#15151E",
       accent: "#E10600",
       wash: 0.28,
-      // Rojo y negro, sus dos colores. Con el blanco de fondo la ficha se veía
-      // de la app y no de la marca; con el negro se ve de F1.
-      mix: ["#FFFFFF", "#FFFFFF", "#E10600"],
+      // Rojo #E10600 con el oscuro. La tarjeta del catálogo se queda blanca: solo
+      // la ficha va oscura.
+      ficha: ["#1A0304", "#A80A08"],
       logo: "f1tv",
     }),
   ],
@@ -303,7 +337,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FFFFFF",
       wash: 0.26,
-      mix: ["#000000", "#000000", "#000000", "#FFFFFF"],
+      // Igual que Apple TV: el blanco tiene que notarse.
+      ficha: ["#303237", "#0A0A0C"],
       logo: "foxone",
     }),
   ],
@@ -314,7 +349,8 @@ function key(value: string) {
       ink: "#000000",
       accent: "#04AFEF",
       wash: 0.2,
-      mix: ["#3FBCEC", "#3FBCEC", "#0E1013"],
+      // Caso A: su propio degradado cian.
+      ficha: ["#6FD9F7", "#1B9FDD"],
       logo: "hidive",
       light: true,
     }),
@@ -327,7 +363,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#3B7BFF",
       wash: 0.22,
-      mix: ["#1AAEFF", "#3B7BFF", "#5B37E0"],
+      // Caso A: su propio degradado azul→violeta.
+      ficha: ["#2B7FEE", "#4B36E0"],
       logo: "iptv",
     }),
   ],
@@ -339,7 +376,8 @@ function key(value: string) {
       accent: "#7B3BA8",
       deepEnd: "#121212",
       wash: 0.4,
-      mix: ["#572978", "#3B1C52", "#7B3BA8"],
+      // Caso A: su propio degradado morado.
+      ficha: ["#5E2E80", "#2A1038"],
       logo: "kocowa",
     }),
   ],
@@ -351,7 +389,10 @@ function key(value: string) {
       accent: "#BA001E",
       wash: 0.24,
       secondary: ["#BA001E"],
-      mix: ["#FFFFFF", "#FFFFFF", "#001E3C"],
+      // Blanco de principal, el azul marino #002D72 tiñendo hacia abajo y el rojo
+      // solo de acento.
+      ficha: ["#EFF1F5", "#C2CBDA"],
+      fichaAccent: ["#D50032"],
       logo: "mlbtv",
       light: true,
     }),
@@ -363,7 +404,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#001DFF",
       wash: 0.26,
-      mix: ["#001DFF", "#001DFF", "#FFFFFF"],
+      // Su azul intenso con el blanco de las letras dentro.
+      ficha: ["#4B4BEB", "#1010D2"],
       logo: "mubi",
     }),
   ],
@@ -379,7 +421,9 @@ function key(value: string) {
       secondary: ["#EFAE02"],
       deepEnd: "#070708",
       wash: 0.4,
-      mix: ["#070708", "#070708", "#070708", "#FFFFFF"],
+      // Carbón #16171A y blanco; el dorado de la «x» solo de acento.
+      ficha: ["#34363B", "#121316"],
+      fichaAccent: ["#E5A00D"],
       logo: "plex",
     }),
   ],
@@ -390,7 +434,8 @@ function key(value: string) {
       ink: "#000000",
       accent: "#FBCC11",
       wash: 0.18,
-      mix: ["#FBCC11", "#FBCC11", "#A87F00"],
+      // El negro de sus letras entra oscureciendo el amarillo hacia abajo.
+      ficha: ["#F7CE3B", "#C79E0E"],
       logo: "universalplus",
       light: true,
     }),
@@ -402,7 +447,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#0C9BFF",
       wash: 0.2,
-      mix: ["#0C9BFF", "#0C9BFF", "#FFFFFF"],
+      // Azul cielo, el suyo. Sin negro.
+      ficha: ["#6BC5F5", "#1C9CE8"],
       logo: "viki",
     }),
   ],
@@ -413,7 +459,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#00DC5B",
       wash: 0.18,
-      mix: ["#00DC5B", "#00DC5B", "#FFFFFF"],
+      // Su verde exacto. Sin negro.
+      ficha: ["#4FD68F", "#00AC50"],
       logo: "iqiyi",
     }),
   ],
@@ -663,7 +710,18 @@ function key(value: string) {
       accent: "#4285F4",
       deepEnd: "#E8EAED",
       wash: 0.4,
-      mix: ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#4285F4", "#EA4335", "#FBBC04", "#34A853"],
+      mix: [
+        "#FFFFFF",
+        "#FFFFFF",
+        "#FFFFFF",
+        "#FFFFFF",
+        "#FFFFFF",
+        "#FFFFFF",
+        "#4285F4",
+        "#EA4335",
+        "#FBBC04",
+        "#34A853",
+      ],
       logo: "googleone",
       light: true,
     }),
@@ -1143,66 +1201,61 @@ export type BrandSkin = {
  * `hero` es la ficha completa: el mismo fondo pero con más recorrido, porque
  * cubre toda la pantalla y necesita que la luz viaje de arriba abajo.
  */
-export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSkin {
-  const hero = size === "hero";
+/**
+ * Los dos extremos del degradado de la ficha, y de dónde salen.
+ *
+ * Hay dos caminos, y cuál se toma lo decide si la marca tiene `ficha`:
+ *
+ *  · **`ficha`** — los dos extremos escritos a mano, cada uno ya con mezcla de
+ *    los dos colores del logotipo. Es el modelo bueno y el que se queda. Hoy
+ *    lo usan las 21 fichas de Streaming.
+ *  · **`legacyField`** — promediar los colores en uno. Es el que hay que
+ *    borrar. Sigue vivo únicamente para las categorías que todavía no se han
+ *    revisado ficha por ficha; cuando la última esté aprobada, esa función,
+ *    `mix` y `secondary` se van juntos.
+ */
+function fichaField(brand: Brand): { top: string; bottom: string; field: string } {
+  const [top, bottom] = brand.ficha as [string, string];
+  const accents = brand.fichaAccent ?? [];
+  if (accents.length === 0) {
+    return { top, bottom, field: `linear-gradient(175deg, ${top} 0%, ${bottom} 100%)` };
+  }
+
+  /*
+   * El acento tiñe, no se posa.
+   *
+   * Primero lo puse como paradas fuertes entre el 78 % y el 94 % volviendo al
+   * color de abajo en el 100 %, y con la capa anclada a la pantalla eso son
+   * dos bordes: una franja dorada permanente al pie de Plex, estés donde estés
+   * en el scroll. Un color solo se lee como acento y no como banda si tiene un
+   * único borde y muy suave, así que entra desde media pantalla, con una
+   * mezcla de una cifra, y llega al borde sin volver atrás.
+   */
+  // Ocupan siempre el mismo último tramo, tenga la marca uno o cinco: si el
+  // reparto crece con la cuenta, los cinco puntos de Peacock se estiran por
+  // media pantalla y dejan de ser acento. Y a más colores, menos mezcla cada
+  // uno, porque el ojo suma.
+  const from = 72;
+  const each = accents.length > 2 ? 0.06 : 0.09;
+  const stops = accents
+    .map(
+      (c, i) =>
+        `${mixHex(bottom, c, each)} ${Math.round(from + 6 + ((i + 1) * (100 - from - 6)) / accents.length)}%`,
+    )
+    .join(", ");
+  return {
+    top,
+    bottom,
+    field: `linear-gradient(175deg, ${top} 0%, ${bottom} ${from}%, ${stops})`,
+  };
+}
+
+/** MODELO VIEJO. Ver `fichaField`. Se borra cuando la última categoría migre. */
+function legacyField(brand: Brand): { top: string; bottom: string; field: string } {
   const a = brand.accent;
-
-  /*
-   * La tarjeta y la ficha no se pintan igual, y es a propósito:
-   *
-   *  · **Tarjeta** — el fondo EXACTO del logotipo, plano. Si el logotipo de
-   *    Netflix es negro, la tarjeta es negra; no se le inventa un resplandor
-   *    rojo. Lo único que se le suma es la luz cenital del sistema de vidrio,
-   *    que es del lenguaje de la app y no del color de la marca.
-   *  · **Ficha** — ahí sí entra el difuminado con los colores reales de la
-   *    marca, que es lo que hace que la pantalla completa se sienta suya.
-   */
-  /*
-   * La ficha es la MEZCLA de los colores exactos del logotipo, y esa mezcla no
-   * cambia al bajar.
-   *
-   * Dos errores seguidos hasta llegar aquí. El primero fue armar el degradado
-   * con un color de protagonista y el otro de extremo profundo: la ficha
-   * entraba de un color y terminaba de otro, o sea que se iba oscureciendo. El
-   * segundo fue medir esa capa contra la página: con una lista de once mil
-   * píxeles, bajar el dedo era ver cómo el color se apagaba.
-   *
-   * La referencia es ViX y siempre lo fue: su ficha es su propio degradado
-   * —rosa y naranja, sus dos colores— anclado a la PANTALLA, así que se ve
-   * igual estés donde estés en el scroll. Eso es lo que se generaliza:
-   *
-   *  · `mix` son los colores exactos del logotipo, en orden de peso. Los dos
-   *    primeros arman el degradado de base en diagonal; del tercero en
-   *    adelante entran como manchas grandes y suaves para que estén presentes
-   *    sin robarle el sitio a nadie.
-   *  · Ningún color que no esté en el logotipo. Si Google One no lleva negro,
-   *    su ficha no lleva negro.
-   *  · La capa va fija a la pantalla, no a la página.
-   */
   const declared = brand.mix ?? [a, brand.deepEnd ?? a];
-
-  /*
-   * La medida, hecha en código para que no se me vaya de las manos a ojo.
-   *
-   * Los dos colores de un logotipo pueden estar en extremos opuestos de la
-   * luz —negro y blanco, azul y blanco— y un degradado que los recorra enteros
-   * deja media pantalla donde el texto de las ofertas ya no se lee. Así que el
-   * campo se mueve dentro de una banda: en una ficha oscura ninguna parada
-   * pasa de 0.24 de luminancia, que es donde el blanco todavía da 4.5:1; en
-   * una clara, ninguna baja de 0.6.
-   *
-   * El color no se sustituye por otro: se acerca al extremo de su propia
-   * ficha hasta entrar en la banda. Sigue siendo su color, con menos luz.
-   */
   const groundLum = lum(declared[0] as string);
   const groundLight = brand.light;
-  /*
-   * El techo es relativo al propio suelo de la marca, no un número fijo: sobre
-   * un negro absoluto cualquier cosa por encima de 0.24 ya deslumbra, pero
-   * sobre el azul de Prime Video —que ya está en 0.21— ese mismo techo dejaría
-   * la ficha plana y sin rastro del blanco. Se permite hasta el doble largo
-   * del suelo, con 0.24 de mínimo y 0.44 de tope.
-   */
   const ceiling = Math.min(0.44, Math.max(0.24, groundLum * 2.2));
   const floor = 0.42;
   const band = (c: string) => {
@@ -1212,98 +1265,61 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
     return c;
   };
   const mix = declared.map(band);
-  const c0 = mix[0] as string;
-  const c1 = (mix[1] ?? mix[0]) as string;
 
-  const skylight = hero
-    ? `radial-gradient(120vw 38vh at 50% -6vh, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.04 : 0.06)}, transparent 64%)`
-    : `radial-gradient(132% 62% at 50% -14%, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`;
-
-  const deep = shade(a, -0.66);
-
-  /*
-   * Con dos colores, el primero se sostiene la primera cuarta parte y de ahí
-   * baja al segundo: esa reserva es la que le devuelve fondo al logotipo —el
-   * rojo de Netflix necesita negro debajo para leerse— sin que el negro se
-   * coma la ficha. Con tres o más, las paradas se reparten parejas y el
-   * degradado los recorre todos, que es exactamente lo que hace ViX.
-   */
-  /*
-   * UN SOLO COLOR, y ese color es la mezcla de los del logotipo.
-   *
-   * Aquí estaba el malentendido de varias rondas. Yo venía haciendo un
-   * degradado que iba DE un color AL otro, y eso deja siempre a uno arriba y
-   * al otro abajo: por mucho que se ajusten los porcentajes, siempre se ve más
-   * de uno que del otro, y al hacer scroll parece que un color entra y el otro
-   * sale.
-   *
-   * Lo que hacen las tres fichas que sí funcionan —ViX, IPTV, Kocowa+— es otra
-   * cosa: todas sus paradas son el MISMO color con variaciones mínimas. Se lee
-   * como un color solo con profundidad, no como dos peleándose.
-   *
-   * Así que primero se promedian los colores del logotipo en uno —el primero
-   * pesa un poco más, que es el que manda; los secundarios apenas tiñen— y ese
-   * color lavado es el de la ficha entera. El degradado que queda encima es
-   * suyo: la misma tinta un punto más oscura arriba, para que el logotipo
-   * tenga suelo, y un punto más clara abajo.
-   */
-  /*
-   * Todas las entradas pesan lo mismo, y la proporción se escribe repitiendo:
-   * tres veces el rojo y dos el negro es un 60/40. Es más largo de leer que un
-   * porcentaje, pero se ve de un vistazo cuánto hay de cada color, que es lo
-   * que importa cuando lo que se decide es exactamente eso.
-   */
   let blend = mix[0] as string;
-  for (let i = 1; i < mix.length; i += 1) {
-    blend = mixHex(blend, mix[i] as string, 1 / (i + 1));
-  }
-  // Los secundarios apenas tiñen: son parte de la mezcla, no la mezcla.
+  for (let i = 1; i < mix.length; i += 1) blend = mixHex(blend, mix[i] as string, 1 / (i + 1));
   for (const c of (brand.secondary ?? []).map(band)) blend = mixHex(blend, c, 0.12);
   blend = band(blend);
 
-  /*
-   * La profundidad va al revés según de qué color sea el logotipo: si sus
-   * letras son claras, arriba tiene que haber menos luz para que se despeguen;
-   * si son oscuras, al revés.
-   */
   const inkLight = lum(brand.ink) > 0.5;
   const top = inkLight ? shade(blend, -0.3) : tint(blend, 0.22);
   const bottom = inkLight ? tint(blend, 0.14) : shade(blend, -0.12);
-
-  /*
-   * Cada color del logotipo se arrastra tres cuartas partes hacia la mezcla.
-   *
-   * En una marca de dos colores eso los deja prácticamente en el mismo tono y
-   * la ficha queda de un color, que es lo que se busca. En una de varios —los
-   * cuatro de Google, los cinco puntos de Peacock— promediarlos a secas da un
-   * gris sucio, porque mezclar colores opuestos siempre da gris; arrastrarlos
-   * en cambio los deja a todos con la misma luz y distinto matiz, así que se
-   * sigue leyendo como un solo lavado pero se reconocen sus colores.
-   */
   const wash = mix.map((c) => mixHex(c, blend, 0.74));
   const inner = wash
     .map((c, i) => `${c} ${Math.round(18 + (i * 64) / Math.max(1, wash.length - 1))}%`)
     .join(", ");
-  const field = `linear-gradient(172deg, ${top} 0%, ${inner}, ${bottom} 100%)`;
+  return { top, bottom, field: `linear-gradient(172deg, ${top} 0%, ${inner}, ${bottom} 100%)` };
+}
+
+export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSkin {
+  const hero = size === "hero";
+  const a = brand.accent;
+
+  /*
+   * La tarjeta y la ficha no se pintan igual, y es a propósito:
+   *
+   *  · **Tarjeta** — el fondo EXACTO del logotipo, plano o con su propio
+   *    degradado. Si el logotipo de Netflix es negro, la tarjeta es negra; no
+   *    se le inventa un resplandor rojo. Lo único que se le suma es la luz
+   *    cenital del sistema de vidrio, que es del lenguaje de la app.
+   *  · **Ficha** — el degradado de los colores de la marca, anclado a la
+   *    PANTALLA. Ver `fichaField`.
+   */
+  const skylight = `radial-gradient(132% 62% at 50% -14%, ${rgba(brand.light ? "#000000" : "#FFFFFF", brand.light ? 0.05 : 0.08)}, transparent 64%)`;
+
+  const deep = shade(a, -0.66);
+  const { top, bottom, field } = brand.ficha ? fichaField(brand) : legacyField(brand);
 
   const layers = hero ? [field] : [skylight, brand.bg];
 
   /*
-   * Claro u oscuro se decide por superficie, no por marca. F1 TV tiene la
-   * tarjeta blanca —el fondo de su archivo— y la ficha en rojo y negro, que
-   * son sus dos colores; las dos cosas son ciertas a la vez. En la tarjeta
-   * manda `brand.light`; en la ficha, la luminancia del color que de verdad
-   * queda arriba.
+   * Claro u oscuro se decide por superficie Y por zona.
+   *
+   * Con extremos como los de Disney+ —de un teal casi negro arriba a uno
+   * brillante abajo— ningún color de texto único funciona en toda la pantalla.
+   * El cromo de arriba (el chip «Catálogo», el rótulo de categoría) se decide
+   * por el color de arriba; el cuerpo, donde vive la lista de ofertas, por el
+   * de abajo.
    */
-  // El umbral va alto a propósito: un verde vivo tiene luminancia alta y aun
-  // así no es una superficie clara. Solo vuelcan a texto oscuro los fondos de
-  // verdad pálidos —blanco, gris 50, amarillo Universal—.
-  const surfaceLight = hero ? lum(blend) > 0.5 : brand.light;
+  // El cuerpo se decide por el color de MEDIA pantalla, que es donde está la
+  // lista, no por el extremo de abajo.
+  const surfaceLight = hero ? prefersDarkInk(mixHex(top, bottom, 0.62)) : brand.light;
+  const chromeLight = hero ? prefersDarkInk(top) : brand.light;
 
   return {
     light: surfaceLight,
-    // El color con que se pinta la barra de arriba dentro de la ficha: el
-    // primer color de la mezcla, que es justo lo que hay debajo de ella.
+    // La barra de arriba se pinta del color que tiene justo debajo, para que
+    // no se lea como una pieza de otra pantalla pegada encima.
     chromeBg: hero ? top : "transparent",
     background: layers.join(", "),
     // Neutro, no del color de la marca: un borde rojo alrededor de Netflix se
@@ -1342,7 +1358,7 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
     // El contador de ofertas se perdía contra los fondos con más color. Sube lo
     // justo: tiene que leerse de reojo, no competir con el logotipo.
     meta: surfaceLight ? rgba("#000000", 0.72) : rgba("#FFFFFF", 0.82),
-    chrome: surfaceLight ? "#101014" : "#FFFFFF",
+    chrome: chromeLight ? "#101014" : "#FFFFFF",
   };
 }
 
@@ -1378,6 +1394,40 @@ function rgba(hex: string, alpha: number) {
 }
 
 /** Oscurece (`amount` negativo) o aclara un color. */
+/**
+ * ¿Sobre este color se lee mejor tinta oscura que blanca?
+ *
+ * Se decide midiendo, no con un umbral de luminancia a ojo: el naranja de
+ * Crunchyroll y el verde de iQIYI tienen luminancia media —por debajo del 0.5
+ * de toda la vida— y aun así el blanco encima da 2.6:1, o sea que no se lee.
+ * Se comparan los dos contrastes y gana el mayor.
+ */
+/**
+ * Luminancia relativa de verdad, con corrección gamma.
+ *
+ * `lum` de aquí abajo es una media ponderada a secas, que sirve para decidir a
+ * ojo si un color es oscuro pero NO para calcular contraste: sin la corrección
+ * gamma, un azul medio sale un 70 % más luminoso de lo que es y la cuenta se
+ * equivoca de tinta. Es lo que dejaba el texto oscuro sobre el índigo de IPTV.
+ */
+function relLum(hex: string) {
+  const [r, g, b] = parse(hex).map((v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function prefersDarkInk(hex: string) {
+  // Con los colores de tinta REALES, no con blanco y negro puros: la app
+  // escribe en #FAFAFC y en #14161A, y usar los puros inclina la cuenta hacia
+  // el oscuro lo justo para equivocarse en los tonos medios.
+  const l = relLum(hex) + 0.05;
+  const claro = relLum("#FAFAFC") + 0.05;
+  const oscuro = relLum("#14161A") + 0.05;
+  return l / oscuro > claro / l;
+}
+
 /** Luminancia relativa aproximada, para decidir si un color es oscuro. */
 function lum(hex: string) {
   const [r, g, b] = parse(hex);
