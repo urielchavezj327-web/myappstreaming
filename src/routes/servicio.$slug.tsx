@@ -137,8 +137,19 @@ function ServicePage() {
                 "--faint": "rgba(20,22,26,0.56)",
                 "--glass-sheen": "0%",
 
-                "--brand": "#525A66",
+                // Los alias `--color-*` se declaran en `:root` como
+                // `var(--brand)`, y un `var()` dentro de una propiedad
+                // personalizada se resuelve donde se DECLARA, no donde se usa:
+                // redefinir solo `--brand` aquí no llegaba a `text-brand`, y el
+                // precio de la fila destacada seguía saliendo en plata sobre un
+                // panel claro.
+                // Acero oscuro, no medio: el precio destacado es el dato más
+                // importante de la fila y con #525A66 quedaba a 3.6:1 sobre un
+                // panel claro, o sea más flojo que los precios que NO destacan.
+                "--brand": "#2E3642",
+                "--color-brand": "#2E3642",
                 "--brand-ink": "#FFFFFF",
+                "--color-brand-ink": "#FFFFFF",
                 "--brand-glow": "rgba(20,22,26,0.18)",
                 "--metal": "linear-gradient(135deg,#8B939F,#6E7681 38%,#4C535D 72%,#343A43)",
               }
@@ -172,31 +183,25 @@ function ServicePage() {
         style={{ background: skin.background }}
         aria-hidden
       />
-      <div
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          /*
-            El velo solo asienta el color para que las listas de precios se
-            lean; no lo apaga. El color de marca manda en la parte alta y el
-            extremo profundo es su propio tono oscurecido, que ya viene en el
-            fondo de abajo — por eso aquí basta con muy poca opacidad.
 
-            Las marcas de fondo claro (Peacock, YouTube, MLB, F1, Universal+)
-            sí necesitan cerrar antes: su blanco no puede cubrir la página
-            entera o las listas quedarían negro sobre gris.
-          */
-          /*
-            El velo es un asiento, no un apagón: la regla es que el difuminado
-            sea el mismo de arriba abajo, así que apenas entra al final y nunca
-            llega a cubrir. En las marcas de fondo claro no hay velo oscuro
-            ninguno —oscurecerlas sería contradecir su propio logotipo.
-          */
-          background: skin.light
-            ? "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%)"
-            : "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%)",
-        }}
-        aria-hidden
-      />
+      {/*
+        El velo del modelo VIEJO, y solo para él.
+        Las fichas migradas llevan los dos extremos escritos a mano y cualquier
+        capa encima haría que el color renderizado no fuera el de la tabla. Las
+        que aún no migran —Música, Diseño e IA, Otros y Trámites— tienen que
+        verse exactamente igual que antes hasta que les toque su ronda.
+      */}
+      {brand.ficha ? null : (
+        <div
+          className="pointer-events-none fixed inset-0 -z-10"
+          style={{
+            background: skin.light
+              ? "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%)"
+              : "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%)",
+          }}
+          aria-hidden
+        />
+      )}
 
       <SiteHeader />
 
