@@ -454,6 +454,15 @@
   }
 }
 
+/*
+  Modo de captura de solo-fondo (`?solofondo=1`, solo en desarrollo). El
+  atributo lo pone un efecto de la ficha; sin él, esta regla no existe para
+  nadie.
+*/
+[data-solofondo] > *:not([data-capa-fondo]) {
+  visibility: hidden;
+}
+
 @utility elev {
   box-shadow: var(--shadow-lift);
 }

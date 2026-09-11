@@ -54,10 +54,43 @@ export type BrandFont = "display" | "grotesk" | "geometric" | "condensed" | "scr
  * Prohibidos en el modelo `negro`: `multiply` (negro × lo que sea = negro),
  * `overlay` y `soft-light`.
  */
-export type Ficha =
+export type Ficha = {
+  /**
+   * Color de la barra de arriba, cuando no se puede sacar de la primera parada.
+   *
+   * La parada del 0 % no es el color que queda debajo de la barra: es el de la
+   * ESQUINA superior izquierda. A 170deg y 180deg da igual, porque el primer
+   * tramo es constante, pero en los diagonales no —en Canva hay 29 de
+   * diferencia en el verde entre la esquina y el centro— y en Google One es un
+   * fallo de bulto: son cinco radiales y la primera parada es el rojo, así que
+   * la barra saldría rosa sobre un fondo casi blanco.
+   */
+  chromeBg?: string;
+  /**
+   * Color de abajo, cuando tampoco se puede sacar de la última parada. Mismo
+   * caso que `chromeBg`: capas apiladas, o radiales.
+   */
+  abajo?: string;
+} & (
   | { modelo: "color"; fondo: string | [string, string] }
   | { modelo: "negro"; fondo: string; luz: string }
-  | { modelo: "claro"; fondo: string; tinte: string };
+  | { modelo: "claro"; fondo: string; tinte: string }
+  /**
+   * B2 — velo + espectro, sin blend.
+   *
+   * El plata de HBO Max es tornasol DE LADO A LADO y además tiene que subir de
+   * abajo: son dos direcciones a la vez y un solo `linear-gradient` solo puede
+   * ir en una. Van dos degradados en la misma propiedad: abajo el espectro en
+   * su dirección, y encima un velo del casi-negro de la marca que se adelgaza
+   * hacia abajo. La transparencia va en las paradas (`rgba(…, .84)`), nunca en
+   * `opacity`, que apaga la capa entera pareja.
+   *
+   * Va como capa de FONDO y sin blend: el degradado de abajo es opaco, así que
+   * el compuesto también lo es, y `screen(#000000, X) = X`. Meterlo en una capa
+   * de luz daría exactamente lo mismo con una capa y un blend de más.
+   */
+  | { modelo: "espectro"; fondo: string }
+);
 
 export type Brand = {
   /**
@@ -152,6 +185,49 @@ type Spec = Partial<Brand> & { bg: string; ink: string };
 
 const W = "#FFFFFF";
 
+/*
+ * Fondos que comparten DOS fichas.
+ *
+ * Un solo objeto referenciado por las dos, no dos copias: así nunca pueden
+ * quedar distintas por un descuido al editar una y olvidar la otra.
+ */
+
+/** Canva EDU y Canva PRO. Lo único que cambia entre ellas es la palabra. */
+const FICHA_CANVA: Ficha = {
+  modelo: "color",
+  // La parada del 0 % es la ESQUINA superior izquierda (#00C4CC), no lo que
+  // queda bajo la barra: a media anchura el fondo ya va en #0CB5CE y en la
+  // esquina derecha en #18A7D1, hasta 29 de diferencia en el verde.
+  chromeBg: "#0CB5CE",
+  // 154deg y no `to bottom right`: la palabra clave obliga a las otras dos
+  // esquinas al 50 %, y en una pantalla alta eso deja el degradado corriendo de
+  // lado, a unos 116deg. Con ángulo, el 0 % cae en la esquina de arriba a la
+  // izquierda y el 100 % en la de abajo a la derecha, como en la tarjeta.
+  fondo: "linear-gradient(154deg, #00C4CC 0%, #3E77D9 50%, #7D2AE7 100%)",
+};
+
+/**
+ * Tidal, y con ella Apple TV y Fox One.
+ *
+ * Un solo objeto para las tres: así no pueden quedar distintas por editar una y
+ * olvidar las otras, que es justo lo que pediste. La rampa sale del render de
+ * Tidal de hoy, no de hex medidos en una captura de celular.
+ */
+const FICHA_TIDAL: Ficha = {
+  modelo: "color",
+  chromeBg: "#0B0B0B",
+  abajo: "#313131",
+  fondo:
+    "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%), linear-gradient(172deg, #0B0B0B 0%, #0B0B0C 18%, #0B0B0C 39%, #0B0B0C 61%, #1B1B1C 82%, #313131 100%)",
+};
+
+/** ChatGPT y CapCut: el mismo negro con un poco más de luz blanca abajo. */
+const FICHA_CHATGPT: Ficha = {
+  modelo: "negro",
+  fondo: "#000000",
+  luz: "linear-gradient(170deg, #0B0B0B 0%, #0B0B0B 56%, #131313 68%, #1F1F1F 80%, #2C2C2C 91%, #383838 100%)",
+};
+
 function spec(s: Spec): Brand {
   return {
     ...(s.logo ? { logo: s.logo } : {}),
@@ -210,10 +286,18 @@ function key(value: string) {
       accent: "#E50914",
       deepEnd: "#101010",
       wash: 0.58,
-      // Modelo B. Su logotipo es rojo sobre negro: el negro se levanta HACIA el
-      // rojo con una capa sólida en `screen`. Degradar de un negro a un rojo
-      // dejaba media pantalla en granate, que es el vino que no es de Netflix.
-      ficha: { modelo: "negro", fondo: "#000000", luz: "#4D0207" },
+      /*
+       * Modelo B. La capa sólida daba #4D0207 parejo en toda la pantalla: vino,
+       * y sin rastro del negro de Netflix. Ahora es una RAMPA: la mitad de
+       * arriba se queda en el casi-negro cálido de la marca y la luz roja sube
+       * en la mitad de abajo hasta #CA0C12, que es su #E50914 con el brillo
+       * apenas bajado para que no se coma los precios.
+       */
+      ficha: {
+        modelo: "negro",
+        fondo: "#000000",
+        luz: "linear-gradient(170deg, #160605 0%, #160605 50%, #240604 62%, #430303 74%, #770205 86%, #CA0C12 100%)",
+      },
       logo: "netflix",
     }),
   ],
@@ -245,9 +329,18 @@ function key(value: string) {
       accent: "#DCDCE6",
       deepEnd: "#0D0F1B",
       wash: 0.34,
-      // Modelo B. El plateado de sus letras entra como aclarado general en
-      // `screen`, no como luz por un lado.
-      ficha: { modelo: "negro", fondo: "#05070F", luz: "#2A2E3A" },
+      /*
+       * Modelo B2. El plata de HBO Max es tornasol de lado a lado —cálido a la
+       * izquierda, lila en medio, frío a la derecha— y además sube de abajo.
+       * Son dos direcciones a la vez, así que van dos degradados: el espectro a
+       * 90deg y encima el velo de su negro #0A0B0D, que se adelgaza hacia
+       * abajo. La capa sólida daba #2E3346 parejo: gris azulado.
+       */
+      ficha: {
+        modelo: "espectro",
+        fondo:
+          "linear-gradient(170deg, #0A0B0D 0%, #0A0B0D 50%, rgba(10,11,13,.95) 62%, rgba(10,11,13,.84) 74%, rgba(10,11,13,.62) 86%, rgba(10,11,13,.30) 95%, rgba(10,11,13,.12) 100%), linear-gradient(90deg, #8D8386 0%, #87848E 50%, #798898 100%)",
+      },
       logo: "hbomax",
     }),
   ],
@@ -258,8 +351,14 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#0779FF",
       wash: 0.3,
-      // Modelo A: su azul exacto, plano. Ni aclarado ni mezclado con blanco.
-      ficha: { modelo: "color", fondo: "#00A8E1" },
+      /*
+       * Modelo A: el color de la tarjeta del catálogo, medido en pantalla. La
+       * ficha tenía #00A8E1 y la tarjeta mide #0779FF plano en las cuatro
+       * esquinas y en los cuatro medios (el centro es el blanco del logotipo y
+       * el borde de arriba lo aclara el `skylight` a #097AFF). Adentro tiene
+       * que ser idéntico a afuera.
+       */
+      ficha: { modelo: "color", fondo: "#0779FF" },
       logo: "primevideo",
     }),
   ],
@@ -299,8 +398,9 @@ function key(value: string) {
       accent: "#FFFFFF",
       deepEnd: "#000000",
       wash: 0.26,
-      // Modelo B: negro con el blanco de sus letras levantándolo en `screen`.
-      ficha: { modelo: "negro", fondo: "#000000", luz: "#2E2E30" },
+      // La capa sólida daba #2E2E30 parejo: gris, no negro. Va al MISMO objeto
+      // que Tidal, que es la referencia de negro de verdad.
+      ficha: FICHA_TIDAL,
       logo: "appletv",
     }),
   ],
@@ -332,8 +432,25 @@ function key(value: string) {
       accent: "#FD6E39",
       deepEnd: "#FF4712",
       wash: 0.16,
-      // Modelo A: su propio degradado naranja, exacto.
-      ficha: { modelo: "color", fondo: ["#FF5900", "#F52D1F"] },
+      /*
+       * Modelo A: el degradado de la tarjeta, con sus mismas paradas. La ficha
+       * iba de un naranja plano a un rojo y se veía demasiado vivo y parejo; la
+       * tarjeta es difuminada, del rosa #FE616C en la esquina de arriba a la
+       * izquierda al naranja #FE551B en la de abajo a la derecha (medido).
+       *
+       * 135deg en la tarjeta, que es casi cuadrada, se pasa a 154deg en la
+       * pantalla alta: con `to bottom right` CSS forzaría las otras dos esquinas
+       * al 50 % y en 360×740 el degradado correría de lado, a unos 116deg.
+       */
+      ficha: {
+        modelo: "color",
+        // A 154deg la primera parada es la ESQUINA de arriba a la izquierda, y a
+        // media anchura el fondo ya va 13 más abajo en el verde. Medido del
+        // render, no inventado.
+        chromeBg: "#FE5E71",
+        fondo:
+          "linear-gradient(154deg, #FF587E 0%, #FE5F6E 12%, #FE685D 25%, #FD6E4A 38%, #FD6E39 50%, #FD672A 62%, #FE591E 75%, #FF4A14 88%, #FF4712 100%)",
+      },
       logo: "vix",
     }),
   ],
@@ -347,8 +464,13 @@ function key(value: string) {
       accent: "#E1251B",
       deepEnd: "#000000",
       wash: 0.5,
-      // Modelo B: negro levantado hacia su rojo.
-      ficha: { modelo: "negro", fondo: "#000000", luz: "#4A0E08" },
+      // Modelo B. Su rojo es el #DA291C de Claro, más anaranjado que el de
+      // Netflix: se parecen pero no son el mismo, y la rampa no se reutiliza.
+      ficha: {
+        modelo: "negro",
+        fondo: "#000000",
+        luz: "linear-gradient(170deg, #150705 0%, #150705 50%, #220705 62%, #400805 74%, #740E07 86%, #C2271B 100%)",
+      },
       logo: "clarovideo",
     }),
   ],
@@ -359,14 +481,18 @@ function key(value: string) {
       ink: "#15151E",
       accent: "#E10600",
       wash: 0.28,
-      // Modelo C: blanco teñido de rojo con una capa en `multiply`. Su logotipo
-      // es rojo y azul marino sobre blanco, así que la ficha va clara, igual que
-      // la tarjeta.
-      //
-      // El #FFE0DE de la primera pasada era un rosa tan pálido que el rojo no
-      // se notaba. Este es blanco con un 28 % de su rojo #E10600: se lee como
-      // rosa y deja la tinta oscura en 11:1.
-      ficha: { modelo: "claro", fondo: "#FFFFFF", tinte: "#F7B9B8" },
+      /*
+       * Modelo C, el espejo del B. El tinte sólido cubría toda la pantalla de
+       * rosa; la rampa deja blanco limpio en los dos tercios de arriba y el rojo
+       * F1 entra como luz abajo hasta llegar a su #E10600 exacto en la orilla.
+       * Rojo con blanco, no rosa.
+       */
+      ficha: {
+        modelo: "claro",
+        fondo: "#FFFFFF",
+        tinte:
+          "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 66%, #FFF4F1 74%, #FEC0AF 81%, #FE745E 87%, #F1301F 93%, #E10600 100%)",
+      },
       logo: "f1tv",
       // Su fondo es blanco: sin esto, el contador de ofertas de la TARJETA salía
       // blanco sobre blanco.
@@ -381,8 +507,8 @@ function key(value: string) {
       ink: "#FFFFFF",
       accent: "#FFFFFF",
       wash: 0.26,
-      // Modelo B, igual que Apple TV: el blanco tiene que notarse.
-      ficha: { modelo: "negro", fondo: "#000000", luz: "#303032" },
+      // El mismo objeto que Tidal y Apple TV.
+      ficha: FICHA_TIDAL,
       logo: "foxone",
     }),
   ],
@@ -393,8 +519,18 @@ function key(value: string) {
       ink: "#000000",
       accent: "#04AFEF",
       wash: 0.2,
-      // Modelo A: su cian exacto cayendo a negro, como su propio archivo.
-      ficha: { modelo: "color", fondo: ["#00AEEF", "#000000"] },
+      /*
+       * Modelo A. El par #00AEEF→negro se iba a negro demasiado pronto y casi
+       * toda la pantalla salía oscura. Escrito con paradas queda parejo entre
+       * el azul y el negro con un 10 % más de preferencia al azul: el cian puro
+       * hasta el 35 %, el punto medio de la transición en el 55 % en vez del
+       * 50 %, y el negro con el último tercio.
+       */
+      ficha: {
+        modelo: "color",
+        fondo:
+          "linear-gradient(180deg, #00ADEF 0%, #00ADEF 35%, #0E8BBF 45%, #055779 55%, #023248 66%, #031723 80%, #04090C 100%)",
+      },
       logo: "hidive",
       light: true,
     }),
@@ -530,6 +666,14 @@ function key(value: string) {
       deepEnd: "#191414",
       wash: 0.6,
       mix: ["#191414", "#191414", "#1DB954"],
+      // Modelo B. El camino viejo daba un verde grisáceo (#142016 a #203427) en
+      // vez de negro. Su casi-negro lleva un toque verde y el verde entra como
+      // luz desde abajo.
+      ficha: {
+        modelo: "negro",
+        fondo: "#000000",
+        luz: "linear-gradient(170deg, #040E06 0%, #040E06 50%, #021706 62%, #00290C 74%, #01481A 86%, #077932 100%)",
+      },
       logo: "spotify",
     }),
   ],
@@ -543,6 +687,14 @@ function key(value: string) {
       accent: "#FB5C74",
       wash: 0.18,
       mix: ["#FB5C74", "#FB5C74", "#FA4B62"],
+      // Modelo A, muestreado del logo de la tarjeta: #FB576F arriba a #D91430
+      // abajo. 160deg, casi vertical con una ligera inclinación, igual que el
+      // degradado del icono.
+      ficha: {
+        modelo: "color",
+        fondo:
+          "linear-gradient(160deg, #FB5A71 0%, #FB495F 20%, #FA394E 35%, #FA293E 50%, #F21F35 65%, #E41932 80%, #D5132E 100%)",
+      },
       logo: "applemusic",
     }),
   ],
@@ -554,6 +706,14 @@ function key(value: string) {
       accent: "#FF0000",
       wash: 0.3,
       mix: ["#FFFFFF", "#FFFFFF", "#FF0000"],
+      // Modelo C, igual que F1 TV pero con SU rojo: el #FE0000 del botón de
+      // play. La rampa no se reutiliza entre las dos.
+      ficha: {
+        modelo: "claro",
+        fondo: "#FFFFFF",
+        tinte:
+          "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 66%, #FFF4F1 74%, #FEC0AF 81%, #FE816C 87%, #FF4330 93%, #FE0000 100%)",
+      },
       logo: "youtube",
       light: true,
     }),
@@ -566,6 +726,13 @@ function key(value: string) {
       accent: "#25D2D9",
       wash: 0.18,
       mix: ["#25D2D9", "#25D2D9", "#000000"],
+      // Modelo A. Tenía demasiado blanco encima y se veía turquesa lavado. El
+      // suyo, constante hasta el 60 %, con una subida mínima de profundidad al
+      // final y nada de blanco.
+      ficha: {
+        modelo: "color",
+        fondo: "linear-gradient(180deg, #25D2D9 0%, #25D2D9 60%, #4CDAE0 100%)",
+      },
       logo: "amazonmusic",
       light: true,
     }),
@@ -579,6 +746,23 @@ function key(value: string) {
       deepEnd: "#000000",
       wash: 0.55,
       mix: ["#000000", "#000000", "#A237FF"],
+      /*
+       * Migra al camino nuevo SIN cambiar de aspecto.
+       *
+       * No es una rampa aproximada: son las DOS capas que pintaba el camino
+       * viejo, copiadas literales —el velo encima y su campo debajo—. Aproximar
+       * las dos con un solo `linear-gradient` se quedaba en 3 o 4 por canal,
+       * porque el velo va a 180deg y el campo a 172, y dos direcciones distintas
+       * no caben en un degradado. Copiadas, la diferencia es cero por
+       * construcción.
+       */
+      ficha: {
+        modelo: "color",
+        chromeBg: "#190827",
+        abajo: "#432E54",
+        fondo:
+          "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%), linear-gradient(172deg, #190827 0%, #1B0929 18%, #1B0929 50%, #371355 82%, #432E54 100%)",
+      },
       logo: "deezer",
     }),
   ],
@@ -591,6 +775,17 @@ function key(value: string) {
       deepEnd: "#000000",
       wash: 0.22,
       mix: ["#000000", "#000000", "#000000", "#C9CFD6"],
+      /*
+       * Migra al camino nuevo SIN cambiar de aspecto.
+       *
+       * No es una rampa aproximada: son las DOS capas que pintaba el camino
+       * viejo, copiadas literales —el velo encima y su campo debajo—. Aproximar
+       * las dos con un solo `linear-gradient` se quedaba en 3 o 4 por canal,
+       * porque el velo va a 180deg y el campo a 172, y dos direcciones distintas
+       * no caben en un degradado. Copiadas, la diferencia es cero por
+       * construcción.
+       */
+      ficha: FICHA_TIDAL,
       logo: "tidal",
     }),
   ],
@@ -603,6 +798,23 @@ function key(value: string) {
       deepEnd: "#000000",
       wash: 0.22,
       mix: ["#000000", "#000000", "#000000", "#B9C2CC"],
+      /*
+       * Migra al camino nuevo SIN cambiar de aspecto.
+       *
+       * No es una rampa aproximada: son las DOS capas que pintaba el camino
+       * viejo, copiadas literales —el velo encima y su campo debajo—. Aproximar
+       * las dos con un solo `linear-gradient` se quedaba en 3 o 4 por canal,
+       * porque el velo va a 180deg y el campo a 172, y dos direcciones distintas
+       * no caben en un degradado. Copiadas, la diferencia es cero por
+       * construcción.
+       */
+      ficha: {
+        modelo: "color",
+        chromeBg: "#0B0B0B",
+        abajo: "#313131",
+        fondo:
+          "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%), linear-gradient(172deg, #0B0B0B 0%, #0B0C0C 18%, #0B0C0C 39%, #0B0C0C 61%, #1A1C1D 82%, #313131 100%)",
+      },
       logo: "qobuz",
     }),
   ],
@@ -616,6 +828,23 @@ function key(value: string) {
       accent: "#31A8FF",
       wash: 0.45,
       mix: ["#001E36", "#001E36", "#31A8FF"],
+      /*
+       * Migra al camino nuevo SIN cambiar de aspecto.
+       *
+       * No es una rampa aproximada: son las DOS capas que pintaba el camino
+       * viejo, copiadas literales —el velo encima y su campo debajo—. Aproximar
+       * las dos con un solo `linear-gradient` se quedaba en 3 o 4 por canal,
+       * porque el velo va a 180deg y el campo a 172, y dos direcciones distintas
+       * no caben en un degradado. Copiadas, la diferencia es cero por
+       * construcción.
+       */
+      ficha: {
+        modelo: "color",
+        chromeBg: "#051E32",
+        abajo: "#2A4961",
+        fondo:
+          "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%), linear-gradient(172deg, #051E32 0%, #052843 18%, #052843 50%, #0A3250 82%, #2A4961 100%)",
+      },
       logo: "photoshop",
     }),
   ],
@@ -630,6 +859,13 @@ function key(value: string) {
       font: "grotesk",
       weight: 700,
       tracking: "-0.05em",
+      // Modelo A. Rojo vivo arriba a la izquierda bajando a rojo profundo en la
+      // esquina inferior derecha, como la tarjeta. 154deg, no `to bottom right`.
+      ficha: {
+        modelo: "color",
+        fondo:
+          "linear-gradient(154deg, #FB3B34 0%, #F32227 25%, #E90D20 45%, #DC011B 60%, #BF0017 78%, #930113 100%)",
+      },
       symbol: "adobeA",
       symbolInk: "#FFFFFF",
       symbolScale: 0.66,
@@ -650,12 +886,16 @@ function key(value: string) {
       symbolHole: "#5C46E0",
       symbolScale: 0.6,
       label: "Canva",
+      // Modelo A. Un solo objeto para EDU y PRO.
+      ficha: FICHA_CANVA,
       suffix: "Edu",
     }),
   ],
   [
     /^canva/,
     spec({
+      // Modelo A. El mismo objeto que Canva EDU.
+      ficha: FICHA_CANVA,
       bg: "linear-gradient(148deg,#00C4CC,#5C46E0 55%,#7D2AE7)",
       ink: "#FFFFFF",
       accent: "#00C4CC",
@@ -679,6 +919,8 @@ function key(value: string) {
       deepEnd: "#0A0A0C",
       wash: 0.16,
       mix: ["#0A0A0C", "#0A0A0C", "#0A0A0C", "#FFFFFF"],
+      // Modelo B. El mismo objeto que ChatGPT.
+      ficha: FICHA_CHATGPT,
       logo: "capcut",
       suffix: "Pro",
     }),
@@ -695,6 +937,8 @@ function key(value: string) {
       deepEnd: "#000000",
       wash: 0.5,
       mix: ["#000000", "#000000", "#000000", "#FFFFFF"],
+      // Modelo B. Un solo objeto para ChatGPT y CapCut.
+      ficha: FICHA_CHATGPT,
       logo: "chatgpt",
     }),
   ],
@@ -724,6 +968,23 @@ function key(value: string) {
       deepEnd: "#EDEFF3",
       wash: 0.45,
       mix: ["#F8F9FA", "#F8F9FA", "#4D8BEA", "#C4667F"],
+      /*
+       * Migra al camino nuevo SIN cambiar de aspecto.
+       *
+       * No es una rampa aproximada: son las DOS capas que pintaba el camino
+       * viejo, copiadas literales —el velo encima y su campo debajo—. Aproximar
+       * las dos con un solo `linear-gradient` se quedaba en 3 o 4 por canal,
+       * porque el velo va a 180deg y el campo a 172, y dos direcciones distintas
+       * no caben en un degradado. Copiadas, la diferencia es cero por
+       * construcción.
+       */
+      ficha: {
+        modelo: "color",
+        chromeBg: "#868297",
+        abajo: "#C9C3DD",
+        fondo:
+          "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%), linear-gradient(172deg, #868297 0%, #CFCAE1 18%, #CFCAE1 39%, #A2ADDD 61%, #C1A3C1 82%, #C9C3DD 100%)",
+      },
       logo: "gemini",
       light: true,
     }),
@@ -737,6 +998,17 @@ function key(value: string) {
       deepEnd: "#141416",
       wash: 0.42,
       mix: ["#141416", "#141416", "#0A91E1", "#E0518C"],
+      /*
+       * Modelo B2. Tenía apenas un rastro de color (#22202E a #3B3846). El
+       * espectro son los colores del propio icono —magenta, coral, naranja,
+       * ámbar, verde y verde azulado— corriendo en diagonal a 60deg como él, y
+       * el velo de su casi-negro los deja aparecer desde el 38 % hacia abajo.
+       */
+      ficha: {
+        modelo: "espectro",
+        fondo:
+          "linear-gradient(170deg, #0A0A12 0%, #0A0A12 38%, rgba(10,10,18,.84) 54%, rgba(10,10,18,.60) 68%, rgba(10,10,18,.34) 82%, rgba(10,10,18,.10) 100%), linear-gradient(60deg, #CA4AA3 0%, #E55E6D 20%, #EE7834 40%, #F19B2D 52%, #29B151 70%, #179FA0 100%)",
+      },
       logo: "microsoft365",
     }),
   ],
@@ -751,6 +1023,23 @@ function key(value: string) {
       deepEnd: "#E6F1FB",
       wash: 0.46,
       mix: ["#FFFFFF", "#FFFFFF", "#0179D4"],
+      /*
+       * Migra al camino nuevo SIN cambiar de aspecto.
+       *
+       * No es una rampa aproximada: son las DOS capas que pintaba el camino
+       * viejo, copiadas literales —el velo encima y su campo debajo—. Aproximar
+       * las dos con un solo `linear-gradient` se quedaba en 3 o 4 por canal,
+       * porque el velo va a 180deg y el campo a 172, y dos direcciones distintas
+       * no caben en un degradado. Copiadas, la diferencia es cero por
+       * construcción.
+       */
+      ficha: {
+        modelo: "color",
+        chromeBg: "#C0DDF4",
+        abajo: "#99BBD4",
+        fondo:
+          "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%), linear-gradient(172deg, #C0DDF4 0%, #C3DFF5 18%, #C3DFF5 50%, #84BEEA 82%, #99BBD4 100%)",
+      },
       logo: "onedrive",
       light: true,
     }),
@@ -777,6 +1066,26 @@ function key(value: string) {
         "#FBBC04",
         "#34A853",
       ],
+      /*
+       * ÚNICA excepción a la prohibición de radiales: manchas suaves de los
+       * cuatro colores de Google sobre blanco, fijas a la pantalla. Las franjas
+       * horizontales de antes parecían una raya pintada.
+       *
+       * El final de cada mancha es el mismo color con alfa 0, NUNCA la palabra
+       * `transparent`: hay navegadores que la leen como negro transparente y la
+       * orilla se ensucia de gris. El orden tampoco se toca: el primero de la
+       * lista queda encima.
+       *
+       * `chromeBg` va a mano porque aquí no hay `linear-gradient` del que sacar
+       * una primera parada: la primera de la lista es el rojo, y la barra
+       * saldría rosa sobre un fondo casi blanco.
+       */
+      ficha: {
+        modelo: "color",
+        chromeBg: "#F6F3F7",
+        fondo:
+          "radial-gradient(51% 25% at 17% 16%, rgba(234,67,53,.39) 0%, rgba(234,67,53,0) 100%), radial-gradient(148% 32% at 44% 22%, rgba(66,133,244,.14) 0%, rgba(66,133,244,0) 100%), radial-gradient(47% 29% at 78% 35%, rgba(52,168,83,.37) 0%, rgba(52,168,83,0) 100%), radial-gradient(82% 44% at 49% 60%, rgba(251,188,4,.34) 0%, rgba(251,188,4,0) 100%), radial-gradient(200% 13% at 95% 97%, rgba(52,168,83,.08) 0%, rgba(52,168,83,0) 100%), #FFFFFF",
+      },
       logo: "googleone",
       light: true,
     }),
@@ -799,6 +1108,9 @@ function key(value: string) {
       // detrás de él dibujaría el canto del cuadro. Los otros colores entran
       // por abajo, donde el icono ya no está.
       mix: ["#77C801", "#77C801", "#8FDF02"],
+      // Modelo A plano: el verde del campo de su logo. Con la ficha de este
+      // mismo color, el recuadro del logotipo deja de verse.
+      ficha: { modelo: "color", fondo: "#77C801" },
       logo: "duolingo",
     }),
   ],
@@ -814,6 +1126,13 @@ function key(value: string) {
       deepEnd: "#7949D0",
       wash: 0.22,
       mix: ["#D302BF", "#9039CC", "#36ABE0", "#01FDEE"],
+      // Modelo A. 206deg es el espejo de 154: cian en la esquina superior
+      // DERECHA y magenta en la inferior izquierda, como la tarjeta.
+      ficha: {
+        modelo: "color",
+        fondo:
+          "linear-gradient(206deg, #08F8ED 0%, #0DEBEB 28%, #2DBAE3 40%, #5282D9 50%, #7D4DCF 60%, #9A32CB 72%, #B31CC6 84%, #C80CC2 100%)",
+      },
       logo: "picsart",
     }),
   ],
@@ -825,6 +1144,8 @@ function key(value: string) {
       accent: "#0A8648",
       wash: 0.2,
       mix: ["#0A8648", "#0A8648", "#FFFFFF"],
+      // Modelo A plano. El verde lavado de antes se iba a gris.
+      ficha: { modelo: "color", fondo: "#0C874A" },
       logo: "scribd",
     }),
   ],
@@ -1279,6 +1600,48 @@ export type BrandSkin = {
  * `hero` es la ficha completa: el mismo fondo pero con más recorrido, porque
  * cubre toda la pantalla y necesita que la luz viaje de arriba abajo.
  */
+/**
+ * Corta una lista CSS por las comas de PRIMER nivel.
+ *
+ * Ni `split(",")` ni una expresión regular sirven: las paradas de un degradado
+ * y los canales de un `rgba()` también van separados por comas.
+ */
+function porComas(css: string): string[] {
+  const out: string[] = [];
+  let hondo = 0;
+  let buf = "";
+  for (const ch of css) {
+    if (ch === "(") hondo += 1;
+    if (ch === ")") hondo -= 1;
+    if (ch === "," && hondo === 0) {
+      out.push(buf.trim());
+      buf = "";
+    } else buf += ch;
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out;
+}
+
+/** Los colores de un valor de `background`, en orden. */
+function colores(css: string): string[] {
+  return css.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/gi) ?? [];
+}
+
+/**
+ * El color de arriba y el de abajo de un fondo.
+ *
+ * Cuando hay varias capas apiladas manda la PRIMERA de la lista, que es la que
+ * queda encima: en el modelo espectro esa es el velo, y tomar el primer color
+ * de todo el string agarraría el del espectro de debajo y se equivocaría.
+ */
+function extremos(css: string): { top: string; bottom: string } {
+  const primera = porComas(css)[0] ?? css;
+  const cs = colores(primera);
+  const top = cs[0] ?? css;
+  const bottom = cs[cs.length - 1] ?? top;
+  return { top, bottom };
+}
+
 /** Fondo de la ficha ya resuelto: qué se pinta y qué color queda encima. */
 type Surface = {
   /** Color COMPUESTO de arriba: lo que se ve, no el hex crudo del fondo. */
@@ -1304,36 +1667,74 @@ type Surface = {
  *    función, `mix` y `secondary` se van juntos.
  */
 function fichaSurface(ficha: Ficha): Surface {
+  /*
+   * Componer un extremo.
+   *
+   * Con una capa sólida basta la fórmula; con una rampa hay que componer cada
+   * extremo por separado. Sobre negro puro `screen` devuelve exactamente la
+   * rampa (`1-(1-0)(1-b) = b`) y sobre blanco puro `multiply` también
+   * (`1 × b = b`), así que en la práctica los extremos SON los de la rampa;
+   * la cuenta se hace igual por si algún fondo deja de ser puro.
+   */
+  const componer = (capa: string, f: (a: string, b: string) => string, fondo: string) => {
+    const { top, bottom } = extremos(capa);
+    return { top: f(fondo, top), bottom: f(fondo, bottom) };
+  };
+
   if (ficha.modelo === "negro") {
-    const compuesto = screenHex(ficha.fondo, ficha.luz);
+    const { top, bottom } = componer(ficha.luz, screenHex, ficha.fondo);
     return {
-      top: compuesto,
-      bottom: compuesto,
+      top: ficha.chromeBg ?? top,
+      bottom,
       background: ficha.fondo,
       blend: { color: ficha.luz, mode: "screen" },
     };
   }
 
   if (ficha.modelo === "claro") {
-    const compuesto = multiplyHex(ficha.fondo, ficha.tinte);
+    const { top, bottom } = componer(ficha.tinte, multiplyHex, ficha.fondo);
     return {
-      top: compuesto,
-      bottom: compuesto,
+      top: ficha.chromeBg ?? top,
+      bottom,
       background: ficha.fondo,
       blend: { color: ficha.tinte, mode: "multiply" },
     };
   }
 
+  if (ficha.modelo === "espectro") {
+    // Arriba manda el velo, que ahí es opaco. Abajo el velo casi no existe, así
+    // que lo que se ve es el último color del espectro, o sea del SEGUNDO
+    // degradado de la lista.
+    const capas = porComas(ficha.fondo);
+    const velo = colores(capas[0] ?? ficha.fondo);
+    const espectro = colores(capas[1] ?? capas[0] ?? ficha.fondo);
+    return {
+      top: ficha.chromeBg ?? velo[0] ?? "#000000",
+      bottom: espectro[espectro.length - 1] ?? velo[velo.length - 1] ?? "#000000",
+      background: ficha.fondo,
+      blend: null,
+    };
+  }
+
   const { fondo } = ficha;
   if (typeof fondo === "string") {
-    return { top: fondo, bottom: fondo, background: fondo, blend: null };
+    // Puede ser un hex plano o un degradado entero escrito a mano.
+    const { top, bottom } = fondo.includes("gradient(")
+      ? extremos(fondo)
+      : { top: fondo, bottom: fondo };
+    return {
+      top: ficha.chromeBg ?? top,
+      bottom: ficha.abajo ?? bottom,
+      background: fondo,
+      blend: null,
+    };
   }
   const [top, bottom] = fondo;
-  // 180°, recto de arriba abajo. El grado y pico de inclinación del modelo
+  // 180°, recto de arriba abajo. El grado y pico de inclinación de un modelo
   // anterior es lo que hacía que la luz «entrara por la izquierda», que es la
   // queja literal en HBO Max y en Fox One.
   return {
-    top,
+    top: ficha.chromeBg ?? top,
     bottom,
     background: `linear-gradient(180deg, ${top} 0%, ${bottom} 100%)`,
     blend: null,

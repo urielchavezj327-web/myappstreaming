@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useCanGoBack, useRouter } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { getServiceDetail, type StockOffer } from "@/lib/catalog.functions";
 import { brandSkin, resolveBrand } from "@/lib/brands";
@@ -135,6 +135,29 @@ export const Route = createFileRoute("/servicio/$slug")({
   ),
 });
 
+/**
+ * `?solofondo=1` — modo de captura, SOLO en desarrollo.
+ *
+ * Esconde todo el contenido de la ficha, encabezado incluido, y deja a la vista
+ * únicamente las dos capas fijas. Sirve para medir el fondo punto por punto sin
+ * que una letra o un panel se metan en el cuadrito de muestra.
+ *
+ * Se marca desde un efecto y no al renderizar: leer `location.search` durante el
+ * render deja el HTML del servidor distinto al del cliente y React se queja al
+ * hidratar.
+ */
+function useSoloFondo(raiz: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    if (!import.meta.env.DEV || !raiz.current) return;
+    if (!new URLSearchParams(window.location.search).has("solofondo")) return;
+    const el = raiz.current;
+    el.dataset["solofondo"] = "1";
+    return () => {
+      delete el.dataset["solofondo"];
+    };
+  }, [raiz]);
+}
+
 function ServicePage() {
   const { service, offers, bundle } = Route.useLoaderData() as Detail;
   const router = useRouter();
@@ -148,6 +171,8 @@ function ServicePage() {
     bundle: Boolean(bundle),
   });
   const skin = brandSkin(brand, "hero");
+  const raiz = useRef<HTMLDivElement>(null);
+  useSoloFondo(raiz);
   const tileLogo = brand.logo !== undefined && isTileLogo(brand.logo);
 
   const internal = offers.filter((o) => o.group.kind === "interno");
@@ -173,6 +198,7 @@ function ServicePage() {
 
   return (
     <div
+      ref={raiz}
       className="relative min-h-screen"
       style={
         {
@@ -278,6 +304,7 @@ function ServicePage() {
       */}
       <div
         className="pointer-events-none fixed inset-0 -z-20"
+        data-capa-fondo
         style={{ background: skin.background }}
         aria-hidden
       />
@@ -301,6 +328,7 @@ function ServicePage() {
       {skin.blend ? (
         <div
           className="pointer-events-none fixed inset-0 -z-10"
+          data-capa-fondo
           style={{ background: skin.blend.color, mixBlendMode: skin.blend.mode }}
           aria-hidden
         />
@@ -309,6 +337,7 @@ function ServicePage() {
       {brand.ficha ? null : (
         <div
           className="pointer-events-none fixed inset-0 -z-10"
+          data-capa-fondo
           style={{
             background: skin.light
               ? "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%)"
