@@ -173,6 +173,10 @@ export const LOGOS = {
   // cabeza del búho se sale por los lados y sin su cuadro quedaría cortada.
   // Su cobertura es del 100 % (el cuadro entero es tinta), así que el reparto
   // por tinta lo encogía: va al tope de altura de la tarjeta.
+  // Sigue a sangre aunque su trazo ya no traiga el campo: `tile` es lo que le da
+  // su tamaño y su encuadre, y quitarlo lo encogería y metería la cabeza dentro
+  // de la pantalla. Lo que desaparece al borrar la capa del recuadro es el
+  // canto verde, porque debajo queda el #77C801 del fondo de la ficha.
   duolingo: { kind: "full", key: "duolingo", tile: true },
   // De una pieza: la cinta de Copilot y «Microsoft 365» en la proporción del
   // archivo. Antes iban por separado y la «M» se salía de la tarjeta.

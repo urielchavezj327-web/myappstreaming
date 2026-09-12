@@ -352,12 +352,13 @@ JOBS = {
     "chatgptmark": ("4d934fbb-image.png", [{"match": dark(150), "fill": "#000000"}], None),
     # Los dos iconos de aplicación que mandaste van completos —fondo incluido—
     # porque su gracia es el cuadro entero, no un símbolo recortado. En Duolingo
-    # la cabeza del búho se sale por los lados del cuadro, así que sin el fondo
-    # quedaría un corte recto flotando en verde.
+    # La capa del campo (`allpx()` en #77C801) ya no va: era un rectángulo que
+    # cubría el viewBox entero y, pintado a sangre, es el recuadro que se veía
+    # alrededor del búho. Ahora la ficha lleva ese mismo #77C801 de fondo plano,
+    # así que el búho se apoya directo sobre él y no hay canto que ver.
     "duolingo": (
         "d8f5f655-image.jpg",
         [
-            {"match": allpx(), "fill": "#77C801"},
             # Los dos verdes se distinguen mal por distancia de color —están a
             # 33 unidades— así que el corte va por el canal verde, que es donde
             # sí se separan limpio: 200 el fondo, 223 la cabeza.
