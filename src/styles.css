@@ -455,6 +455,70 @@
 }
 
 /*
+  Tinta de las letras que van DIRECTO sobre el fondo de la ficha.
+
+  Antes de la primera medición todo usa `--tinta-arriba`, que es la de la zona
+  donde arranca la ficha. En las fichas de una sola tinta las dos variables
+  valen lo mismo y el atributo `data-zona` no llega a ponerse nunca.
+*/
+[data-tinta] [data-tinta-pagina] {
+  /* Con `!important` porque compite con las clases de color de utilidad, que
+     van en el propio elemento; la alternativa sería quitarlas de cada uno, y
+     entonces las fichas sin tinta de página —Trámites y Otros— cambiarían de
+     aspecto sin que nadie lo haya pedido. */
+  color: var(--tinta-arriba) !important;
+  /* Fundido rápido: el cambio de tinta se ve como un fundido, no como un
+     parpadeo. */
+  transition: color 0.15s linear;
+}
+
+[data-tinta] [data-tinta-pagina][data-zona="abajo"] {
+  color: var(--tinta-abajo) !important;
+}
+
+/*
+  La tarjeta de oferta.
+
+  El fondo es el color secundario de la marca con transparencia y NADA más:
+  este `background` sustituye entero al de `glass`, así que no queda ni rastro
+  de su velo. Va en una regla y no en el `style` del `<ul>` porque un
+  `background: var(--sin-definir)` inline no cae al valor de `glass`, cae al
+  inicial —transparente— y dejaría sin panel a Trámites y Otros, que no llevan
+  tarjeta de marca.
+
+  Va acotado al `<ul>` del panel y no a la raíz de la ficha: `--color-surface`
+  en la raíz pintaría del color de la marca todo lo que lo lee —el botón de
+  copiar, el hueco final, las piezas de `ui-kit`, el botón «+» del encabezado—
+  y con Netflix en rgba(229,9,20,.90) eso serían media docena de cosas rojas.
+
+  No se vuelve sólido ni se calcula la mezcla a mano: la hace el navegador en
+  cada punto, y por eso el panel cambia de tono al scrollear. Ese efecto es el
+  de Disney+ y es el que se quiere.
+*/
+[data-tarjeta] main ul.glass {
+  background: var(--tarjeta-bg);
+  /* La tinta de dentro es fija por ficha: no cambia por zona de pantalla, que
+     eso es solo para las letras que van directo sobre el fondo. */
+  color: var(--tarjeta-tinta);
+  --foreground: var(--tarjeta-tinta);
+  --color-foreground: var(--tarjeta-tinta);
+  --muted-foreground: var(--tarjeta-tinta-2);
+  --faint: var(--tarjeta-tinta-2);
+}
+
+/* Los filetes de los rótulos de duración toman la tinta del rótulo. */
+[data-tinta] [data-tinta-linea] {
+  background-color: currentColor !important;
+  opacity: 0.25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tinta] [data-tinta-pagina] {
+    transition: none;
+  }
+}
+
+/*
   Modo de captura de solo-fondo (`?solofondo=1`, solo en desarrollo). El
   atributo lo pone un efecto de la ficha; sin él, esta regla no existe para
   nadie.

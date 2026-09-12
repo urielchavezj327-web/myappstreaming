@@ -1,5 +1,6 @@
 import type { SymbolId } from "@/components/brand-symbols";
 import type { LogoId } from "@/components/logos";
+import type { TintaPagina } from "@/hooks/use-tinta-por-zona";
 
 /**
  * Identidad visual de cada servicio.
@@ -147,6 +148,53 @@ export type Brand = {
   lines?: [string, string];
   /** Fondo claro: el resto de la interfaz de la tarjeta se oscurece. */
   light: boolean;
+  /**
+   * Tinta de las letras que van DIRECTO sobre el fondo de la ficha.
+   *
+   * No se copia del logotipo: se decide por el fondo que tienen detrás, con
+   * APCA en cinco puntos a lo ancho de cada renglón. Y como el fondo está fijo a
+   * la pantalla, en cuatro fichas no alcanza una sola tinta para todo el alto y
+   * hay que partirla por una línea de corte, en % de la capa de fondo.
+   */
+  tintaPagina?: TintaPagina;
+  /**
+   * La tarjeta de oferta: el panel donde van los renglones de cada perfil.
+   *
+   * El fondo es el color SECUNDARIO del logotipo con transparencia, y nada más.
+   * Secundario es el segundo color de la marca, no el del campo: Netflix tiene
+   * campo negro y marca roja, así que su tarjeta es roja; Amazon Music tiene
+   * campo turquesa y letras negras, así que la suya es negra.
+   *
+   * Como el panel es semitransparente y las capas de fondo están fijas a la
+   * pantalla, en cada punto se ve `secundario × α + fondo × (1 − α)`: el panel
+   * cambia de tono conforme se scrollea. Ese efecto es el de Disney+ y es el
+   * que se quiere; volverlo sólido lo rompe.
+   */
+  tarjeta?: {
+    /** El segundo color del logotipo. */
+    secundario: string;
+    /**
+     * Cuánto del secundario se ve.
+     *
+     * Disney+ va al .745, que funciona sobre un fondo de color medio. Sobre
+     * casi negro, al .745 una tarjeta blanca se vería gris sucia y el rojo de
+     * Netflix se vería vino: por eso ahí sube a entre .86 y .94.
+     */
+    alfa: number;
+    /** Tinta de las letras de dentro. FIJA por ficha: no cambia por zona. */
+    tinta: "blanca" | "oscura";
+    /**
+     * Alfa del texto secundario, en el COLOR y nunca en `opacity`, que apagaría
+     * también el nombre y el precio. .85 sobre color saturado —sobre un rojo o
+     * un verde vivo el blanco al .68 se hunde— y .68 en el resto.
+     */
+    alfa2: number;
+    /**
+     * Color del precio de la fila destacada, cuando el acento de marca no se
+     * lee sobre la tarjeta. Solo Plex: su dorado sobre #F0F0F0 da Lc 35.
+     */
+    precio?: string;
+  };
   /** Cómo se pinta el fondo de la ficha. Cuando existe, manda sobre `mix`. */
   ficha?: Ficha;
   /**
@@ -234,6 +282,8 @@ function spec(s: Spec): Brand {
     ...(s.secondary ? { secondary: s.secondary } : {}),
     ...(s.deepEnd ? { deepEnd: s.deepEnd } : {}),
     ...(s.ficha ? { ficha: s.ficha } : {}),
+    ...(s.tarjeta ? { tarjeta: s.tarjeta } : {}),
+    ...(s.tintaPagina ? { tintaPagina: s.tintaPagina } : {}),
     ...(s.fichaAccent ? { fichaAccent: s.fichaAccent } : {}),
     ...(s.mix ? { mix: s.mix } : {}),
     ...(s.paper ? { paper: true } : {}),
@@ -298,6 +348,8 @@ function key(value: string) {
         fondo: "#000000",
         luz: "linear-gradient(170deg, #160605 0%, #160605 50%, #240604 62%, #430303 74%, #770205 86%, #CA0C12 100%)",
       },
+      tarjeta: { secundario: "#E50914", alfa: 0.9, tinta: "blanca", alfa2: 0.85 },
+      tintaPagina: "blanca",
       logo: "netflix",
     }),
   ],
@@ -314,6 +366,8 @@ function key(value: string) {
       // Modelo A: el degradado del propio logotipo, exacto. El celeste de abajo
       // tiene que verse VIVO, y el encabezado toma el #084F60 de arriba.
       ficha: { modelo: "color", fondo: ["#084F60", "#00D6E8"] },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: { arriba: "blanca", abajo: "oscura", corte: 76 },
       logo: "disneyplus",
     }),
   ],
@@ -341,6 +395,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(170deg, #0A0B0D 0%, #0A0B0D 50%, rgba(10,11,13,.95) 62%, rgba(10,11,13,.84) 74%, rgba(10,11,13,.62) 86%, rgba(10,11,13,.30) 95%, rgba(10,11,13,.12) 100%), linear-gradient(90deg, #8D8386 0%, #87848E 50%, #798898 100%)",
       },
+      tarjeta: { secundario: "#CED7E1", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "hbomax",
     }),
   ],
@@ -359,6 +415,8 @@ function key(value: string) {
        * que ser idéntico a afuera.
        */
       ficha: { modelo: "color", fondo: "#0779FF" },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "primevideo",
     }),
   ],
@@ -371,6 +429,8 @@ function key(value: string) {
       wash: 0.24,
       // Modelo A: su azul exacto, plano.
       ficha: { modelo: "color", fondo: "#0064FF" },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "paramountplus",
     }),
   ],
@@ -387,6 +447,8 @@ function key(value: string) {
       // —serían confeti— sino en la píldora «Mejor precio», en su orden real.
       ficha: { modelo: "negro", fondo: "#000000", luz: "#262628" },
       fichaAccent: ["#F8B410", "#E82828", "#A42CDC", "#1898E8", "#00B060"],
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "peacock",
     }),
   ],
@@ -401,6 +463,8 @@ function key(value: string) {
       // La capa sólida daba #2E2E30 parejo: gris, no negro. Va al MISMO objeto
       // que Tidal, que es la referencia de negro de verdad.
       ficha: FICHA_TIDAL,
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "appletv",
     }),
   ],
@@ -416,6 +480,8 @@ function key(value: string) {
       // Modelo A: su naranja oficial, plano y sin aclarar. Sin negro: su
       // logotipo no lo lleva.
       ficha: { modelo: "color", fondo: "#F47521" },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.88, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "crunchyroll",
     }),
   ],
@@ -451,6 +517,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(154deg, #FF587E 0%, #FE5F6E 12%, #FE685D 25%, #FD6E4A 38%, #FD6E39 50%, #FD672A 62%, #FE591E 75%, #FF4A14 88%, #FF4712 100%)",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.88, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "vix",
     }),
   ],
@@ -471,6 +539,8 @@ function key(value: string) {
         fondo: "#000000",
         luz: "linear-gradient(170deg, #150705 0%, #150705 50%, #220705 62%, #400805 74%, #740E07 86%, #C2271B 100%)",
       },
+      tarjeta: { secundario: "#DA291C", alfa: 0.9, tinta: "blanca", alfa2: 0.85 },
+      tintaPagina: "blanca",
       logo: "clarovideo",
     }),
   ],
@@ -493,6 +563,8 @@ function key(value: string) {
         tinte:
           "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 66%, #FFF4F1 74%, #FEC0AF 81%, #FE745E 87%, #F1301F 93%, #E10600 100%)",
       },
+      tarjeta: { secundario: "#E10600", alfa: 0.94, tinta: "blanca", alfa2: 0.85 },
+      tintaPagina: { arriba: "oscura", abajo: "blanca", corte: 87 },
       logo: "f1tv",
       // Su fondo es blanco: sin esto, el contador de ofertas de la TARJETA salía
       // blanco sobre blanco.
@@ -509,6 +581,8 @@ function key(value: string) {
       wash: 0.26,
       // El mismo objeto que Tidal y Apple TV.
       ficha: FICHA_TIDAL,
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "foxone",
     }),
   ],
@@ -531,6 +605,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(180deg, #00ADEF 0%, #00ADEF 35%, #0E8BBF 45%, #055779 55%, #023248 66%, #031723 80%, #04090C 100%)",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.86, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "hidive",
       light: true,
     }),
@@ -545,6 +621,8 @@ function key(value: string) {
       wash: 0.22,
       // Modelo A: su propio degradado azul→violeta. Aprobado, no se toca.
       ficha: { modelo: "color", fondo: ["#2B7FEE", "#4B36E0"] },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "iptv",
     }),
   ],
@@ -560,6 +638,8 @@ function key(value: string) {
       // en la esquina superior izquierda a un negro neutro #121212 en la
       // inferior derecha. El extremo oscuro no es un morado oscuro.
       ficha: { modelo: "color", fondo: ["#612C86", "#121212"] },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.9, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "kocowa",
     }),
   ],
@@ -575,6 +655,8 @@ function key(value: string) {
       // capa sólida, así que va de acento en la interfaz.
       ficha: { modelo: "claro", fondo: "#FFFFFF", tinte: "#DDE4EF" },
       fichaAccent: ["#D50032"],
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.72, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "oscura",
       logo: "mlbtv",
       light: true,
     }),
@@ -590,6 +672,8 @@ function key(value: string) {
       // blanco y no tiene un solo píxel azul, así que este hex NO está
       // muestreado de ahí: lo dio Uri.
       ficha: { modelo: "color", fondo: "#1010D2" },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.86, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "mubi",
     }),
   ],
@@ -614,6 +698,14 @@ function key(value: string) {
       // aclarar— así que más oscuro que eso habría que mover su fondo real.
       ficha: { modelo: "negro", fondo: "#282A2D", luz: "#141414" },
       fichaAccent: ["#E5A00D"],
+      tarjeta: {
+        secundario: "#FFFFFF",
+        alfa: 0.92,
+        tinta: "oscura",
+        alfa2: 0.68,
+        precio: "#111111",
+      },
+      tintaPagina: "blanca",
       logo: "plex",
     }),
   ],
@@ -627,6 +719,8 @@ function key(value: string) {
       // Modelo C: su amarillo teñido con una capa en `multiply`, que es como el
       // negro de sus letras entra sin ensuciarlo.
       ficha: { modelo: "claro", fondo: "#FBCC11", tinte: "#E8D89A" },
+      tarjeta: { secundario: "#000000", alfa: 0.82, tinta: "blanca", alfa2: 0.68 },
+      tintaPagina: "oscura",
       logo: "universalplus",
       light: true,
     }),
@@ -640,6 +734,8 @@ function key(value: string) {
       wash: 0.2,
       // Modelo A: su azul cielo exacto, plano. Sin negro.
       ficha: { modelo: "color", fondo: "#0C9BFF" },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "viki",
     }),
   ],
@@ -652,6 +748,8 @@ function key(value: string) {
       wash: 0.18,
       // Modelo A: su verde exacto, plano. Sin negro.
       ficha: { modelo: "color", fondo: "#00DC5A" },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "oscura",
       logo: "iqiyi",
     }),
   ],
@@ -674,6 +772,8 @@ function key(value: string) {
         fondo: "#000000",
         luz: "linear-gradient(170deg, #040E06 0%, #040E06 50%, #021706 62%, #00290C 74%, #01481A 86%, #077932 100%)",
       },
+      tarjeta: { secundario: "#1ED760", alfa: 0.9, tinta: "oscura", alfa2: 0.85 },
+      tintaPagina: "blanca",
       logo: "spotify",
     }),
   ],
@@ -695,6 +795,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(160deg, #FB5A71 0%, #FB495F 20%, #FA394E 35%, #FA293E 50%, #F21F35 65%, #E41932 80%, #D5132E 100%)",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.88, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "applemusic",
     }),
   ],
@@ -714,6 +816,8 @@ function key(value: string) {
         tinte:
           "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 66%, #FFF4F1 74%, #FEC0AF 81%, #FE816C 87%, #FF4330 93%, #FE0000 100%)",
       },
+      tarjeta: { secundario: "#FE0000", alfa: 0.94, tinta: "blanca", alfa2: 0.85 },
+      tintaPagina: { arriba: "oscura", abajo: "blanca", corte: 88 },
       logo: "youtube",
       light: true,
     }),
@@ -733,6 +837,8 @@ function key(value: string) {
         modelo: "color",
         fondo: "linear-gradient(180deg, #25D2D9 0%, #25D2D9 60%, #4CDAE0 100%)",
       },
+      tarjeta: { secundario: "#000000", alfa: 0.82, tinta: "blanca", alfa2: 0.68 },
+      tintaPagina: "oscura",
       logo: "amazonmusic",
       light: true,
     }),
@@ -763,6 +869,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%), linear-gradient(172deg, #190827 0%, #1B0929 18%, #1B0929 50%, #371355 82%, #432E54 100%)",
       },
+      tarjeta: { secundario: "#A237FF", alfa: 0.9, tinta: "blanca", alfa2: 0.85 },
+      tintaPagina: "blanca",
       logo: "deezer",
     }),
   ],
@@ -786,6 +894,8 @@ function key(value: string) {
        * construcción.
        */
       ficha: FICHA_TIDAL,
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "tidal",
     }),
   ],
@@ -815,6 +925,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%), linear-gradient(172deg, #0B0B0B 0%, #0B0C0C 18%, #0B0C0C 39%, #0B0C0C 61%, #1A1C1D 82%, #313131 100%)",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "qobuz",
     }),
   ],
@@ -845,6 +957,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(to bottom, transparent 0%, transparent 62%, color-mix(in srgb, var(--color-background) 12%, transparent) 88%, color-mix(in srgb, var(--color-background) 20%, transparent) 100%), linear-gradient(172deg, #051E32 0%, #052843 18%, #052843 50%, #0A3250 82%, #2A4961 100%)",
       },
+      tarjeta: { secundario: "#31A8FF", alfa: 0.9, tinta: "blanca", alfa2: 0.85 },
+      tintaPagina: "blanca",
       logo: "photoshop",
     }),
   ],
@@ -866,6 +980,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(154deg, #FB3B34 0%, #F32227 25%, #E90D20 45%, #DC011B 60%, #BF0017 78%, #930113 100%)",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.88, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       symbol: "adobeA",
       symbolInk: "#FFFFFF",
       symbolScale: 0.66,
@@ -888,6 +1004,8 @@ function key(value: string) {
       label: "Canva",
       // Modelo A. Un solo objeto para EDU y PRO.
       ficha: FICHA_CANVA,
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       suffix: "Edu",
     }),
   ],
@@ -896,6 +1014,8 @@ function key(value: string) {
     spec({
       // Modelo A. El mismo objeto que Canva EDU.
       ficha: FICHA_CANVA,
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       bg: "linear-gradient(148deg,#00C4CC,#5C46E0 55%,#7D2AE7)",
       ink: "#FFFFFF",
       accent: "#00C4CC",
@@ -921,6 +1041,8 @@ function key(value: string) {
       mix: ["#0A0A0C", "#0A0A0C", "#0A0A0C", "#FFFFFF"],
       // Modelo B. El mismo objeto que ChatGPT.
       ficha: FICHA_CHATGPT,
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "capcut",
       suffix: "Pro",
     }),
@@ -939,6 +1061,8 @@ function key(value: string) {
       mix: ["#000000", "#000000", "#000000", "#FFFFFF"],
       // Modelo B. Un solo objeto para ChatGPT y CapCut.
       ficha: FICHA_CHATGPT,
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "chatgpt",
     }),
   ],
@@ -985,6 +1109,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%), linear-gradient(172deg, #868297 0%, #CFCAE1 18%, #CFCAE1 39%, #A2ADDD 61%, #C1A3C1 82%, #C9C3DD 100%)",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.72, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "oscura",
       logo: "gemini",
       light: true,
     }),
@@ -1009,6 +1135,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(170deg, #0A0A12 0%, #0A0A12 38%, rgba(10,10,18,.84) 54%, rgba(10,10,18,.60) 68%, rgba(10,10,18,.34) 82%, rgba(10,10,18,.10) 100%), linear-gradient(60deg, #CA4AA3 0%, #E55E6D 20%, #EE7834 40%, #F19B2D 52%, #29B151 70%, #179FA0 100%)",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.92, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "microsoft365",
     }),
   ],
@@ -1040,6 +1168,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%), linear-gradient(172deg, #C0DDF4 0%, #C3DFF5 18%, #C3DFF5 50%, #84BEEA 82%, #99BBD4 100%)",
       },
+      tarjeta: { secundario: "#0178D4", alfa: 0.94, tinta: "blanca", alfa2: 0.85 },
+      tintaPagina: "oscura",
       logo: "onedrive",
       light: true,
     }),
@@ -1086,6 +1216,8 @@ function key(value: string) {
         fondo:
           "radial-gradient(51% 25% at 17% 16%, rgba(234,67,53,.39) 0%, rgba(234,67,53,0) 100%), radial-gradient(148% 32% at 44% 22%, rgba(66,133,244,.14) 0%, rgba(66,133,244,0) 100%), radial-gradient(47% 29% at 78% 35%, rgba(52,168,83,.37) 0%, rgba(52,168,83,0) 100%), radial-gradient(82% 44% at 49% 60%, rgba(251,188,4,.34) 0%, rgba(251,188,4,0) 100%), radial-gradient(200% 13% at 95% 97%, rgba(52,168,83,.08) 0%, rgba(52,168,83,0) 100%), #FFFFFF",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.72, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "oscura",
       logo: "googleone",
       light: true,
     }),
@@ -1111,6 +1243,8 @@ function key(value: string) {
       // Modelo A plano: el verde del campo de su logo. Con la ficha de este
       // mismo color, el recuadro del logotipo deja de verse.
       ficha: { modelo: "color", fondo: "#77C801" },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "oscura",
       logo: "duolingo",
     }),
   ],
@@ -1133,6 +1267,8 @@ function key(value: string) {
         fondo:
           "linear-gradient(206deg, #08F8ED 0%, #0DEBEB 28%, #2DBAE3 40%, #5282D9 50%, #7D4DCF 60%, #9A32CB 72%, #B31CC6 84%, #C80CC2 100%)",
       },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: { arriba: "oscura", abajo: "blanca", corte: 41 },
       logo: "picsart",
     }),
   ],
@@ -1146,6 +1282,8 @@ function key(value: string) {
       mix: ["#0A8648", "#0A8648", "#FFFFFF"],
       // Modelo A plano. El verde lavado de antes se iba a gris.
       ficha: { modelo: "color", fondo: "#0C874A" },
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
+      tintaPagina: "blanca",
       logo: "scribd",
     }),
   ],
@@ -1553,6 +1691,13 @@ export type BrandSkin = {
    * la ficha. `null` = plata. `brand` en `null` con `metal` puesto significa
    * que el color va solo en la píldora (Peacock).
    */
+  /**
+   * Los tres tokens de la tarjeta de oferta, ya resueltos. `null` en las
+   * categorías que aún no migran, que se quedan con el vidrio del sistema.
+   */
+  tarjeta: { bg: string; tinta: string; tinta2: string; precio: string | null } | null;
+  /** Tinta de página, o `null` en las categorías que aún no migran. */
+  tintaPagina: TintaPagina | null;
   uiAccent: {
     brand: string | null;
     ink: string;
@@ -1897,6 +2042,19 @@ export function brandSkin(brand: Brand, size: "card" | "hero" = "card"): BrandSk
     // Solo en la ficha: la tarjeta del catálogo lleva el fondo exacto del
     // logotipo y nada encima, que es justo lo que no se puede tocar.
     blend: hero ? surface.blend : null,
+    tintaPagina: hero ? (brand.tintaPagina ?? null) : null,
+    tarjeta:
+      hero && brand.tarjeta
+        ? {
+            bg: rgba(brand.tarjeta.secundario, brand.tarjeta.alfa),
+            tinta: brand.tarjeta.tinta === "blanca" ? "#FFFFFF" : "#111111",
+            tinta2: rgba(
+              brand.tarjeta.tinta === "blanca" ? "#FFFFFF" : "#111111",
+              brand.tarjeta.alfa2,
+            ),
+            precio: brand.tarjeta.precio ?? null,
+          }
+        : null,
     uiAccent: hero ? uiAccent(brand.fichaAccent ?? []) : null,
     // Neutro, no del color de la marca: un borde rojo alrededor de Netflix se
     // lee como resplandor y rompe el negro plano de su logotipo. El marco es
