@@ -73,7 +73,9 @@ export function OfferGroups({
                 style={{ backgroundColor: accent, boxShadow: `0 0 16px ${accent}` }}
                 aria-hidden
               />
-              <h3 className="t-subtitle">{productLabel(type)}</h3>
+              <h3 className="t-subtitle" data-tinta-pagina>
+                {productLabel(type)}
+              </h3>
               <span className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-semibold tabular-nums text-muted-foreground">
                 {list.length}
               </span>
@@ -93,12 +95,19 @@ export function OfferGroups({
                       de un vistazo mientras se baja la lista.
                     */}
                     {showDuration ? (
-                      <div className="mb-3 flex items-center gap-3" aria-hidden={false}>
-                        <span className="h-px flex-1 bg-border" />
+                      <div
+                        className="mb-3 flex items-center gap-3"
+                        aria-hidden={false}
+                        data-tinta-pagina
+                      >
+                        {/* Las líneas toman la tinta del rótulo cuando la
+                            ficha la tiene: sobre el blanco de F1 TV un filete
+                            gris del sistema no se ve. */}
+                        <span className="h-px flex-1 bg-border" data-tinta-linea />
                         <span className="text-[12.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                           {durationLabel(rows[0]?.months ?? null)}
                         </span>
-                        <span className="h-px flex-1 bg-border" />
+                        <span className="h-px flex-1 bg-border" data-tinta-linea />
                       </div>
                     ) : null}
                     <div className={variants.length > 1 ? "space-y-5" : ""}>
@@ -306,7 +315,13 @@ export function Price({ value, strong = false }: { value: number | null; strong?
   // El precio es la razón de ser de la pantalla: cuerpo grande y peso pleno.
   return (
     <span
-      className={`t-price ${strong ? "text-[1.5rem] text-brand" : "text-[1.32rem] text-foreground"}`}
+      className={`t-price ${
+        strong
+          ? // `--tarjeta-precio` solo existe donde el acento de marca no se lee
+            // encima de la tarjeta; si no, cae en el acento de siempre.
+            "text-[1.5rem] text-[color:var(--tarjeta-precio,var(--brand))]"
+          : "text-[1.32rem] text-foreground"
+      }`}
     >
       {formatPrice(value)}
     </span>
@@ -430,7 +445,7 @@ function ServiceOfferGroup({
       {/* El punto lleva el color de la marca: en una lista de 103 ofertas de
           un mismo vendedor es lo que deja distinguir un servicio de otro sin
           repetir el logotipo entero en cada bloque. */}
-      <p className="mb-2 flex items-center gap-2.5 t-subtitle">
+      <p className="mb-2 flex items-center gap-2.5 t-subtitle" data-tinta-pagina>
         <span
           className="h-2.5 w-2.5 shrink-0 rounded-full"
           style={{

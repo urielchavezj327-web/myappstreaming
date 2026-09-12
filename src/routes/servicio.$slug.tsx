@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useCanGoBack, useRouter } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { getServiceDetail, type StockOffer } from "@/lib/catalog.functions";
 import { brandSkin, resolveBrand } from "@/lib/brands";
@@ -9,6 +9,7 @@ import { Wordmark } from "@/components/wordmark";
 import { isTileLogo } from "@/components/logos";
 import { OfferSection } from "@/components/offer-list";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { TINTA, useTintaPorZona } from "@/hooks/use-tinta-por-zona";
 
 /**
  * Los tonos de una zona de la ficha, claros u oscuros.
@@ -135,6 +136,29 @@ export const Route = createFileRoute("/servicio/$slug")({
   ),
 });
 
+/**
+ * `?solofondo=1` — modo de captura, SOLO en desarrollo.
+ *
+ * Esconde todo el contenido de la ficha, encabezado incluido, y deja a la vista
+ * únicamente las dos capas fijas. Sirve para medir el fondo punto por punto sin
+ * que una letra o un panel se metan en el cuadrito de muestra.
+ *
+ * Se marca desde un efecto y no al renderizar: leer `location.search` durante el
+ * render deja el HTML del servidor distinto al del cliente y React se queja al
+ * hidratar.
+ */
+function useSoloFondo(raiz: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    if (!import.meta.env.DEV || !raiz.current) return;
+    if (!new URLSearchParams(window.location.search).has("solofondo")) return;
+    const el = raiz.current;
+    el.dataset["solofondo"] = "1";
+    return () => {
+      delete el.dataset["solofondo"];
+    };
+  }, [raiz]);
+}
+
 function ServicePage() {
   const { service, offers, bundle } = Route.useLoaderData() as Detail;
   const router = useRouter();
@@ -148,6 +172,18 @@ function ServicePage() {
     bundle: Boolean(bundle),
   });
   const skin = brandSkin(brand, "hero");
+  const raiz = useRef<HTMLDivElement>(null);
+  const capaFondo = useRef<HTMLDivElement>(null);
+  useSoloFondo(raiz);
+  /*
+    Las fichas de una sola tinta se resuelven con las dos variables CSS de abajo,
+    que valen lo mismo, y no llegan a entrar aquí. Solo las cuatro de dos zonas
+    —F1 TV, YouTube, PicsArt y Disney+— necesitan medir.
+  */
+  useTintaPorZona(raiz, capaFondo, skin.tintaPagina ?? "blanca");
+  const tinta = skin.tintaPagina;
+  const tintaArriba = typeof tinta === "string" ? TINTA[tinta] : tinta ? TINTA[tinta.arriba] : null;
+  const tintaAbajo = typeof tinta === "string" ? TINTA[tinta] : tinta ? TINTA[tinta.abajo] : null;
   const tileLogo = brand.logo !== undefined && isTileLogo(brand.logo);
 
   const internal = offers.filter((o) => o.group.kind === "interno");
@@ -173,7 +209,15 @@ function ServicePage() {
 
   return (
     <div
+      ref={raiz}
       className="relative min-h-screen"
+      /*
+        Solo las fichas migradas llevan tinta de página. Sin este atributo, las
+        reglas de abajo no existen y Trámites y Otros se quedan exactamente como
+        están, con los colores que ya tenían cada elemento.
+      */
+      {...(skin.tintaPagina ? { "data-tinta": "" } : {})}
+      {...(skin.tarjeta ? { "data-tarjeta": "" } : {})}
       style={
         {
           /*
@@ -246,6 +290,31 @@ function ServicePage() {
             propiedad personalizada se resuelve donde se DECLARA, no donde se
             usa.
           */
+          /*
+            La tarjeta de oferta. Los declara la ficha y los consume SOLO el
+            `<ul>` del panel: `--color-surface` en la raíz pintaría del color de
+            la marca todo lo que lo lee —el botón de copiar, el hueco final, las
+            piezas de `ui-kit`, el botón «+» del encabezado—, y con Netflix en
+            rgba(229,9,20,.90) eso serían media docena de cosas rojas.
+          */
+          /*
+            Tinta de las letras que van directo sobre el fondo. Antes de la
+            primera medición todo usa `--tinta-arriba`, que es la de la zona
+            donde arranca la ficha.
+          */
+          ...(tintaArriba && tintaAbajo
+            ? { "--tinta-arriba": tintaArriba, "--tinta-abajo": tintaAbajo }
+            : {}),
+
+          ...(skin.tarjeta
+            ? {
+                "--tarjeta-bg": skin.tarjeta.bg,
+                "--tarjeta-tinta": skin.tarjeta.tinta,
+                "--tarjeta-tinta-2": skin.tarjeta.tinta2,
+                ...(skin.tarjeta.precio ? { "--tarjeta-precio": skin.tarjeta.precio } : {}),
+              }
+            : {}),
+
           ...(skin.uiAccent
             ? {
                 ...(skin.uiAccent.brand
@@ -277,7 +346,9 @@ function ServicePage() {
         once mil píxeles, bajar el dedo era ver cómo el color se apagaba.
       */}
       <div
+        ref={capaFondo}
         className="pointer-events-none fixed inset-0 -z-20"
+        data-capa-fondo
         style={{ background: skin.background }}
         aria-hidden
       />
@@ -301,6 +372,7 @@ function ServicePage() {
       {skin.blend ? (
         <div
           className="pointer-events-none fixed inset-0 -z-10"
+          data-capa-fondo
           style={{ background: skin.blend.color, mixBlendMode: skin.blend.mode }}
           aria-hidden
         />
@@ -309,6 +381,7 @@ function ServicePage() {
       {brand.ficha ? null : (
         <div
           className="pointer-events-none fixed inset-0 -z-10"
+          data-capa-fondo
           style={{
             background: skin.light
               ? "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.18) 100%)"
@@ -336,6 +409,7 @@ function ServicePage() {
               type="button"
               onClick={() => router.history.back()}
               className="tappable inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13.5px] font-medium"
+              data-tinta-pagina
               style={{
                 color: skin.chrome,
                 borderColor: skin.border,
@@ -349,6 +423,7 @@ function ServicePage() {
               to="/"
               search={{ cat: service.category, q: "" }}
               className="tappable inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13.5px] font-medium"
+              data-tinta-pagina
               style={{
                 color: skin.chrome,
                 borderColor: skin.border,
@@ -359,7 +434,7 @@ function ServicePage() {
             </Link>
           )}
 
-          <p className="mt-10 text-center t-micro" style={{ color: skin.meta }}>
+          <p className="mt-10 text-center t-micro" style={{ color: skin.meta }} data-tinta-pagina>
             {service.categoryName}
           </p>
 
@@ -416,7 +491,9 @@ function ServicePage() {
           ) : bundle ? (
             [...bundleSections.entries()].map(([name, list]) => (
               <section key={name} className="rise">
-                <h2 className="border-b border-border pb-3 t-section">{name}</h2>
+                <h2 className="border-b border-border pb-3 t-section" data-tinta-pagina>
+                  {name}
+                </h2>
                 <div className="mt-6 space-y-12">
                   <OfferSection
                     title="Mis Grupos"
@@ -508,6 +585,7 @@ function SummaryBar({
     <div className="flex flex-col items-center gap-4">
       <div
         className="relative flex aspect-square w-[30%] max-w-[7.5rem] flex-col items-center justify-center rounded-[38%] border text-center text-foreground"
+        data-tinta-pagina
         style={{
           borderColor: "rgba(255,255,255,0.34)",
           background:
@@ -525,6 +603,7 @@ function SummaryBar({
           <div
             key={c.label}
             className="relative flex aspect-square w-[30%] max-w-[7.5rem] flex-col items-center justify-center rounded-[38%] border text-center text-foreground"
+            data-tinta-pagina
             style={{
               borderColor: "rgba(255,255,255,0.24)",
               background:
