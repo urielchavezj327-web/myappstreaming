@@ -90,19 +90,25 @@ def curve_to_d(path, sx, sy, ox, oy, r=1):
     return "".join(out)
 
 
-def trace(file, name, layers, box=1000, crop=None, maxside=900, minside=700, turd=8):
+def trace(file, name, layers, box=1000, crop=None, maxside=900, minside=700, turd=8, fondo=(255, 255, 255)):
     """Traza cada capa y devuelve `{viewBox, layers:[{fill, d}]}`.
 
     Todas las capas comparten el mismo encuadre —el rectángulo que ocupa la
     tinta— para que al superponerlas queden registradas entre sí.
     """
-    # Los PNG con transparencia hay que aplanarlos sobre blanco: al convertir
-    # directo a RGB, lo transparente se vuelve negro y cualquier selector de
-    # «oscuro» se traga el fondo entero.
+    # Los archivos con transparencia hay que aplanarlos antes de convertir a
+    # RGB, porque lo transparente se vuelve negro y cualquier selector de
+    # «oscuro» se traga el fondo entero. Por defecto se aplanan sobre blanco.
+    #
+    # `fondo` existe para el caso contrario: cuando lo que se busca es la tinta
+    # CLARA y fuera de la figura hay transparencia. Aplanado sobre blanco, ese
+    # exterior se vuelve blanco y el selector de claros se lo lleva junto con la
+    # tinta; sobre negro, la tinta clara se queda sola. Es lo que pasa con la
+    # cara de Discord, que es blanca y vive dentro de un disco recortado.
     raw = Image.open(UP + file)
     if raw.mode in ("RGBA", "LA", "P"):
         raw = raw.convert("RGBA")
-        flat = Image.new("RGBA", raw.size, (255, 255, 255, 255))
+        flat = Image.new("RGBA", raw.size, (*fondo, 255))
         flat.alpha_composite(raw)
         im = flat.convert("RGB")
     else:
@@ -381,6 +387,21 @@ JOBS = {
     # va como fondo de la tarjeta con sus paradas muestreadas.
     "picsart": ("520bf64d-image.jpg", [{"match": light(215), "fill": "#FFFFFF"}], None),
     "tidal": ("aec23587-image.png", [{"match": light(180), "fill": "#FFFFFF"}], None),
+    # Solo la cara de Clyde. El disco morado es el CAMPO, igual que el
+    # rectángulo verde de Duolingo: si se traza, se le ve el canto sobre el
+    # fondo de la ficha y parece una calcomanía pegada. Como el archivo es
+    # transparente fuera del disco, se aplana sobre NEGRO para que el selector
+    # de claros no se lleve también el exterior.
+    #
+    # Los ojos y la muesca de la boca son huecos recortados en la cara, no
+    # formas moradas encima: potrace los devuelve como subtrazos invertidos y
+    # por ahí se ve el fondo de la ficha.
+    "discord": (
+        "d3788097-image.webp",
+        [{"match": light(200), "fill": "#FFFFFF"}],
+        None,
+        (0, 0, 0),
+    ),
     "duolingoword": ("5cee19fe-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.20, 0.62, 0.80, 0.92)),
     "duolingoowl": ("5cee19fe-image.png", [{"match": light(200), "fill": "#FFFFFF"}], (0.28, 0.10, 0.72, 0.60)),
     # El archivo anterior medía 196×110 px con la tinta en 125×37: trazos de seis
@@ -411,9 +432,12 @@ if __name__ == "__main__":
     names = list(JOBS) if "--all" in sys.argv else sys.argv[1:]
     result = {}
     for n in names:
-        file, layers, crop = JOBS[n]
+        file, layers, crop, *extra = JOBS[n]
+        # Cuarto elemento opcional: el color sobre el que aplanar la
+        # transparencia. Sin él, blanco, como los otros 44.
+        fondo = extra[0] if extra else (255, 255, 255)
         try:
-            r = trace(file, n, layers, crop=crop)
+            r = trace(file, n, layers, crop=crop, fondo=fondo)
             result[n] = r
             print(f"  {n:18s} tinta {r['coverage'] * 100:5.1f}%  viewBox {r['viewBox']}")
         except Exception as e:  # noqa: BLE001

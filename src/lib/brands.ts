@@ -1297,6 +1297,13 @@ function key(value: string) {
       accent: "#5865F2",
       wash: 0.18,
       mix: ["#5865F2", "#5865F2", "#FFFFFF"],
+      // Campo de color con marca blanca, como Prime Video o Paramount+: el
+      // blurple plano, sin capa de luz, sin degradado y sin mezcla con negro.
+      // El #5765F2 que mide el archivo es este mismo con un punto de menos en
+      // el rojo, de la compresión del webp.
+      ficha: { modelo: "color", fondo: "#5865F2" },
+      tintaPagina: "blanca",
+      tarjeta: { secundario: "#FFFFFF", alfa: 0.745, tinta: "oscura", alfa2: 0.68 },
       logo: "discord",
     }),
   ],
