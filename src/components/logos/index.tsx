@@ -223,7 +223,14 @@ export const LOGOS = {
   discord: {
     kind: "compose",
     dir: "col",
-    a: { mark: "discord", ink: "#FFFFFF" },
+    /*
+      La cara de Clyde trazada del archivo, SIN el disco morado. El disco es el
+      campo, igual que el rectángulo verde de Duolingo: trazarlo le dejaría un
+      canto visible sobre el fondo de la ficha. Los ojos son huecos de verdad
+      —subtrazos en sentido contrario al contorno— así que por ellos se ve el
+      fondo, no un morado pintado.
+    */
+    a: { traced: "discord" },
     b: { text: "Nitro" },
     sizes: [26, 12],
   },
